@@ -1,6 +1,7 @@
 ---
 import Icon from '../components/Icon.astro';
 import Mascot from '../components/Mascot.astro';
+import MusicFlourishes from '../components/MusicFlourishes.astro';
 import AuthDialog from '../components/AuthDialog.astro';
 import '../styles/app.css';
 import '../styles/home.css';
@@ -26,7 +27,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
         <p class="guest-note">No account needed. Just share the link.</p>
         <button class="join-launcher" type="button" data-join-room>Join a room</button>
       </div>
-      <div class="mascot-cast" aria-hidden="true"><div class="cast-member cast-mint"><span class="speech-bubble">Got a good video?</span><Mascot kind="mint"/><span class="cast-floor"></span></div><div class="cast-member cast-pink"><span class="speech-bubble">I brought snacks.</span><Mascot kind="pink"/><span class="cast-floor"></span></div><div class="cast-member cast-purple"><Mascot kind="purple"/></div><span class="floating-popcorn"><svg width="65" height="75" viewBox="0 0 65 75" fill="none"><path d="m9 31 7 39h33l7-39H9Z" fill="#F7EBCA"/><path d="m21 32 3 38h7l-1-38m9 0-2 38h7l4-38" fill="#EC8FA3"/><path d="M7 33c-7-10 2-19 10-13-2-16 17-19 21-8 12-7 22 5 14 14 12-2 14 9 6 13H9Z" fill="#FFF5D8"/></svg></span></div>
+      <div class="mascot-cast" aria-hidden="true"><div class="cast-member cast-mint"><span class="speech-bubble">Got a good video?</span><Mascot kind="mint"/><span class="cast-floor"></span></div><div class="cast-member cast-pink"><span class="speech-bubble">I brought snacks.</span><Mascot kind="pink"/><span class="cast-floor"></span></div><div class="cast-member cast-purple"><Mascot kind="purple"/></div><span class="floating-popcorn"><svg width="65" height="75" viewBox="0 0 65 75" fill="none"><path d="m9 31 7 39h33l7-39H9Z" fill="#F7EBCA"/><path d="m21 32 3 38h7l-1-38m9 0-2 38h7l4-38" fill="#EC8FA3"/><path d="M7 33c-7-10 2-19 10-13-2-16 17-19 21-8 12-7 22 5 14 14 12-2 14 9 6 13H9Z" fill="#FFF5D8"/></svg></span><MusicFlourishes/></div>
     </section>
     {user && <section class="saved-rooms" aria-labelledby="saved-title"><div class="saved-heading"><h2 id="saved-title">Your rooms</h2><button class="soft-button" type="button" data-create-room="member"><Icon name="plus" size={20}/>New saved room</button></div>{rooms.length ? <div class="saved-grid">{rooms.map(room => <a class="saved-room" href={'/room/'+room.slug}><Icon name="people" size={25}/><span><strong>{room.title}</strong><span>Open room</span></span></a>)}</div> : <p class="muted">Create a saved room and it will be waiting here next time.</p>}</section>}
     <section class="how-it-works reveal delay-2" aria-labelledby="how-title"><h2 id="how-title">Less “3, 2, 1, play!”<br/>More actually watching.</h2><div class="how-grid"><article><span class="step-symbol step-lilac"><Icon name="plus" size={28}/></span><h3>Make a room</h3><p>Start as a guest, or sign in to keep a room for next time.</p></article><article><span class="step-symbol step-pink"><Icon name="link" size={28}/></span><h3>Send the link</h3><p>Drop it in your group chat. Friends join the same room.</p></article><article><span class="step-symbol step-mint"><Icon name="play" size={28}/></span><h3>Get into it</h3><p>Everyone adds videos. Play, pause and skip stay in sync.</p></article></div></section>
