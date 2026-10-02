@@ -15,7 +15,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const addForm = $("add-form"), addError = $("add-error"), addFeedback = $("add-feedback");
   const playButton = $("play-btn"), nextButton = $("next-btn"), enableButton = $("enable-btn");
   let socket = null, room = null, joined = false, stopping = false;
-  let reconnectTimer, joinTimer, toastTimer, delay = 1000, lastMessage = 0;
+  let reconnectTimer, joinTimer, toastTimer, linkFeedbackTimer, linkFeedbackHideTimer, delay = 1000, lastMessage = 0;
   let lastServerTime = -1, latency = 0, adding = false, readingClipboard = false;
   let queueSignature = "", peopleSignature = "", scrubbing = false, overlayTimer;
   const progress = $("progress");
@@ -387,13 +387,31 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     controls();
   }
   function showLinkError(message = "") {
+    clearTimeout(linkFeedbackTimer);
+    clearTimeout(linkFeedbackHideTimer);
+    addFeedback.classList.remove("is-leaving");
     addError.textContent = message;
     addFeedback.hidden = !message;
     urlInput.setAttribute("aria-invalid", String(!!message));
     addForm.dataset.invalid = String(!!message);
-    if (message) urlInput.focus();
+    if (message) {
+      urlInput.focus();
+      linkFeedbackTimer = setTimeout(hideLinkFeedback, 4000);
+    }
+  }
+  function hideLinkFeedback() {
+    clearTimeout(linkFeedbackTimer);
+    clearTimeout(linkFeedbackHideTimer);
+    if (addFeedback.hidden) return;
+    urlInput.setAttribute("aria-invalid", "false");
+    addForm.dataset.invalid = "false";
+    addFeedback.classList.add("is-leaving");
+    linkFeedbackHideTimer = setTimeout(() => showLinkError(), reducedMotion.matches ? 0 : 180);
   }
   urlInput.addEventListener("input", () => showLinkError());
+  addForm.addEventListener("focusout", event => {
+    if (!addForm.contains(event.relatedTarget)) hideLinkFeedback();
+  });
   addForm.addEventListener("submit", event => {
     event.preventDefault();
     if (readingClipboard) return;
@@ -564,6 +582,8 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     clearInterval(syncTimer);
     clearTimeout(reconnectTimer);
     clearTimeout(joinTimer);
+    clearTimeout(linkFeedbackTimer);
+    clearTimeout(linkFeedbackHideTimer);
     if (pastedAddition) clearTimeout(pastedAddition.timer);
     clearTimeout(inviteTimer);
     socket?.close(1000, "Leaving room");

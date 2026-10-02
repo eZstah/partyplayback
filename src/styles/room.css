@@ -255,6 +255,7 @@
 #add-form:focus-within { background: #27252f; box-shadow: 0 0 0 2px #c3afff55,0 6px 24px #c3afff08; }
 #add-form[data-invalid=true] { background: #2a242e; box-shadow: 0 0 0 2px #f4adc05c; }
 .playlist-add-feedback { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; animation: playlist-error-in .22s var(--ease) both; }
+.playlist-add-feedback.is-leaving { animation: playlist-error-out .18s ease both; }
 .link-helper { flex: none; width: 54px; height: 64px; pointer-events: none; }
 .link-helper .mascot { animation: none; transform: rotate(-7deg); --look-x: 1px; --look-y: -1px; }
 .link-helper .mascot-arm { animation: none; }
@@ -262,6 +263,7 @@
 .link-helper .mascot.purple .mascot-mouth { width: 14px; height: 10px; left: calc(50% - 7px); top: 35%; }
 .playlist-add-message { min-width: 0; margin: 0; padding: 11px 13px; background: #c3afff10; border-radius: 16px 16px 16px 5px; color: #ded3f2; font-size: 15px; line-height: 1.4; }
 @keyframes playlist-error-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes playlist-error-out { to { opacity: 0; transform: translateY(3px); } }
 @media(prefers-reduced-motion:reduce) { .playlist-add-feedback { animation: none; } #add-form { transition: none; } }
 #url-in {
   width: 100%;
