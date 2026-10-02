@@ -259,15 +259,13 @@ export function bootRoom(roomName) {
   progress.addEventListener("input", () => { scrubbing = true; updateProgress(); });
   progress.addEventListener("change", () => { seek(Number(progress.value)); scrubbing = false; });
   progress.addEventListener("blur", () => { scrubbing = false; });
-  function setPlaylist(open) {
-    document.body.classList.toggle("playlist-hidden", !open);
-    $("playlist-btn").setAttribute("aria-expanded", String(open));
-  }
-  $("playlist-btn").addEventListener("click", async () => {
-    if (document.fullscreenElement) { await document.exitFullscreen(); setPlaylist(true); $("sidebar").scrollIntoView({ block: "nearest" }); }
-    else setPlaylist(document.body.classList.contains("playlist-hidden"));
+  $("first-video-btn").addEventListener("click", async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    document.body.classList.remove("theater");
+    $("theater-btn").setAttribute("aria-pressed", "false");
+    urlInput.focus();
+    urlInput.scrollIntoView({ block: "center", behavior: reducedMotion.matches ? "instant" : "smooth" });
   });
-  $("first-video-btn").addEventListener("click", async () => { if (document.fullscreenElement) await document.exitFullscreen(); setPlaylist(true); urlInput.focus(); urlInput.scrollIntoView({ block: "center", behavior: reducedMotion.matches ? "instant" : "smooth" }); });
   $("theater-btn").addEventListener("click", async () => {
     if (document.fullscreenElement) await document.exitFullscreen();
     const active = document.body.classList.toggle("theater");
@@ -287,14 +285,26 @@ export function bootRoom(roomName) {
     $("fullscreen-btn").setAttribute("aria-label", active ? "Exit fullscreen" : "Fullscreen");
     $("fullscreen-btn").title = active ? "Exit fullscreen (F)" : "Fullscreen (F)";
   });
+  function updateMuteControl() {
+    const player = playback.player;
+    $("mute-btn").disabled = !player;
+    if (!player) return;
+    const muted = player.isMuted();
+    if ($("mute-btn").dataset.muted === String(muted)) return;
+    const label = muted ? "Unmute" : "Mute";
+    $("mute-btn").dataset.muted = String(muted);
+    $("mute-btn").setAttribute("aria-label", label);
+    $("mute-btn").title = label + " on your device (M)";
+    $("mute-label").textContent = label;
+    $("unmute-icon").hidden = !muted;
+    $("mute-icon").hidden = muted;
+  }
   $("mute-btn").addEventListener("click", () => {
     const player = playback.player;
     if (!player) return;
     const muted = !player.isMuted();
     if (muted) player.mute(); else player.unMute();
-    $("mute-btn").setAttribute("aria-pressed", String(muted));
-    $("mute-btn").setAttribute("aria-label", muted ? "Unmute" : "Mute");
-    $("volume-icon").hidden = muted; $("mute-icon").hidden = !muted;
+    updateMuteControl();
   });
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
   $("own-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));
@@ -343,7 +353,7 @@ export function bootRoom(roomName) {
       j: () => seek(playback.targetTime() - 10), l: () => seek(playback.targetTime() + 10),
       n: () => { if (!nextButton.disabled) nextButton.click(); },
       f: () => $("fullscreen-btn").click(), t: () => $("theater-btn").click(),
-      p: () => $("playlist-btn").click(), m: () => $("mute-btn").click(),
+      m: () => $("mute-btn").click(),
       "?": () => $("help-btn").click(),
     };
     if (actions[key]) { event.preventDefault(); actions[key](); }
@@ -354,7 +364,7 @@ export function bootRoom(roomName) {
       height: "100%", width: "100%",
       playerVars: { controls: 0, disablekb: 1, rel: 0, playsinline: 1, origin: location.origin },
       events: {
-        onReady() { playback.ready(player); },
+        onReady() { playback.ready(player); updateMuteControl(); },
         onStateChange(event) { playback.stateChanged(event.data); },
         onAutoplayBlocked() { playback.autoplayBlocked(); },
         onError() {
@@ -365,7 +375,7 @@ export function bootRoom(roomName) {
     });
   };
 
-  const sampleTimer = setInterval(() => { playback.tick(); updateProgress(); }, 250);
+  const sampleTimer = setInterval(() => { playback.tick(); updateProgress(); updateMuteControl(); }, 250);
   const syncTimer = setInterval(() => {
     if (joined && performance.now() - lastMessage > 20000) socket?.close();
     else if (joined) requestState();
