@@ -27,7 +27,7 @@ function setup({ arrival = marker, reducedMotion = false } = {}) {
     performance: { mark: name => marks.push(name) },
   });
   vm.runInContext(head, context);
-  vm.runInContext(client + "\nglobalThis.reveal = revealCreatedRoom; globalThis.enter = enterCreatedRoom;", context);
+  vm.runInContext(client + "\nglobalThis.reveal = revealCreatedRoom; globalThis.enter = enterCreatedRoom; globalThis.enterExisting = enterRoom;", context);
   async function flush() { for (let i = 0; i < 8; i++) await Promise.resolve(); }
   async function advance(ms) {
     clock += ms;
@@ -109,4 +109,11 @@ test("a stalled clipboard never blocks room navigation or reports a false succes
   await finished;
   assert.deepEqual(env.navigations, [marker.url]);
   assert.equal(JSON.parse(env.writes.get("youple-created-room")).copied, false);
+});
+
+test("opening an existing room skips the invite-copied notice", async () => {
+  const env = setup({ arrival: null, reducedMotion: true });
+  await env.context.enterExisting(marker.url, null);
+  assert.deepEqual(env.navigations, [marker.url]);
+  assert.equal(env.writes.has("youple-created-room"), false);
 });

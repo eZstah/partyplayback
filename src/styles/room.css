@@ -39,7 +39,7 @@
   padding: 12px 17px;
   border-radius: 100px;
   color: var(--accent);
-  max-width: 150px;
+  max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { verifiedUser, displayName } from "../../../lib/auth";
-import { roomDetails } from "../../../lib/rooms";
+import { roomDetails, rememberJoin } from "../../../lib/rooms";
 
 export const GET: APIRoute = async context => {
   const { params, request, locals } = context;
@@ -32,6 +32,7 @@ export const GET: APIRoute = async context => {
   if (user) {
     headers.set("X-Party-User", user.id);
     headers.set("X-Party-Name", encodeURIComponent(displayName(user)));
+    if (details) context.locals.runtime.ctx.waitUntil(rememberJoin(env, user.id, details).catch(() => {}));
   }
   return stub.fetch(new Request(request, { headers }));
 };

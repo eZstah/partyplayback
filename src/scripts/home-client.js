@@ -1,5 +1,5 @@
 import { bootAuth } from "./auth-client.js";
-import { enterCreatedRoom } from "./room-transition.js";
+import { enterCreatedRoom, enterRoom } from "./room-transition.js";
 import { beginInviteCopy } from "./invite-copy.js";
 import { illustrativeSyncCount } from "../lib/activity.js";
 
@@ -23,6 +23,12 @@ export function bootHome() {
   }
   document.querySelectorAll("[data-create-room]").forEach(button => button.addEventListener("click", () => {
     openSavedRoom();
+  }));
+  document.querySelectorAll(".member-rooms a").forEach(link => link.addEventListener("click", event => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || leaving) return;
+    event.preventDefault();
+    leaving = true;
+    enterRoom(link.getAttribute("href"), link);
   }));
   document.querySelectorAll("[data-join-room]").forEach(button => button.addEventListener("click", () => joinDialog.showModal()));
   function bindCreation(form, mode, message) {

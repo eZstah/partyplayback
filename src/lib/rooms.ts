@@ -14,3 +14,24 @@ export async function ownedRooms(env: Env, userId: string): Promise<RoomDetails[
   const response = await stub.fetch("https://room.internal/catalog");
   return response.json();
 }
+
+export async function joinedRooms(env: Env, userId: string): Promise<RoomDetails[]> {
+  const response = await roomStub(env, "account:" + userId).fetch("https://room.internal/joined");
+  return response.json();
+}
+
+// Remembers a friend's saved room so it shows up in this member's own list.
+export async function rememberJoin(env: Env, userId: string, room: RoomDetails) {
+  if (room.mode !== "member" || room.ownerId === userId) return;
+  const { slug, title, mode, createdAt } = room;
+  await roomStub(env, "account:" + userId).fetch("https://room.internal/joined", { method: "POST", body: JSON.stringify({ slug, title, mode, createdAt }) });
+}
+
+// A member's own saved rooms first, then friends' rooms they have joined.
+export async function accountRooms(env: Env, userId: string) {
+  const [owned, joined] = await Promise.all([ownedRooms(env, userId), joinedRooms(env, userId)]);
+  return [
+    ...owned.map(room => ({ ...room, joined: false })),
+    ...joined.filter(room => !owned.some(own => own.slug === room.slug)).map(room => ({ ...room, joined: true })),
+  ];
+}
