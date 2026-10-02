@@ -19,6 +19,8 @@ async function setup() {
     storage: {
       async get(key) { return structuredClone(saved.get(key)); },
       async put(key, value) { saved.set(key, structuredClone(value)); },
+      async setAlarm(time) { ctx.alarmAt = time; },
+      async deleteAll() { saved.clear(); },
     },
     blockConcurrencyWhile(fn) { return fn(); },
     getWebSockets() { return sockets; },
@@ -29,7 +31,7 @@ async function setup() {
   await send({ type: "join", username: "Bob" }, sockets[1]);
   const add = (id = "M7lc1UVf-VE") => send({ type: "add", url: "https://youtu.be/" + id });
   const control = (type, currentTime) => send({ type, currentTime, playbackId: room.state.playbackId, revision: room.state.revision });
-  return { room, ctx, send, sockets, add, control };
+  return { room, ctx, saved, send, sockets, add, control };
 }
 
 test("play, pause, and paused seek broadcast authoritative state to both viewers", async () => {
@@ -174,4 +176,30 @@ test('saved room catalog deduplicates and survives object reconstruction', async
   await room.fetch(request()); await room.fetch(request());
   const restored = new RoomDO(ctx, {});
   assert.deepEqual(await (await restored.fetch(new Request('https://room.internal/catalog'))).json(), [{ slug: 'm-one', title: 'Friday' }]);
+});
+
+test("unsaved rooms clear themselves once nobody has visited for 30 days", async () => {
+  const { room, ctx, saved, add, sockets } = await setup();
+  await add();
+  await room.webSocketClose(sockets[1], 1000, "");
+  assert.ok(ctx.alarmAt > Date.now() + RoomDO.GUEST_ROOM_TTL - 60000);
+  await room.alarm();
+  assert.ok(saved.has("room"), "a room with viewers connected is kept");
+  sockets.length = 0;
+  await room.alarm();
+  assert.equal(saved.size, 0);
+  assert.equal(room.state.queue.length, 0);
+});
+
+test("saved rooms never schedule or run cleanup", async () => {
+  const { room, ctx, saved, add } = await setup();
+  room.details = { mode: "member" };
+  saved.set("details", room.details);
+  ctx.alarmAt = undefined;
+  await add();
+  await room._departed();
+  assert.equal(ctx.alarmAt, undefined);
+  ctx.getWebSockets = () => [];
+  await room.alarm();
+  assert.ok(saved.has("room") && saved.has("details"));
 });
