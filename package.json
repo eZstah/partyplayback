@@ -1,6 +1,6 @@
 {
 	"name": "partyplayback",
-	"description": "Build a personal website, blog, or portfolio with Astro.",
+	"description": "Watch YouTube videos together in sync.",
 	"cloudflare": {
 		"label": "Astro Framework Starter",
 		"products": [
@@ -13,8 +13,6 @@
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "12.6.12",
-		"@astrojs/mdx": "4.3.13",
-		"@astrojs/rss": "4.0.14",
 		"@astrojs/sitemap": "3.6.1",
 		"@supabase/ssr": "0.12.7",
 		"@supabase/supabase-js": "2.117.2",

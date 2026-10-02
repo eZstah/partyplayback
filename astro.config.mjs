@@ -1,6 +1,5 @@
 // @ts-check
 import { defineConfig } from "astro/config";
-import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 
 import cloudflare from "@astrojs/cloudflare";
@@ -9,7 +8,7 @@ import cloudflare from "@astrojs/cloudflare";
 export default defineConfig({
 	site: "https://youple.tv",
 	output: "server",
-	integrations: [mdx(), sitemap({ filter: page => new URL(page).pathname === "/" })],
+	integrations: [sitemap({ filter: page => new URL(page).pathname === "/" })],
 	adapter: cloudflare({
 		platformProxy: {
 			enabled: true,
