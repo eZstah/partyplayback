@@ -2,11 +2,8 @@
 interface Props { variant?: 'hero' | 'compact' }
 const { variant = 'compact' } = Astro.props;
 ---
-<span class:list={['youple-wordmark', { 'hero-wordmark': variant === 'hero' }]}>youple<span class="youple-tld">.tv</span><svg class="youple-smile" viewBox="0 0 200 28" aria-hidden="true"><path d="M8 5c43 25 121 25 184 0" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></span>
+<span class:list={['youple-wordmark', { 'hero-wordmark': variant === 'hero' }]}>youple<span class="youple-tld">.tv</span></span>
 <style>
   .youple-wordmark { position: relative; display: inline-block; font-family: Atkinson,Arial,sans-serif; font-weight: 700; letter-spacing: -.085em; line-height: 1.1; white-space: nowrap; color: #f6f2ef; }
   .youple-tld { color: #c3afff; }
-  .youple-smile { position: absolute; left: 38%; bottom: -.095em; width: 1.024em; height: .214em; color: #c3afff; transform: rotate(-3deg); }
-  .hero-wordmark .youple-smile { bottom: -8px; width: 86px; height: 18px; }
-  @media(max-width:600px) { .hero-wordmark .youple-smile { bottom: -6px; width: 65px; height: 14px; } }
 </style>
