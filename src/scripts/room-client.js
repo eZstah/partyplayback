@@ -56,8 +56,10 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   function controls() {
     const hasVideo = !!room?.queue[room.currentIndex];
     playButton.disabled = !joined || !hasVideo;
-    nextButton.disabled = !joined || !hasVideo || room.currentIndex + 1 >= room.queue.length;
+    nextButton.disabled = !joined || !hasVideo || (room.currentIndex + 1 >= room.queue.length && !room.autoClear);
     addButton.disabled = !joined || adding;
+    $("auto-clear-btn").disabled = !joined;
+    $("auto-clear-btn").setAttribute("aria-checked", String(!!room?.autoClear));
     const playing = !!room?.isPlaying;
     queueList.querySelectorAll(".qi-rm").forEach(button => { button.disabled = !joined; });
     queueList.querySelectorAll(".qi-play").forEach(button => {
@@ -343,6 +345,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   }
   playButton.addEventListener("click", togglePlayback);
   nextButton.addEventListener("click", () => playback.command("next"));
+  $("auto-clear-btn").addEventListener("click", () => send({ type: "auto-clear", enabled: !room.autoClear }));
   enableButton.addEventListener("click", () => playback.enablePlayback());
 
   async function addVideo(value, fromPaste = false) {
@@ -482,6 +485,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   });
   document.addEventListener("keydown", event => {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.("input,textarea,select,[contenteditable=true]") || document.querySelector("dialog[open]")) return;
+    if ((event.key === " " || event.key === "Enter") && event.target.closest?.("button")) return;
     const key = event.key.toLowerCase();
     const actions = {
       " ": togglePlayback, k: togglePlayback,

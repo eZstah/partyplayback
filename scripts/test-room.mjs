@@ -139,7 +139,23 @@ try {
   assert.equal(state.currentIndex, -1);
   assert.equal(state.isPlaying, false);
 
-  console.log("PASS: guest creation, member-room auth guard, origin checks, safe callback, real Cloudflare sockets, two-way controls, seeking, playlist selection, queue edits, duplicate endings, late join, reconnect, and isolation");
+  // Auto-clear is room-wide, survives reconnects, and clears the last ending once.
+  const observer = await connect();
+  state = await rejoined.send({ type: "add", url: "https://youtu.be/M7lc1UVf-VE" });
+  state = await rejoined.send({ type: "add", url: "https://youtu.be/M7lc1UVf-VE" });
+  state = await rejoined.send({ type: "auto-clear", enabled: true });
+  assert.equal((await observer.sync()).autoClear, true);
+  state = await rejoined.send({ type: "next", playbackId: state.playbackId });
+  assert.equal(state.queue.length, 1);
+  assert.equal((await observer.sync()).queue.length, 1);
+  const lastEnd = { type: "ended", playbackId: state.playbackId, currentTime: 100 };
+  await Promise.all([rejoined.send(lastEnd), observer.send(lastEnd)]);
+  state = await rejoined.sync();
+  assert.equal(state.queue.length, 0);
+  assert.equal(state.currentIndex, -1);
+  assert.equal(state.autoClear, true);
+
+  console.log("PASS: guest creation, member-room auth guard, origin checks, safe callback, real Cloudflare sockets, two-way controls, seeking, playlist selection, Auto-clear, queue edits, duplicate endings, late join, reconnect, and isolation");
 } finally {
   await Promise.all(peers.map(peer => peer.close()));
 }
