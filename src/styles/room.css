@@ -828,3 +828,39 @@
 @container playback (min-width:600px) { .help-label { display: inline; } }
 @container playback (min-width:700px) { .control-key { display: inline-flex; } }
 @media(max-width:520px) { .control-bar { gap: 8px; } .play-control { padding-inline: 0; } .view-controls { gap: 6px; } .sound-control { min-width: 92px; min-height: 46px; padding-inline: 6px; gap: 6px; } .view-controls .shortcuts-control { padding: 0; width: 40px; } .help-label { display: none; } }
+
+/* Phones keep the header and playback focused on touch controls. */
+@media(max-width:600px), (max-width:900px) and (pointer:coarse) {
+  #theater-btn,.view-controls .shortcuts-control,.control-key { display: none; }
+}
+@media(max-width:600px) {
+  .room-nav { grid-template-columns: minmax(0,1fr) auto; padding: 10px 14px 4px; gap: 0 12px; }
+  .room-identity { display: contents; }
+  .room-wordmark-link { grid-column: 1; grid-row: 1; }
+  .room-tools { grid-column: 2; grid-row: 1; gap: 8px; }
+  .room-tools .room-presence { margin: 0 4px 0 0; }
+  .room-tools .room-presence #conn { font-size: 0; }
+  #conn::before { width: 7px; height: 7px; margin-right: 0; }
+  .room-tools #uname,.room-tools #uc { display: none; }
+  .room-name { grid-column: 1 / -1; grid-row: 2; flex-wrap: nowrap; gap: 12px; }
+  .room-name h1 { flex-basis: auto; font-size: 16px; }
+  .save-room-button { font-size: 14px; padding: 8px 0 8px 8px; }
+  .watch-layout { margin-top: 4px; padding-inline: 14px; }
+  #placeholder { padding: 16px; }
+  #placeholder h2 { font-size: 22px; margin: 0 0 14px; }
+  #placeholder p,.empty-play { display: none; }
+  #placeholder .primary-button { font-size: 16px; padding: 12px 18px; }
+  .player-bottom { padding: 12px; }
+  .timeline { margin-bottom: 12px; gap: 10px; }
+  .control-bar { gap: 8px; }
+  .transport { gap: 4px; }
+  .play-control { min-width: 90px; width: 90px; height: 54px; padding: 0 10px; gap: 6px; font-size: 16px; }
+  .play-control #play-label { display: inline; }
+  .play-control svg { width: 22px; }
+  .next-control { min-width: 44px; padding: 8px; gap: 6px; }
+  .next-control span { display: inline; }
+  .sound-control { min-width: 92px; min-height: 46px; padding: 0 6px; gap: 6px; }
+  .room-shell:fullscreen .room-nav { padding: 8px 14px; }
+  .room-shell:fullscreen .room-name { display: none; }
+}
+@media(max-width:360px) { .next-control span { display: none; } }

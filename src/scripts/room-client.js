@@ -306,12 +306,13 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     $("theater-btn").setAttribute("aria-pressed", String(active));
     if (!reducedMotion.matches) $("stage").animate([{ opacity: .65 }, { opacity: 1 }], { duration: 400 });
   });
+  $("fullscreen-btn").hidden = !document.fullscreenEnabled || !$("room-shell").requestFullscreen;
   $("fullscreen-btn").addEventListener("click", async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else if ($("room-shell").requestFullscreen) await $("room-shell").requestFullscreen();
-      else toast("Fullscreen is unavailable in this browser. Try theater mode.");
-    } catch { toast("Fullscreen couldn't open. Try theater mode."); }
+      else toast("Fullscreen is unavailable in this browser.");
+    } catch { toast("Fullscreen couldn't open in this browser."); }
   });
   document.addEventListener("fullscreenchange", () => {
     const active = document.fullscreenElement === $("room-shell");
