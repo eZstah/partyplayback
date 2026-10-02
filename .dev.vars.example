@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local preview. Set the same values in the Cloudflare
+# dashboard for production. Never use a service-role key here.
+SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
+SUPABASE_PUBLISHABLE_KEY="sb_publishable_YOUR_KEY"

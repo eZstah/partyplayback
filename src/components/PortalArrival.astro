@@ -1,0 +1,36 @@
+<!-- Set the cover before the first paint, rather than after the room bundle loads. -->
+<script is:inline>
+  (() => {
+    try {
+      const arrival = JSON.parse(sessionStorage.getItem('youple-room-arrival'));
+      sessionStorage.removeItem('youple-room-arrival');
+      const age = Date.now() - arrival?.at;
+      if (!arrival || arrival.url !== location.pathname || age < 0 || age > 15000 || !Number.isFinite(age) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const root = document.documentElement;
+      for (const axis of ['x', 'y']) {
+        if (Number.isFinite(arrival[axis])) root.style.setProperty('--portal-' + axis, Math.max(0, Math.min(100, arrival[axis])) + '%');
+      }
+      root.classList.add('room-arriving');
+      // Also recover when a room script fails to download or execute.
+      setTimeout(() => root.classList.remove('room-arriving', 'room-revealing'), 4000);
+    } catch {}
+  })();
+</script>
+<style is:global>
+  html.room-arriving::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: radial-gradient(ellipse at var(--portal-x,50%) var(--portal-y,50%),#493068 0%,#211b34 48%,#181622 85%);
+    opacity: 1;
+    will-change: opacity;
+  }
+  .room-arriving .room-shell { opacity: 0; }
+  .room-arriving.room-revealing::before { opacity: 0; pointer-events: none; transition: opacity .45s ease; }
+  .room-arriving.room-revealing .room-shell { opacity: 1; transition: opacity .45s ease; }
+  @media (prefers-reduced-motion: reduce) {
+    html.room-arriving::before { display: none; }
+    .room-arriving .room-shell { opacity: 1; transition: none; }
+  }
+</style>
