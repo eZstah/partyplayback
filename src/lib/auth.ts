@@ -54,6 +54,21 @@ export function safeReturnTo(value: unknown) {
 }
 
 export function displayName(user: { user_metadata: Record<string, unknown> }) {
+  const chosen = cleanDisplayName(user.user_metadata.display_name);
+  if (chosen) return chosen;
   const value = user.user_metadata.full_name || user.user_metadata.name || user.user_metadata.preferred_username;
   return typeof value === "string" ? value.slice(0, 32) : "Member";
+}
+
+// The name a member picks on their profile; null when it isn't usable.
+export function cleanDisplayName(value: unknown) {
+  if (typeof value !== "string") return null;
+  const name = value.replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
+  return name && name.length <= 32 ? name : null;
+}
+
+export function avatarUrl(user: { user_metadata: Record<string, unknown> }) {
+  const value = user.user_metadata.avatar_url || user.user_metadata.picture;
+  if (typeof value !== "string") return null;
+  try { return new URL(value).protocol === "https:" ? value : null; } catch { return null; }
 }
