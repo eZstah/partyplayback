@@ -1,0 +1,36 @@
+---
+import SiteFooter from '../components/SiteFooter.astro';
+import '../styles/app.css';
+---
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content="What youple.tv is and how it works."/><meta name="theme-color" content="#181622"/><title>About — youple.tv</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/><link rel="canonical" href="https://youple.tv/about"/></head>
+<body>
+  <main class="text-page">
+    <p><a href="/">← youple.tv</a></p>
+    <h1>About youple.tv</h1>
+    <p>youple.tv lets you watch YouTube videos with friends, in sync, wherever everyone is. Make a room, send the link, and everyone sees the same moment at the same time.</p>
+
+    <h2>How it works</h2>
+    <ul>
+      <li>One click makes a room. No account needed.</li>
+      <li>Anyone in the room can add videos, play, pause, seek and skip. Volume stays on your own device.</li>
+      <li>Sign in with Google, Discord or an email link to save rooms your group can come back to.</li>
+    </ul>
+
+    <h2>Free and ad-free</h2>
+    <p>youple.tv is a small independent project. There are no ads and no tracking. Videos play through YouTube's own player, so YouTube's rules and ads apply inside it.</p>
+
+    <h2>Say hi</h2>
+    <p>Found a bug or have an idea? Use the Contact link below.</p>
+  </main>
+  <SiteFooter/>
+  <style>
+    .text-page { max-width: 680px; margin: 0 auto; padding: 48px 16px 24px; line-height: 1.6; }
+    .text-page h1 { font-size: 40px; margin: 24px 0 12px; line-height: 1.15; }
+    .text-page h2 { font-size: 20px; margin: 32px 0 8px; }
+    .text-page p, .text-page li { color: var(--muted); }
+    .text-page a { color: var(--accent); }
+  </style>
+</body>
+</html>
