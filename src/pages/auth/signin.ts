@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { authClient, sameOrigin, privateJson, safeReturnTo } from "../../lib/auth";
+import { authClient, sameOrigin, privateJson, safeReturnTo, redirectOrigin } from "../../lib/auth";
 
 export const POST: APIRoute = async context => {
   if (!sameOrigin(context.request)) return privateJson({ message: "Please sign in from youple.tv." }, 403);
@@ -10,7 +10,7 @@ export const POST: APIRoute = async context => {
   if (!input || typeof input !== "object" || Array.isArray(input)) return privateJson({ message: "Choose a sign-in method." }, 400);
   const body = input as Record<string, unknown>;
   if (body.provider !== "google" && body.provider !== "discord" && body.provider !== "magic") return privateJson({ message: "Choose a sign-in method." }, 400);
-  const callback = new URL("/auth/callback", context.request.url);
+  const callback = new URL("/auth/callback", redirectOrigin(context));
   callback.searchParams.set("next", safeReturnTo(body.next));
   if (body.provider === "magic") {
     if (typeof body.email !== "string" || body.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {

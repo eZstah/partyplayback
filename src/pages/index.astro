@@ -10,6 +10,9 @@ import '../styles/home.css';
 import { verifiedUser, displayName } from '../lib/auth';
 import { ownedRooms } from '../lib/rooms';
 import { illustrativeSyncCount } from '../lib/activity.js';
+// Supabase falls back to the Site URL when a redirect URL isn't allowlisted.
+const code = Astro.url.searchParams.get('code');
+if (code) return Astro.redirect('/auth/callback?code=' + encodeURIComponent(code), 303);
 const user = await verifiedUser(Astro);
 const name = user ? displayName(user) : null;
 const configured = !!Astro.locals.runtime.env.SUPABASE_URL && !!Astro.locals.runtime.env.SUPABASE_PUBLISHABLE_KEY;

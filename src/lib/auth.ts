@@ -33,6 +33,14 @@ export function sameOrigin(request: Request) {
   return request.headers.get("Origin") === new URL(request.url).origin;
 }
 
+// Local preview rewrites request URLs to the youple.tv route, so it sets
+// AUTH_REDIRECT_ORIGIN to send provider redirects back to localhost instead.
+export function redirectOrigin(context: AuthContext) {
+  const override = context.locals.runtime.env.AUTH_REDIRECT_ORIGIN;
+  try { if (override) return new URL(override).origin; } catch {}
+  return new URL(context.request.url).origin;
+}
+
 export function privateJson(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "private, no-store" } });
 }

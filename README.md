@@ -109,18 +109,27 @@ No Supabase database tables or service-role key are needed. Room storage and the
 account's saved-room catalog stay in Cloudflare Durable Objects.
 
 1. Create a Supabase project. Copy `.dev.vars.example` to `.dev.vars` and set
-   `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` from its API settings. For a
-   deployed Worker, set these variables in Cloudflare and rebuild/redeploy.
+   `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` from its API settings. Keep
+   `AUTH_REDIRECT_ORIGIN` in `.dev.vars` only: local preview rewrites request URLs
+   to the youple.tv route, so this sends sign-in redirects back to localhost.
+   For production, add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` to the
+   `partyplayback` Worker under Settings → Variables and Secrets (or with
+   `npx wrangler secret put`). They are read at runtime, so no rebuild is needed;
+   `keep_vars` stops later deploys from removing them.
 2. In Supabase Auth URL configuration, set `https://youple.tv` as your Site URL and allow
-   `http://127.0.0.1:8787/auth/callback**`, `http://localhost:8787/auth/callback**`
-   and the production `https://youple.tv/auth/callback**` redirect URLs.
-   Keep the production allowlist limited to domains you own.
+   `https://youple.tv/auth/callback**` and, for local preview,
+   `http://localhost:8787/auth/callback**`. Keep the allowlist limited to
+   domains you own. If a redirect is ever rejected, Supabase falls back to the
+   Site URL and the home page forwards its `code` to the callback.
 3. Enable [Google](https://supabase.com/docs/guides/auth/social-login/auth-google)
    and [Discord](https://supabase.com/docs/guides/auth/social-login/auth-discord)
    in Supabase. Create each provider's OAuth app and configure its credentials
-   in Supabase, using the Supabase callback URL shown in the provider settings.
-4. Enable email authentication and magic links. Keep the confirmation email
-   template's `{{ .ConfirmationURL }}` link and configure production SMTP.
+   in Supabase, using the Supabase callback URL shown in the provider settings
+   (`https://YOUR_PROJECT.supabase.co/auth/v1/callback`).
+4. Enable email authentication and magic links. Keep the Magic Link email
+   template's `{{ .ConfirmationURL }}` link. Supabase's built-in mailer only
+   sends to your project's team members and a few emails per hour, so
+   configure custom SMTP before inviting others.
    Open the magic link in the same browser that requested it (PKCE).
 5. Restart preview. Test each provider, sign-out, creating a member room, its
    saved home-page entry, and joining its link in a signed-out browser. Complete

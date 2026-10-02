@@ -2,6 +2,7 @@
 	"name": "partyplayback",
 	"routes": [{ "pattern": "youple.tv", "custom_domain": true }],
 	"workers_dev": false,
+	"keep_vars": true,
 	"preview_urls": false,
 	"compatibility_date": "2025-10-08",
 	"compatibility_flags": ["nodejs_compat"],
