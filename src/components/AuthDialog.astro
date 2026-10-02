@@ -5,7 +5,7 @@ const { configured = false, heading = 'Sign in', description } = Astro.props;
 <dialog id="auth-dialog" class="dialog compact-dialog" aria-labelledby="auth-heading" data-configured={String(configured)}>
   <button class="dialog-close" type="button" data-close-dialog aria-label="Close sign-in"><Icon name="close" size={17}/></button>
   <h2 id="auth-heading">{heading}</h2>
-  {description && <p>{description}</p>}
+  <p id="auth-description" hidden={!description}>{description}</p>
   <div class="auth-providers">
   <button class="provider-button" data-provider="google" type="button" aria-label="Sign in with Google"><span class="provider-symbol" aria-hidden="true">G</span>Google</button>
   <button class="provider-button" data-provider="discord" type="button" aria-label="Sign in with Discord"><span class="provider-symbol"><svg width="23" height="20" viewBox="0 0 24 20" fill="currentColor" aria-hidden="true"><path d="M19 2a17 17 0 0 0-4-1l-.5 1a16 16 0 0 0-5 0L9 1a17 17 0 0 0-4 1C2 6 1 10 1 14a17 17 0 0 0 5 3l1-2-2-1c5 2 9 2 14 0l-2 1 1 2a17 17 0 0 0 5-3c0-4-1-8-4-12ZM8 12c-1 0-2-1-2-2s1-2 2-2 2 1 2 2-1 2-2 2Zm8 0c-1 0-2-1-2-2s1-2 2-2 2 1 2 2-1 2-2 2Z"/></svg></span>Discord</button>

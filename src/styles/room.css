@@ -323,6 +323,7 @@
 .qi-title {
   font-size: 12px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -564,7 +565,7 @@
 }
 .room-tools .room-presence #conn { flex: none; white-space: nowrap; }
 .room-tools .name-button { min-width: 0; }
-/* Invite reads as part of the room name: a quiet accent link beside it, styled like "Save room". */
+/* Invite reads as part of the room name: a quiet accent link beside it */
 .header-invite {
   display: inline-flex;
   align-items: center;
@@ -661,6 +662,8 @@
 @media(max-width:1200px) {
   .room-identity { gap: 18px; }
   .room-tools { gap: 10px; }
+  /* The room name matters more than your own name when the header gets tight. */
+  .room-tools .name-button { max-width: 220px; }
 }
 @media(max-width:850px) {
   .room-nav { gap: 12px; padding: 14px 26px; }
@@ -833,15 +836,11 @@
 @media(prefers-reduced-motion:reduce) { .auto-clear-track,.auto-clear-track::after { transition: none; } }
 .room-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .room-name h1 { flex: 0 1 auto; }
-.room-name .save-room-button { margin-left: auto; }
-.save-room-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: none; min-height: 44px; padding: 8px 10px; border-radius: 12px; color: var(--muted); background: transparent; font-size: 15px; white-space: nowrap; transition: background .25s ease,color .25s ease; }
-.save-room-button:hover { background: #c3afff0b; color: #e0d4ff; }
 #invite-icon,#invite-success-icon { display: flex; }
 #invite-label { min-width: 6.7em; text-align: left; }
 .header-invite[data-copied=true] { color: #a9dfba; background: transparent; }
 @media(max-width:1100px) { .room-identity { gap: 14px; } .room-name { gap: 8px; } }
-@media(max-width:600px) { .room-name { flex: 1; flex-wrap: wrap; gap: 0 8px; } .room-name h1 { flex-basis: 100%; font-size: 17px; } .room-identity { align-items: flex-start; } .save-room-button { padding: 8px 0; font-size: 15px; gap: 6px; } }
-@media(prefers-reduced-motion:reduce) { .save-room-button { transition: none; } }
+@media(max-width:600px) { .room-name { flex: 1; flex-wrap: wrap; gap: 0 8px; } .room-name h1 { flex-basis: 100%; font-size: 17px; } .room-identity { align-items: flex-start; } }
 
 /* Friends live behind the surfaces, with no hit targets over the video. */
 .room-page { position: relative; isolation: isolate; overflow-x: clip; }
@@ -925,10 +924,12 @@
   .room-tools .room-presence { margin: 0 4px 0 0; }
   .room-tools .room-presence #conn { font-size: 0; }
   #conn::before { width: 7px; height: 7px; margin-right: 0; }
-  .room-tools #uname,.room-tools #uc { display: none; }
+  .room-tools #uc { display: none; }
+  /* Keep your own name on phones: it is the only way for guests to rename themselves. */
+  .room-tools #uname { max-width: 150px; min-height: 40px; padding: 5px 13px 5px 5px; gap: 7px; font-size: 14px; }
+  .room-tools #uname .person-face { width: 28px; height: 28px; font-size: 13px; }
   .room-name { grid-column: 1 / -1; grid-row: 2; flex-wrap: nowrap; gap: 12px; }
   .room-name h1 { flex-basis: auto; font-size: 16px; }
-  .save-room-button { font-size: 14px; padding: 8px 0 8px 8px; }
   .watch-layout { margin-top: 4px; padding-inline: 14px; }
   #placeholder { padding: 16px; }
   #placeholder h2 { font-size: 22px; margin: 0 0 14px; }

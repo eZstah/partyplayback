@@ -374,6 +374,7 @@ button:active,.primary-button:active {
 .shortcut-table div {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 20px;
   font-size: 14px;
   color: var(--muted);
@@ -509,6 +510,7 @@ kbd {
 .dialog h2 {
   font-size: 32px;
   margin-top: 12px;
+  margin-right: 42px;
 }
 .dialog p {
   font-size: 17px;
@@ -540,6 +542,11 @@ kbd {
 }
 .shortcut-table div {
   font-size: 17px;
+}
+/* Single keys and key pairs line up the same way. */
+.shortcut-table span:has(kbd) {
+  display: inline-flex;
+  gap: 6px;
 }
 kbd {
   font-size: 14px;

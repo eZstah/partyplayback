@@ -7,7 +7,7 @@ import { bindVolumeControl } from "./volume-control.js";
 import { bindFullscreenControls } from "./fullscreen-controls.js";
 
 export function bootRoom(roomName, arrival = Promise.resolve()) {
-  const auth = bootAuth();
+  bootAuth();
   const pals = bootRoomMascots();
   const $ = id => document.getElementById(id);
   const conn = $("conn"), count = $("uc"), username = $("uname"), usernameLabel = $("uname-label");
@@ -344,6 +344,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   username.addEventListener("click", () => {
     $("guest-name").value = name;
     $("name-dialog").showModal();
+    $("guest-name").select();
   });
   $("name-form").addEventListener("submit", event => {
     event.preventDefault();
@@ -455,9 +456,9 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     return seconds >= 3600 ? Math.floor(seconds / 3600) + ":" + String(Math.floor(seconds / 60) % 60).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0") : Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
   }
   function updateProgress() {
-    const p = playback.player;
-    const duration = p?.getDuration?.() || 0;
     const hasVideo = !!room?.queue[room.currentIndex];
+    // A stopped embed still reports the last video's length.
+    const duration = hasVideo ? playback.player?.getDuration?.() || 0 : 0;
     progress.disabled = !joined || !hasVideo || !duration;
     progress.max = String(duration || Math.max(1, playback.targetTime()));
     $("duration").textContent = timeLabel(duration);
@@ -517,7 +518,6 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   });
   function updateMuteControl() { sound.sync(); }
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
-  $("save-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));
   let copyingInvite = false, inviteTimer, copiedTimer;
   // Copy confirmations pop up mid-screen so nobody misses that the link is ready to paste.
   function showCopiedInvite(message = "Paste it anywhere to invite friends.") {

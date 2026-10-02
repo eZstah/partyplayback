@@ -889,7 +889,7 @@
   font-weight: 700;
 }
 .member-add:hover { background: #e9e1f5; }
-.member-rooms ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 236px; overflow-y: auto; }
+.member-rooms ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0,1fr); gap: 6px; max-height: 236px; overflow-y: auto; }
 .member-rooms li a {
   display: flex;
   align-items: center;
