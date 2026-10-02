@@ -23,10 +23,11 @@ then restart it after code changes.
 ## Watching together
 
 - Share the room URL with the other viewers.
-- Paste a YouTube watch, short, live, embed, or youtu.be video link.
+- Paste a YouTube watch, short, live, embed, or youtu.be video link into the
+  playlist field, or anywhere on the room page (Ctrl+V / Cmd+V).
 - Use the large Play/Pause button, the timeline to seek, and Next to skip.
 - Space or K: play/pause. Left/right: seek 5 seconds. J/L: seek 10 seconds.
-  N: next. F: fullscreen. T: theater. P: playlist. M: local mute. ?: shortcuts.
+  N: next. F: fullscreen. T: theater. M: local mute. ?: shortcuts.
   Shortcuts stay inactive in inputs and dialogs. Esc closes dialogs/fullscreen.
 - If your browser blocks autoplay, click **Join playback**. This enables your
   own player without pausing or seeking everyone else.
@@ -49,7 +50,8 @@ npm run check
 The regression suite covers shared playback, seeking, asynchronous player
 events, queue edits, duplicate end reports, and recovery after Durable Object
 hibernation. Check builds the app, checks TypeScript, and performs a Wrangler
-deployment dry run without publishing.
+deployment dry run without publishing. GitHub Actions runs both on every pull
+request and on pushes to `main`.
 
 With `npm run preview` running in another terminal:
 
