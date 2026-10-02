@@ -7,7 +7,7 @@ import { bindVolumeControl } from "./volume-control.js";
 import { bindFullscreenControls } from "./fullscreen-controls.js";
 
 export function bootRoom(roomName, arrival = Promise.resolve()) {
-  const auth = bootAuth();
+  bootAuth();
   const pals = bootRoomMascots();
   const $ = id => document.getElementById(id);
   const conn = $("conn"), count = $("uc"), username = $("uname"), usernameLabel = $("uname-label");
@@ -518,7 +518,6 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   });
   function updateMuteControl() { sound.sync(); }
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
-  $("save-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));
   let copyingInvite = false, inviteTimer, copiedTimer;
   // Copy confirmations pop up mid-screen so nobody misses that the link is ready to paste.
   function showCopiedInvite(message = "Paste it anywhere to invite friends.") {
