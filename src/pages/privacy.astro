@@ -1,0 +1,44 @@
+---
+import '../styles/app.css';
+---
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content="How youple.tv handles your data."/><meta name="theme-color" content="#181622"/><title>Privacy — youple.tv</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/><link rel="canonical" href="https://youple.tv/privacy"/></head>
+<body>
+  <main class="privacy">
+    <p><a href="/">← youple.tv</a></p>
+    <h1>Privacy</h1>
+    <p class="updated">Last updated 2 October 2026</p>
+
+    <p>youple.tv lets you watch YouTube videos with friends in sync. We keep as little about you as we can, and we never sell it or use it for ads.</p>
+
+    <h2>Using it as a guest</h2>
+    <p>You don't need an account. In a room, the name you pick is shared with the people in that room and remembered in your own browser so you don't have to type it again. The room keeps its video queue and playback position so everyone stays in sync.</p>
+
+    <h2>Signing in</h2>
+    <p>If you sign in with Google, Discord or an email link, our sign-in provider, Supabase, receives your email address, your name and your profile picture from that service. We use them only to sign you in, show your name in rooms and keep your saved rooms in your account. We set cookies that keep you signed in; we don't use tracking or advertising cookies.</p>
+
+    <h2>Saved rooms</h2>
+    <p>Rooms you save are stored with your account ID, their name and when they were created, so you can find them again.</p>
+
+    <h2>Who handles the data</h2>
+    <ul>
+      <li><strong>Cloudflare</strong> runs the site and stores rooms. Like any web host, it briefly keeps request logs to run and protect the service.</li>
+      <li><strong>Supabase</strong> handles sign-in and stores your account.</li>
+      <li><strong>YouTube</strong> plays the videos in the embedded player, under <a href="https://policies.google.com/privacy">Google's privacy policy</a>.</li>
+    </ul>
+
+    <h2>Your choices</h2>
+    <p>You can sign out at any time. If you want your account and saved rooms deleted, contact us and we'll remove them.</p>
+  </main>
+  <style>
+    .privacy { max-width: 680px; margin: 0 auto; padding: 48px 16px 64px; line-height: 1.6; }
+    .privacy h1 { font-size: 40px; margin: 24px 0 4px; }
+    .privacy h2 { font-size: 20px; margin: 32px 0 8px; }
+    .privacy p, .privacy li { color: var(--muted); }
+    .privacy strong { color: var(--ink); }
+    .privacy a { color: var(--accent); }
+    .privacy .updated { font-size: 14px; }
+  </style>
+</body>
+</html>
