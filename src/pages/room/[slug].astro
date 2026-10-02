@@ -3,6 +3,7 @@ import Icon from '../../components/Icon.astro';
 import Mascot from '../../components/Mascot.astro';
 import AuthDialog from '../../components/AuthDialog.astro';
 import Wordmark from '../../components/Wordmark.astro';
+import PortalArrival from '../../components/PortalArrival.astro';
 import '../../styles/app.css';
 import '../../styles/room.css';
 import { verifiedUser, displayName } from '../../lib/auth';
@@ -19,7 +20,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 ---
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="theme-color" content="#181622"/><title>{title} — youple.tv</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"/></head>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="theme-color" content="#181622"/><title>{title} — youple.tv</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"/><PortalArrival/></head>
 <body class="room-page" data-playback="idle" data-room={slug} data-user-name={user ? displayName(user) : ''}>
   <div class="room-atmosphere" aria-hidden="true"><span class="room-glow"></span><span class="room-doodle room-note"><svg viewBox="0 0 32 44" fill="none"><path d="M17 33V5c0 11 15 6 10 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><ellipse cx="10" cy="34" rx="8" ry="5" fill="currentColor" transform="rotate(-20 10 34)"/></svg></span><span class="room-doodle room-sound"><svg viewBox="0 0 40 40" fill="none"><path d="M7 26v-9m9 16V8m9 22V12m9 12v-6" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></span><span class="room-orbit"></span><i class="room-dot"></i></div>
   <div id="room-shell" class="room-shell">
@@ -27,7 +28,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
     <div class="room-identity"><a class="room-wordmark-link" href="/" aria-label="youple.tv home"><Wordmark/></a><div class="room-name"><h1 title={title}>{title}</h1>{details?.mode !== 'member' && (user ? <a class="own-room-button" href="/?create=member" title="Create a permanent room"><Icon name="spark" size={16}/>Your own room</a> : <button class="own-room-button" id="own-room-btn" type="button" title="Sign in to create a permanent room"><Icon name="spark" size={16}/>Your own room</button>)}</div></div>
     <div class="room-tools"><div class="room-presence"><span id="conn" class="connecting" role="status">Connecting</span><span id="uc">Joining…</span><button id="uname" class="name-button" type="button" disabled={!!user} title={user ? 'Signed in' : 'Change your name'}>Guest</button></div><button id="invite-btn" class="soft-button header-invite" type="button" aria-label="Invite friends" title="Copy room link"><span id="invite-icon"><Icon name="link" size={20}/></span><span id="invite-success-icon" hidden><Icon name="check" size={20}/></span><span id="invite-label">Invite friends</span></button><div class="header-view-controls" role="group" aria-label="Viewing mode"><button id="theater-btn" class="icon-button" type="button" aria-label="Theater mode" aria-pressed="false" aria-keyshortcuts="T" title="Theater mode (T)"><Icon name="theater"/></button><button id="fullscreen-btn" class="icon-button" type="button" aria-label="Fullscreen" aria-pressed="false" aria-keyshortcuts="F" title="Fullscreen (F)"><Icon name="fullscreen"/></button></div></div>
   </header>
-  <main class="watch-layout reveal">
+  <main class="watch-layout">
     <section class="watch-column" aria-label="Watch together">
       <div class="room-pal player-pal" aria-hidden="true"><Mascot kind="mint"/></div>
       <div id="stage" class="stage">
@@ -49,5 +50,5 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
   <AuthDialog configured={configured} heading="Your own room" description="Sign in to create a permanent room."/>
   <div id="toast" class="toast" role="status"></div>
   </div>
-  <script>import { revealCreatedRoom } from '../../scripts/room-transition.js'; import { bootRoom } from '../../scripts/room-client.js'; revealCreatedRoom(); bootRoom(document.body.dataset.room);</script>
+  <script>import { revealCreatedRoom } from '../../scripts/room-transition.js'; import { bootRoom } from '../../scripts/room-client.js'; const arrival = revealCreatedRoom(); bootRoom(document.body.dataset.room, arrival);</script>
 </body></html>

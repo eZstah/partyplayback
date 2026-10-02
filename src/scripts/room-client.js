@@ -1,7 +1,7 @@
 import { RoomPlayer } from "../lib/room-player.js";
 import { bootAuth } from "./auth-client.js";
 
-export function bootRoom(roomName) {
+export function bootRoom(roomName, arrival = Promise.resolve()) {
   const auth = bootAuth();
   const $ = id => document.getElementById(id);
   const conn = $("conn"), count = $("uc"), username = $("uname");
@@ -102,6 +102,7 @@ export function bootRoom(roomName) {
           requests.delete(data.requestId);
         }
         clearTimeout(joinTimer);
+        const firstState = !room;
         joined = true;
         delay = 1000;
         lastServerTime = data.serverTime;
@@ -109,6 +110,11 @@ export function bootRoom(roomName) {
         playback.receive(data, latency);
         render();
         setConnection("connected");
+        if (firstState) {
+          performance.mark("youple:room-connected");
+          document.dispatchEvent(new Event("youple:room-ready"));
+        }
+        ensurePlayer();
       } else if (data.type === "users") {
         setCount(data.userCount);
       } else if (data.type === "error") {
@@ -393,8 +399,19 @@ export function bootRoom(roomName) {
   });
   window.addEventListener("pageshow", event => { if (event.persisted) location.reload(); });
   connect();
-  const script = document.createElement("script");
-  script.src = "https://www.youtube.com/iframe_api";
-  script.addEventListener("error", () => toast("Could not load YouTube. Check your connection and reload."));
-  document.head.append(script);
+  let playerRequested = false;
+  function ensurePlayer() {
+    if (playerRequested || !room?.queue[room.currentIndex]) return;
+    playerRequested = true;
+    // Empty rooms need no iframe. Keep YouTube setup out of the arrival fade.
+    arrival.then(() => {
+      const script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      script.addEventListener("error", () => {
+        playerRequested = false;
+        toast("Could not load YouTube. Check your connection and reload.");
+      });
+      document.head.append(script);
+    });
+  }
 }

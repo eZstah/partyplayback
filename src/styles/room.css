@@ -8,11 +8,6 @@
   margin: auto;
   width: 100%;
 }
-.portal-arrival .watch-layout { animation: room-portal-arrival .55s var(--ease) both; }
-@keyframes room-portal-arrival {
-  from { opacity: 0; transform: translateY(12px) scale(.985); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
 .room-presence {
   display: flex;
   align-items: center;

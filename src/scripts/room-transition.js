@@ -4,25 +4,35 @@ export async function enterCreatedRoom(url, trigger) {
   const portal = document.getElementById("room-portal");
   if (portal && !reducedMotion.matches) {
     const bounds = trigger.getBoundingClientRect();
-    portal.style.setProperty("--portal-x", bounds.left + bounds.width / 2 + "px");
-    portal.style.setProperty("--portal-y", bounds.top + bounds.height / 2 + "px");
+    const x = (bounds.left + bounds.width / 2) / innerWidth * 100;
+    const y = (bounds.top + bounds.height / 2) / innerHeight * 100;
+    portal.style.setProperty("--portal-x", x + "%");
+    portal.style.setProperty("--portal-y", y + "%");
     document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close());
     portal.hidden = false;
     document.body.classList.add("room-departing");
     await new Promise(resolve => setTimeout(resolve, 850));
-    try { sessionStorage.setItem("youple-room-arrival", String(Date.now())); } catch {}
+    try { sessionStorage.setItem("youple-room-arrival", JSON.stringify({ at: Date.now(), url, x, y })); } catch {}
   }
   location.assign(url);
 }
 
-export function revealCreatedRoom() {
-  let arrived = 0;
-  try {
-    arrived = Number(sessionStorage.getItem("youple-room-arrival"));
-    sessionStorage.removeItem("youple-room-arrival");
-  } catch {}
-  const age = Date.now() - arrived;
-  if (age >= 0 && age < 8000 && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    document.body.classList.add("portal-arrival");
-  }
+export async function revealCreatedRoom() {
+  const root = document.documentElement;
+  if (!root.classList.contains("room-arriving")) return;
+  // Connect and settle the layout under the same backdrop as the outgoing page.
+  // A slow or failed connection must never trap someone behind the transition.
+  const connected = new Promise(resolve => {
+    const done = () => { clearTimeout(timer); document.removeEventListener("youple:room-ready", done); resolve(); };
+    const timer = setTimeout(done, 1200);
+    document.addEventListener("youple:room-ready", done, { once: true });
+  });
+  await Promise.all([connected, Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 250))])]);
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  if (!root.classList.contains("room-arriving")) return;
+  performance.mark("youple:room-reveal");
+  root.classList.add("room-revealing");
+  await new Promise(resolve => setTimeout(resolve, 480));
+  root.classList.remove("room-arriving", "room-revealing");
+  performance.mark("youple:room-visible");
 }
