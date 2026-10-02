@@ -76,12 +76,21 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     $("pause-icon").hidden = !playing;
   }
 
-  // Like a desktop player: pausing leaves a big pause sign up, resuming flashes play.
+  // Like a desktop player: pausing leaves a big pause sign up, resuming flashes play,
+  // and muting flashes on this device only, since mute isn't shared with the room.
   function showOverlay(mood, previous) {
+    flashOverlay(mood === "playing" && previous === "paused" ? "resumed" : null);
+  }
+  function flashOverlay(flash) {
     const overlay = $("playback-overlay");
+    const resting = document.body.dataset.playback === "paused" ? "paused" : "";
     clearTimeout(overlayTimer);
-    overlay.dataset.state = mood === "paused" ? "paused" : mood === "playing" && previous === "paused" ? "resumed" : "";
-    if (overlay.dataset.state === "resumed") overlayTimer = setTimeout(() => { overlay.dataset.state = ""; }, 650);
+    if (!flash) { overlay.dataset.state = resting; return; }
+    // Restart the animation when the same flash repeats.
+    overlay.dataset.state = "";
+    void overlay.offsetWidth;
+    overlay.dataset.state = flash;
+    overlayTimer = setTimeout(() => { overlay.dataset.state = document.body.dataset.playback === "paused" ? "paused" : ""; }, flash === "resumed" ? 650 : 900);
   }
 
   const avatarColors = ["#aadf97", "#f4adc0", "#c3afff", "#f5be70", "#9fd3e6"];
@@ -413,6 +422,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     const muted = !player.isMuted();
     if (muted) player.mute(); else player.unMute();
     updateMuteControl();
+    if (room?.queue[room.currentIndex]) flashOverlay(muted ? "muted" : "unmuted");
   });
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
   $("save-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));

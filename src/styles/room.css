@@ -869,7 +869,7 @@
 .playback-overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center,#0a0a1066,#0a0a1033 60%,transparent 85%); transition: opacity .35s ease; }
 .overlay-disc { display: grid; place-items: center; width: clamp(76px,13cqi,128px); aspect-ratio: 1; border-radius: 50%; background: #12121acc; color: #f3f2f5; box-shadow: 0 10px 40px #0007; backdrop-filter: blur(6px); }
 .overlay-disc svg { grid-area: 1 / 1; width: 46%; fill: currentColor; }
-.overlay-play { display: none; }
+.overlay-play,.overlay-muted,.overlay-unmuted { display: none; }
 .overlay-caption { padding: 7px 14px; border-radius: 100px; background: #12121acc; color: #e6e1ee; font-size: 16px; max-width: min(80%,420px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .playback-overlay[data-state=paused] { opacity: 1; }
 .playback-overlay[data-state=paused] .overlay-disc { animation: overlay-pop .45s var(--ease) both; }
@@ -881,7 +881,7 @@
 @keyframes overlay-grow { from { transform: scale(.85); } to { transform: scale(1.25); } }
 @keyframes overlay-fade { 0%,35% { opacity: 1; } 100% { opacity: 0; } }
 @media(max-width:600px) { .overlay-caption { font-size: 14px; padding: 5px 11px; } .playback-overlay { gap: 10px; } }
-@media(prefers-reduced-motion:reduce) { .playback-overlay,.playback-overlay .overlay-disc { animation: none!important; transition: none; } .playback-overlay[data-state=resumed] { opacity: 0; } }
+@media(prefers-reduced-motion:reduce) { .playback-overlay,.playback-overlay .overlay-disc { animation: none!important; transition: none; } }
 
 /* Who's here: faces in the header, names at the top of the sidebar. */
 .facepile { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
@@ -902,3 +902,7 @@
 .person-you { flex: none; color: var(--accent); font-size: 13px; }
 .room-shell:fullscreen .facepile-face { border-color: var(--bg); }
 @media(max-width:850px) { .room-people { margin-bottom: 22px; padding-bottom: 20px; } }
+.playback-overlay[data-state=muted],.playback-overlay[data-state=unmuted] { opacity: 1; background: none; transition: none; animation: overlay-fade .9s ease-in both; }
+.playback-overlay[data-state=muted] .overlay-pause,.playback-overlay[data-state=unmuted] .overlay-pause,.playback-overlay[data-state=muted] .overlay-caption,.playback-overlay[data-state=unmuted] .overlay-caption { display: none; }
+.playback-overlay[data-state=muted] .overlay-muted,.playback-overlay[data-state=unmuted] .overlay-unmuted { display: block; width: 52%; }
+.playback-overlay[data-state=muted] .overlay-disc,.playback-overlay[data-state=unmuted] .overlay-disc { animation: overlay-pop .35s var(--ease) both; }
