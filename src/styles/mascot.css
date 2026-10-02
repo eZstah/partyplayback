@@ -147,6 +147,12 @@
   filter: blur(6px);
   border-radius: 50%;
 }
+.mascot-outfit {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
 .mascot-glasses {
   position: absolute;
   inset: -5% 0 auto;
@@ -156,43 +162,43 @@
 }
 .mascot-scarf {
   position: absolute;
-  left: 3%;
-  bottom: 0;
-  width: 94%;
-  height: 32%;
-  transform: rotate(-5deg);
+  left: 0;
+  top: 58%;
+  width: 100%;
+  height: 42%;
 }
 .mascot-headphones {
   position: absolute;
-  width: 118%;
-  height: 70%;
-  top: -7%;
-  left: -9%;
+  width: 112%;
+  height: 68%;
+  top: -6%;
+  left: -6%;
   overflow: visible;
 }
 .mascot-flower {
   position: absolute;
-  width: 22%;
-  height: 22%;
-  bottom: 8%;
-  left: 22%;
-  transform: rotate(15deg);
+  width: 21%;
+  height: 21%;
+  top: -7%;
+  left: 15%;
+  transform: rotate(-20deg);
+  z-index: 1;
 }
 .mascot-beanie {
   position: absolute;
-  width: 102%;
-  height: 42%;
-  top: -12%;
-  left: -1%;
-  transform: rotate(-10deg);
+  width: 106%;
+  height: 46%;
+  top: -15%;
+  left: -3%;
+  transform: rotate(-4deg);
   overflow: visible;
 }
 .mascot-vest {
   position: absolute;
-  width: 90%;
-  height: 34%;
-  bottom: -1%;
-  left: 5%;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 42%;
 }
 @keyframes friend-bob {
   0%,100% {
