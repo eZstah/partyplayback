@@ -867,3 +867,41 @@
   .room-shell:fullscreen .room-name { display: none; }
 }
 @media(max-width:360px) { .next-control span { display: none; } }
+
+/* Big centered play/pause sign over the video, like a desktop player. */
+.playback-overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center,#0a0a1066,#0a0a1033 60%,transparent 85%); transition: opacity .35s ease; }
+.overlay-disc { display: grid; place-items: center; width: clamp(76px,13cqi,128px); aspect-ratio: 1; border-radius: 50%; background: #12121acc; color: #f3f2f5; box-shadow: 0 10px 40px #0007; backdrop-filter: blur(6px); }
+.overlay-disc svg { grid-area: 1 / 1; width: 46%; fill: currentColor; }
+.overlay-play { display: none; }
+.overlay-caption { padding: 7px 14px; border-radius: 100px; background: #12121acc; color: #e6e1ee; font-size: 16px; max-width: min(80%,420px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.playback-overlay[data-state=paused] { opacity: 1; }
+.playback-overlay[data-state=paused] .overlay-disc { animation: overlay-pop .45s var(--ease) both; }
+.playback-overlay[data-state=resumed] { opacity: 1; background: none; transition: none; animation: overlay-fade .65s ease-in both; }
+.playback-overlay[data-state=resumed] .overlay-pause,.playback-overlay[data-state=resumed] .overlay-caption { display: none; }
+.playback-overlay[data-state=resumed] .overlay-play { display: block; transform: translateX(4%); }
+.playback-overlay[data-state=resumed] .overlay-disc { animation: overlay-grow .65s var(--ease) both; }
+@keyframes overlay-pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes overlay-grow { from { transform: scale(.85); } to { transform: scale(1.25); } }
+@keyframes overlay-fade { 0%,35% { opacity: 1; } 100% { opacity: 0; } }
+@media(max-width:600px) { .overlay-caption { font-size: 14px; padding: 5px 11px; } .playback-overlay { gap: 10px; } }
+@media(prefers-reduced-motion:reduce) { .playback-overlay,.playback-overlay .overlay-disc { animation: none!important; transition: none; } .playback-overlay[data-state=resumed] { opacity: 0; } }
+
+/* Who's here: faces in the header, names at the top of the sidebar. */
+.facepile { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+.facepile-faces { display: inline-flex; }
+.facepile-face,.person-face { position: relative; display: grid; place-items: center; flex: none; overflow: hidden; border-radius: 50%; background: var(--face,#c3afff); color: #1a1726; font-weight: 700; }
+.facepile-face img,.person-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.facepile-face { width: 30px; height: 30px; font-size: 13px; border: 2px solid var(--bg); }
+.facepile-face+.facepile-face { margin-left: -9px; }
+.facepile-more { background: #2a2c36; color: var(--ink); font-size: 11px; }
+.room-people { margin-bottom: 26px; padding-bottom: 24px; border-bottom: 1px solid #ffffff0c; }
+.room-people h2 { display: flex; align-items: center; justify-content: space-between; margin: 0 0 16px; font-size: 26px; font-weight: 400; letter-spacing: -.035em; }
+.room-people h2 span { font-size: 16px; color: var(--muted); letter-spacing: .02em; }
+#people-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; max-height: 168px; overflow: auto; scrollbar-width: thin; scrollbar-color: #30323c transparent; }
+.person { display: flex; align-items: center; gap: 9px; min-width: 0; max-width: 100%; padding: 5px 13px 5px 5px; border-radius: 100px; background: #21232a; font-size: 15px; }
+.person.is-you { background: #c3afff14; }
+.person-face { width: 30px; height: 30px; font-size: 14px; }
+.person-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-you { flex: none; color: var(--accent); font-size: 13px; }
+.room-shell:fullscreen .facepile-face { border-color: var(--bg); }
+@media(max-width:850px) { .room-people { margin-bottom: 22px; padding-bottom: 20px; } }
