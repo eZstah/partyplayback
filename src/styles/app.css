@@ -12,12 +12,12 @@
 }
 :root {
   color-scheme: dark;
-  --bg: #090a0c;
+  --bg: #181622;
   --surface: #141519;
   --raised: #1c1e24;
   --ink: #f3f2f5;
-  --muted: #8f919e;
-  --accent: #b4bcff;
+  --muted: #b0a8bd;
+  --accent: #c3afff;
   --accent-dark: #191d39;
   --ease: cubic-bezier(.22,1,.36,1);
   font-family: Atkinson,Arial,sans-serif;
@@ -81,13 +81,6 @@ svg {
 ::selection {
   background: var(--accent);
   color: var(--bg);
-}
-.eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .18em;
-  color: var(--muted);
 }
 .muted {
   color: var(--muted);
@@ -498,4 +491,90 @@ kbd {
 .dialog {
   max-height: calc(100svh - 32px);
   overflow-y: auto;
+}
+/* Readable controls and labels throughout youple. */
+.brand {
+  font-size: 22px;
+}
+.dialog {
+  border-radius: 30px;
+  background: #26212f;
+}
+.dialog h2 {
+  font-size: 32px;
+  margin-top: 12px;
+}
+.dialog p {
+  font-size: 17px;
+  color: #c0b5cb;
+}
+.dialog label {
+  font-size: 16px;
+  color: #c0b5cb;
+}
+.dialog input {
+  font-size: 18px;
+  padding: 18px;
+  background: #352e40;
+}
+.dialog .provider-button,.dialog .primary-button,.dialog .dialog-foot {
+  font-size: 17px;
+}
+.dialog-close {
+  width: 42px;
+  height: 42px;
+  right: 15px;
+  top: 15px;
+}
+.auth-divider {
+  font-size: 16px;
+}
+.form-message {
+  font-size: 16px;
+}
+.shortcut-table div {
+  font-size: 17px;
+}
+kbd {
+  font-size: 14px;
+}
+.toast {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.provider-button {
+  background: #362d42;
+}
+.provider-button:hover {
+  background: #453854;
+}
+.text-button {
+  font-size: 16px;
+}
+.mode-tag {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 15px;
+}
+.signed-avatar {
+  width: 42px;
+  height: 42px;
+}
+.brand-face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: none;
+  width: 34px;
+  height: 32px;
+  border-radius: 13px 13px 16px 16px;
+  background: var(--accent);
+  transform: rotate(-8deg);
+}
+.brand-face i {
+  width: 4px;
+  height: 8px;
+  background: #322b41;
+  border-radius: 50%;
 }

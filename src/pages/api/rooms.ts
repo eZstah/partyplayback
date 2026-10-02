@@ -8,7 +8,7 @@ export const GET: APIRoute = async context => {
 };
 
 export const POST: APIRoute = async context => {
-  if (!sameOrigin(context.request)) return privateJson({ message: "Create your room from PartyPlayback." }, 403);
+  if (!sameOrigin(context.request)) return privateJson({ message: "Create your room from youple.tv." }, 403);
   let input: unknown;
   try { input = await context.request.json(); } catch { return privateJson({ message: "Please try again." }, 400); }
   if (!input || typeof input !== "object" || Array.isArray(input)) return privateJson({ message: "Choose a room type." }, 400);

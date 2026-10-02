@@ -175,8 +175,8 @@ export function bootRoom(roomName) {
     }
     const item = room.queue[room.currentIndex];
     $("placeholder").style.display = item ? "none" : "flex";
-    $("nowplay").textContent = item ? item.title : "A blank canvas for your evening.";
-    $("playing-status").textContent = item ? (room.isPlaying ? "Now playing together" : "Taking a breath") : "Make it a good one";
+    $("nowplay").textContent = item ? item.title : "Add the first video.";
+    $("playing-status").textContent = item ? (room.isPlaying ? "Playing together" : "Paused") : "Ready when you are";
     $("queue-count").textContent = String(room.queue.length).padStart(2, "0");
     $("queue-empty").hidden = !!room.queue.length;
     controls();
@@ -296,7 +296,7 @@ export function bootRoom(roomName) {
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
   $("invite-btn").addEventListener("click", () => { $("invite-link").value = location.origin + location.pathname; $("invite-dialog").showModal(); });
   $("copy-link-btn").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText($("invite-link").value); $("invite-dialog").close(); toast("Room link copied. Good company is on the way."); }
+    try { await navigator.clipboard.writeText($("invite-link").value); $("invite-dialog").close(); toast("Room link copied. Send it to your friends."); }
     catch { $("invite-link").focus(); $("invite-link").select(); toast("Select and copy the room link."); }
   });
   document.addEventListener("keydown", event => {

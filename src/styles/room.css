@@ -613,3 +613,201 @@
     max-height: max(240px,calc(100svh - 350px));
   }
 }
+/* Larger, calmer room information; no eyebrow labels. */
+.room-presence {
+  font-size: 16px;
+}
+.room-nav .brand {
+  font-size: 22px;
+}
+.name-button {
+  padding: 13px 18px;
+}
+.room-heading h1 {
+  font-size: 34px;
+}
+.room-heading .soft-button {
+  font-size: 16px;
+  padding: 16px 20px;
+}
+.watch-layout {
+  grid-template-columns: minmax(0,1fr) 355px;
+}
+.playlist-panel {
+  margin-top: 77px;
+}
+.playlist-heading h2 {
+  font-size: 26px;
+}
+.playlist-heading h2 span {
+  font-size: 16px;
+}
+.playlist-heading p {
+  font-size: 17px;
+  line-height: 1.5;
+}
+.playlist-note {
+  font-size: 15px;
+  line-height: 1.6;
+}
+#url-in {
+  font-size: 16px;
+}
+#add-form {
+  padding: 7px 7px 7px 14px;
+}
+#add-btn {
+  width: 46px;
+  height: 46px;
+}
+.qi-title {
+  font-size: 16px;
+  line-height: 1.4;
+}
+.qi-sub {
+  font-size: 14px;
+  margin-top: 8px;
+}
+.qi-thumb {
+  width: 74px;
+  height: 48px;
+}
+.qi-rm {
+  opacity: .65;
+  width: 36px;
+  font-size: 25px;
+}
+#queue-empty p {
+  font-size: 17px;
+}
+.timeline {
+  font-size: 14px;
+}
+.timeline span {
+  min-width: 42px;
+}
+.play-control {
+  font-size: 18px;
+  height: 66px;
+}
+.next-control {
+  font-size: 16px;
+}
+.view-controls .icon-button {
+  min-width: 48px;
+  height: 48px;
+}
+.playback-status {
+  font-size: 16px;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.watch-caption h2 {
+  font-size: 21px;
+}
+.watch-caption .text-button {
+  font-size: 16px;
+}
+.watch-caption {
+  gap: 24px;
+}
+#placeholder p {
+  font-size: 17px;
+}
+#placeholder .primary-button {
+  font-size: 17px;
+}
+#enable-btn {
+  font-size: 16px;
+}
+@media(max-width:1100px) {
+  .watch-layout {
+    grid-template-columns: minmax(0,1fr) 320px;
+  }
+  .view-controls .icon-button {
+    min-width: 44px;
+  }
+  .playlist-panel {
+    padding-inline: 16px;
+  }
+}
+@media(max-width:850px) {
+  .watch-layout {
+    grid-template-columns: minmax(0,1fr);
+  }
+  .playlist-panel {
+    margin-top: 0;
+  }
+  .room-presence {
+    font-size: 15px;
+  }
+  .room-heading h1 {
+    font-size: 30px;
+  }
+  .room-heading .soft-button {
+    padding: 15px;
+  }
+  .qi-title {
+    font-size: 17px;
+  }
+  .qi-thumb {
+    width: 88px;
+    height: 55px;
+  }
+}
+@media(max-width:520px) {
+  .room-presence {
+    font-size: 15px;
+    gap: 10px;
+  }
+  .room-heading h1 {
+    font-size: 28px;
+  }
+  .play-control {
+    min-width: 62px;
+    height: 58px;
+  }
+  .view-controls .icon-button {
+    min-width: 40px;
+    height: 46px;
+  }
+  .timeline {
+    font-size: 13px;
+  }
+  .timeline span {
+    min-width: 38px;
+  }
+  .playback-status {
+    font-size: 16px;
+  }
+  .watch-caption h2 {
+    font-size: 18px;
+  }
+  .playlist-heading p {
+    font-size: 16px;
+  }
+  .qi-title {
+    font-size: 16px;
+  }
+  .qi-sub {
+    font-size: 14px;
+  }
+  #placeholder h2 {
+    font-size: 24px;
+  }
+  #placeholder p {
+    font-size: 16px;
+    margin-bottom: 17px;
+  }
+  #placeholder .primary-button {
+    font-size: 16px;
+    padding: 13px 18px;
+  }
+  .empty-play {
+    display: none;
+  }
+  #enable-btn {
+    font-size: 16px;
+  }
+}

@@ -1,5 +1,6 @@
 ---
 import Icon from '../components/Icon.astro';
+import Mascot from '../components/Mascot.astro';
 import AuthDialog from '../components/AuthDialog.astro';
 import '../styles/app.css';
 import '../styles/home.css';
@@ -13,74 +14,27 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 ---
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta name="description" content="One room. Your people. Watch YouTube together in sync, from anywhere. Start a guest room in seconds."/>
-  <meta name="theme-color" content="#090a0c"/>
-  <title>PartyPlayback — A little closer.</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
-</head>
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content="Watch YouTube with your friends. Create a room, share the link, and press play together on youple.tv."/><meta name="theme-color" content="#181622"/><title>youple.tv — Watch YouTube together</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/><link rel="canonical" href="https://youple.tv/"/></head>
 <body class="home-page" data-signed-in={String(!!user)}>
-  <div class="home-ambient" aria-hidden="true"></div>
-  <header class="site-nav">
-    <a class="brand" href="/" aria-label="PartyPlayback home"><span class="brand-mark"><Icon name="play" size={17}/></span>partyplayback</a>
-    <nav class="nav-actions" aria-label="Main navigation">
-      <button class="text-button" type="button" data-join-room>Join a room</button>
-      {user ? <><span class="signed-avatar" title={name}>{name?.slice(0,1)}</span><button class="text-button" type="button" data-sign-out>Sign out</button></> : <button class="pill-button" type="button" data-sign-in>Sign in<Icon name="arrow" size={16}/></button>}
-    </nav>
-  </header>
+  <div class="playground-background" aria-hidden="true"><span></span><span></span><span></span><i class="bg-dot dot-one"></i><i class="bg-dot dot-two"></i><i class="bg-dot dot-three"></i><i class="bg-spark"><Icon name="spark" size={32}/></i></div>
+  <header class="site-nav"><a class="brand" href="/" aria-label="youple.tv home"><span class="brand-face" aria-hidden="true"><i></i><i></i></span>youple<span class="brand-tv">.tv</span></a><nav class="nav-actions" aria-label="Main navigation"><button class="text-button" type="button" data-join-room>Join a room</button>{user ? <><span class="signed-avatar" title={name}>{name?.slice(0,1)}</span><button class="pill-button" type="button" data-sign-out>Sign out</button></> : <button class="pill-button" type="button" data-sign-in>Sign in</button>}</nav></header>
   <main class="home-main">
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <div class="eyebrow reveal"><span class="status-dot"></span>A LITTLE CLOSER, FROM ANYWHERE</div>
-        <h1 id="hero-title" class="reveal delay-1">Press play.<br/><span>Feel closer.</span></h1>
-        <p class="hero-description reveal delay-2">The video is just the beginning.<br/>Bring your people. Make a night of it.</p>
-        <div class="hero-actions reveal delay-3">
-          <button class="primary-button hero-cta" type="button" data-create-room="guest"><Icon name="play" size={22}/>Start a room<Icon name="arrow" size={19}/></button>
-          <button class="text-button" type="button" data-join-room>I've got an invite<Icon name="chevron" size={16}/></button>
-        </div>
-        <div class="hero-note reveal delay-3">No downloads. No account needed. Just good company.</div>
+    <section class="hangout" aria-labelledby="hero-title">
+      <div class="hangout-heading reveal"><h1 id="hero-title">youple<span>.tv</span><svg class="wordmark-smile" viewBox="0 0 200 28" aria-hidden="true"><path d="M8 5c43 25 121 25 184 0" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></h1><p>YouTube. Your friends. One room.</p></div>
+      <div class="room-launcher reveal delay-1">
+        <h2>What are we watching?</h2><p class="launcher-description">Pick a name. Your friends can pick the videos.</p>
+        <form id="create-form"><label for="room-title">Room name <span>(optional)</span></label><input id="room-title" name="title" placeholder="Late-night rabbit hole" maxlength="64" autocomplete="off"/><div class="segmented" role="group" aria-label="Room access"><label><input type="radio" name="mode" value="guest" checked/><span>Guest room</span></label><label><input type="radio" name="mode" value="member"/><span>Saved room</span></label></div><p id="room-mode-note" class="mode-note">No account needed. Anyone with your link can join.</p><button class="primary-button wide create-room-button" type="submit"><Icon name="plus" size={24}/><span>Create room</span></button><div id="create-message" class="form-message" role="status"></div></form>
+        <button class="join-launcher" type="button" data-join-room>Already have a room link? <strong>Join your friends</strong></button>
       </div>
-      <div class="hero-art reveal delay-2" aria-hidden="true">
-        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-        <div class="orb"><div class="orb-light"></div><div class="orb-disc"></div></div>
-        <div class="art-caption"><span class="art-signal"><i></i><i></i><i></i><i></i></span>SAME MOMENT. DIFFERENT PLACES.</div>
-        <span class="floating-play"><Icon name="play" size={33}/></span>
-        <span class="art-coordinate top">01 / TOGETHER</span><span class="art-coordinate bottom">THERE'S A PLACE FOR YOU HERE.</span>
-      </div>
+      <div class="mascot-cast" aria-hidden="true"><div class="cast-member cast-mint"><span class="speech-bubble">Got a good video?</span><Mascot kind="mint"/><span class="cast-floor"></span></div><div class="cast-member cast-pink"><span class="speech-bubble">I brought snacks.</span><Mascot kind="pink"/><span class="cast-floor"></span></div><div class="cast-member cast-purple"><Mascot kind="purple"/></div><span class="floating-popcorn"><svg width="65" height="75" viewBox="0 0 65 75" fill="none"><path d="m9 31 7 39h33l7-39H9Z" fill="#F7EBCA"/><path d="m21 32 3 38h7l-1-38m9 0-2 38h7l4-38" fill="#EC8FA3"/><path d="M7 33c-7-10 2-19 10-13-2-16 17-19 21-8 12-7 22 5 14 14 12-2 14 9 6 13H9Z" fill="#FFF5D8"/></svg></span></div>
     </section>
-    <section id="room-types" class="room-types reveal delay-3" aria-label="Find your kind of room">
-      <button class="room-type guest-type" type="button" data-create-room="guest">
-        <span class="type-symbol"><Icon name="spark" size={24}/></span>
-        <span class="type-copy"><span class="eyebrow">COME AS YOU ARE</span><strong>A room. Right now.</strong><span>Make a link. Send it around. Everyone's in.</span></span>
-        <span class="type-arrow"><Icon name="arrow" size={23}/></span>
-      </button>
-      <button class="room-type member-type" type="button" data-create-room="member">
-        <span class="type-symbol"><Icon name="people" size={24}/></span>
-        <span class="type-copy"><span class="eyebrow">MAKE IT YOURS</span><strong>Your usual spot.</strong><span>Saved rooms. Familiar faces. Sign in to join.</span></span>
-        <span class="type-arrow"><Icon name="arrow" size={23}/></span>
-      </button>
-    </section>
-    {user && <section class="saved-rooms"><div class="saved-heading"><span class="eyebrow">YOUR ROOMS</span><button class="text-button" type="button" data-create-room="member">New room<Icon name="plus" size={15}/></button></div>{rooms.length ? <div class="saved-grid">{rooms.map(room => <a class="saved-room" href={'/room/'+room.slug}><span><strong>{room.title}</strong><span class="muted">Member room</span></span><Icon name="arrow"/></a>)}</div> : <p class="muted">Your next favorite place is one click away.</p>}</section>}
-    <div class="home-bottom"><p>One room. Your people.<br/><span>That's all you need.</span></p><span>Built for the moments<br/>between the videos.</span></div>
+    {user && <section class="saved-rooms" aria-labelledby="saved-title"><div class="saved-heading"><h2 id="saved-title">Your rooms</h2><button class="soft-button" type="button" data-create-room="member"><Icon name="plus" size={20}/>New saved room</button></div>{rooms.length ? <div class="saved-grid">{rooms.map(room => <a class="saved-room" href={'/room/'+room.slug}><Icon name="people" size={25}/><span><strong>{room.title}</strong><span>Open room</span></span></a>)}</div> : <p class="muted">Create a saved room and it will be waiting here next time.</p>}</section>}
+    <section class="how-it-works reveal delay-2" aria-labelledby="how-title"><h2 id="how-title">Less “3, 2, 1, play!”<br/>More actually watching.</h2><div class="how-grid"><article><span class="step-symbol step-lilac"><Icon name="plus" size={28}/></span><h3>Make a room</h3><p>Start as a guest, or sign in to keep a room for next time.</p></article><article><span class="step-symbol step-pink"><Icon name="link" size={28}/></span><h3>Send the link</h3><p>Drop it in your group chat. Friends join the same room.</p></article><article><span class="step-symbol step-mint"><Icon name="play" size={28}/></span><h3>Get into it</h3><p>Everyone adds videos. Play, pause and skip stay in sync.</p></article></div></section>
+    <section class="regular-room"><div class="regular-doodle" aria-hidden="true"><Icon name="people" size={39}/></div><div><h2>The same gang next time?</h2><p>Saved rooms live in your account. Sign in with Google, Discord or an email link.</p></div><button class="soft-button" type="button" data-create-room="member">Make a saved room</button></section>
+    <details class="home-faq"><summary>Do we all control the video?</summary><p>Yep. Everyone in the room can play, pause, seek, skip and add videos. Volume stays on your own device. Some YouTube videos don't allow embedding; if one won't play, try the next one.</p></details>
   </main>
-  <footer class="page-footer"><span>© {new Date().getFullYear()} PartyPlayback</span><span>YouTube, with company.</span></footer>
+  <footer class="page-footer"><span>youple.tv</span><span>Watch together. Snacks optional.</span></footer>
   <AuthDialog configured={configured}/>
-  <dialog id="create-dialog" class="dialog" aria-labelledby="create-heading">
-    <button class="dialog-close" type="button" data-close-dialog aria-label="Close room creation"><Icon name="close" size={17}/></button>
-    <span class="eyebrow">THE NIGHT STARTS HERE</span><h2 id="create-heading">Set the scene.</h2><p>A name, a link, and your favorite people.</p>
-    <form id="create-form">
-      <label for="room-title">Room name</label><input id="room-title" name="title" placeholder="Friday night" maxlength="64" autocomplete="off"/>
-      <div class="segmented" role="group" aria-label="Room access"><label><input type="radio" name="mode" value="guest" checked/><span>Guest room</span></label><label><input type="radio" name="mode" value="member"/><span>Member room</span></label></div>
-      <p id="room-mode-note" class="mode-note">Anyone with the link can join. No sign-in needed.</p>
-      <button class="primary-button wide" type="submit">Create room<Icon name="arrow" size={19}/></button><div id="create-message" class="form-message" role="status"></div>
-    </form>
-  </dialog>
-  <dialog id="join-dialog" class="dialog" aria-labelledby="join-heading">
-    <button class="dialog-close" type="button" data-close-dialog aria-label="Close join room"><Icon name="close" size={17}/></button>
-    <span class="eyebrow">YOUR PEOPLE ARE WAITING</span><h2 id="join-heading">You're invited.</h2><p>Paste your room link or enter its room code.</p>
-    <form id="join-form"><label for="room-code">Room link or code</label><input id="room-code" name="room" placeholder="Paste your invite here" required autocomplete="off"/><button class="primary-button wide" type="submit">Join the room<Icon name="arrow" size={19}/></button><div id="join-message" class="form-message" role="status"></div></form>
-  </dialog>
+  <dialog id="join-dialog" class="dialog" aria-labelledby="join-heading"><button class="dialog-close" type="button" data-close-dialog aria-label="Close join room"><Icon name="close" size={20}/></button><h2 id="join-heading">There's room for you.</h2><p>Paste the room link your friend sent you.</p><form id="join-form"><label for="room-code">Room link or code</label><input id="room-code" name="room" placeholder="Paste your invite here" required autocomplete="off"/><button class="primary-button wide" type="submit">Join room</button><div id="join-message" class="form-message" role="status"></div></form></dialog>
   <script>import { bootHome } from '../scripts/home-client.js'; bootHome();</script>
-</body>
-</html>
+</body></html>

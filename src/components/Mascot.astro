@@ -1,0 +1,10 @@
+---
+interface Props { kind?: 'mint' | 'pink' | 'purple'; class?: string }
+const { kind = 'mint', class: className = '' } = Astro.props;
+---
+<div class:list={['mascot', kind, className]} aria-hidden="true">
+  <div class="mascot-shadow"></div>
+  <div class="mascot-arm arm-left"></div><div class="mascot-arm arm-right"></div>
+  <div class="mascot-foot foot-left"></div><div class="mascot-foot foot-right"></div>
+  <div class="mascot-body"><div class="mascot-face"><span class="mascot-eye"><i></i></span><span class="mascot-eye"><i></i></span><svg class="mascot-mouth" width="38" height="21" viewBox="0 0 38 21" fill="none"><path d="M5 5c3 14 25 14 28 0" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg><span class="cheek cheek-left"></span><span class="cheek cheek-right"></span></div></div>
+</div>

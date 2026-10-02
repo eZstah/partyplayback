@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { authClient, sameOrigin, privateJson, safeReturnTo } from "../../lib/auth";
 
 export const POST: APIRoute = async context => {
-  if (!sameOrigin(context.request)) return privateJson({ message: "Please sign in from PartyPlayback." }, 403);
+  if (!sameOrigin(context.request)) return privateJson({ message: "Please sign in from youple.tv." }, 403);
   const client = authClient(context);
   if (!client) return privateJson({ message: "Sign-in is getting ready. You can watch as a guest for now." }, 503);
   let input: unknown;

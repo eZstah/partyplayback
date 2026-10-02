@@ -1,4 +1,4 @@
-# PartyPlayback
+# youple.tv
 
 Watch YouTube together in a shared room. Everyone with the same room link shares
 a video queue, playback position, and play/pause controls.
@@ -84,7 +84,13 @@ npm run build
 npm run deploy
 ```
 
-Deployment requires Cloudflare authentication. `wrangler.json` declares the
+Deployment requires Cloudflare authentication. `wrangler.json` attaches the
+`youple.tv` custom domain to the existing `partyplayback` Worker. Keep that Worker
+name and its existing Durable Object binding/migration to retain room storage.
+Cloudflare manages the custom domain's DNS and HTTPS certificate. The purchased
+domain must be active in the same Cloudflare account as the Worker.
+
+`wrangler.json` declares the
 `ROOM` Durable Object binding and its existing SQLite migration.
 `scripts/post-build.mjs` adds the RoomDO export to the generated Astro worker;
 always build through the npm scripts.
@@ -103,9 +109,9 @@ account's saved-room catalog stay in Cloudflare Durable Objects.
 1. Create a Supabase project. Copy `.dev.vars.example` to `.dev.vars` and set
    `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` from its API settings. For a
    deployed Worker, set these variables in Cloudflare and rebuild/redeploy.
-2. In Supabase Auth URL configuration, set your production Site URL and allow
+2. In Supabase Auth URL configuration, set `https://youple.tv` as your Site URL and allow
    `http://127.0.0.1:8787/auth/callback**`, `http://localhost:8787/auth/callback**`
-   and your production `https://YOUR_DOMAIN/auth/callback**` redirect URLs.
+   and the production `https://youple.tv/auth/callback**` redirect URLs.
    Keep the production allowlist limited to domains you own.
 3. Enable [Google](https://supabase.com/docs/guides/auth/social-login/auth-google)
    and [Discord](https://supabase.com/docs/guides/auth/social-login/auth-discord)
@@ -141,7 +147,9 @@ requests periodic snapshots to correct drift, and reconnects after connection
 loss. Remote player events settle against the desired room state instead of
 being suppressed for a fixed number of milliseconds.
 
-The home and room pages use a shared borderless theme, responsive layouts,
-native accessible dialogs, local fonts and reduced-motion support. Decorative
-home-page motion uses CSS and pointer parallax; playlist additions use the Web
+The home page puts an inline Create room form beneath the youple.tv wordmark,
+with three animated mascot characters and a short explanation below. The home
+and room pages use larger readable labels, no navigation arrows or eyebrow
+labels, native accessible dialogs, local fonts and reduced-motion support.
+Mascot eyes follow pointer movement; playlist additions use the Web
 Animations API without replacing unchanged rows on every sync.

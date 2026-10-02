@@ -7,9 +7,9 @@ import cloudflare from "@astrojs/cloudflare";
 
 // https://astro.build/config
 export default defineConfig({
-	site: "https://example.com",
+	site: "https://youple.tv",
 	output: "server",
-	integrations: [mdx(), sitemap()],
+	integrations: [mdx(), sitemap({ filter: page => new URL(page).pathname === "/" })],
 	adapter: cloudflare({
 		platformProxy: {
 			enabled: true,

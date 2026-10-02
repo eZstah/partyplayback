@@ -4,11 +4,10 @@ const { configured = false } = Astro.props;
 ---
 <dialog id="auth-dialog" class="dialog" aria-labelledby="auth-heading" data-configured={String(configured)}>
   <button class="dialog-close" type="button" data-close-dialog aria-label="Close sign-in"><Icon name="close" size={17}/></button>
-  <span class="eyebrow">YOUR PEOPLE. YOUR PLACE.</span>
-  <h2 id="auth-heading">Make yourself<br/>at home.</h2>
-  <p>Save your rooms. Pick up where you left off.<br/>Your next good night starts here.</p>
-  <button class="provider-button" data-provider="google" type="button"><span class="provider-symbol">G</span>Continue with Google<Icon name="arrow" size={17}/></button>
-  <button class="provider-button" data-provider="discord" type="button"><span class="provider-symbol"><svg width="23" height="20" viewBox="0 0 24 20" fill="currentColor" aria-hidden="true"><path d="M19 2a17 17 0 0 0-4-1l-.5 1a16 16 0 0 0-5 0L9 1a17 17 0 0 0-4 1C2 6 1 10 1 14a17 17 0 0 0 5 3l1-2-2-1c5 2 9 2 14 0l-2 1 1 2a17 17 0 0 0 5-3c0-4-1-8-4-12ZM8 12c-1 0-2-1-2-2s1-2 2-2 2 1 2 2-1 2-2 2Zm8 0c-1 0-2-1-2-2s1-2 2-2 2 1 2 2-1 2-2 2Z"/></svg></span>Continue with Discord<Icon name="arrow" size={17}/></button>
+  <h2 id="auth-heading">Hey, welcome back.</h2>
+  <p>Sign in to save rooms and join your friends' saved rooms.</p>
+  <button class="provider-button" data-provider="google" type="button"><span class="provider-symbol">G</span>Continue with Google</button>
+  <button class="provider-button" data-provider="discord" type="button"><span class="provider-symbol"><svg width="23" height="20" viewBox="0 0 24 20" fill="currentColor" aria-hidden="true"><path d="M19 2a17 17 0 0 0-4-1l-.5 1a16 16 0 0 0-5 0L9 1a17 17 0 0 0-4 1C2 6 1 10 1 14a17 17 0 0 0 5 3l1-2-2-1c5 2 9 2 14 0l-2 1 1 2a17 17 0 0 0 5-3c0-4-1-8-4-12ZM8 12c-1 0-2-1-2-2s1-2 2-2 2 1 2 2-1 2-2 2Zm8 0c-1 0-2-1-2-2s1-2 2-2 2 1 2 2-1 2-2 2Z"/></svg></span>Continue with Discord</button>
   <div class="auth-divider">or keep it simple</div>
   <form id="magic-form">
     <label for="auth-email">Email address</label>

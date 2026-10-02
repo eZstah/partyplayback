@@ -64,9 +64,12 @@ try {
   const badOriginStatus = await new Promise((resolve, reject) => {
     const transport = base.startsWith("https:") ? https : http;
     const request = transport.get(base + "/api/ws/" + slug, {
-      headers: { Connection: "Upgrade", Upgrade: "websocket", Origin: "https://unrelated.example" },
+      headers: { Connection: "Upgrade", Upgrade: "websocket", Origin: "https://unrelated.example",
+        "Sec-WebSocket-Version": "13", "Sec-WebSocket-Key": "cGFydHlwbGF5YmFja3Rlcw==" },
     }, response => { response.resume(); resolve(response.statusCode); });
     request.on("error", reject);
+    request.on("upgrade", (response, socket) => { socket.destroy(); resolve(response.statusCode); });
+    request.setTimeout(10000, () => request.destroy(new Error("Origin check timed out")));
   });
   assert.equal(badOriginStatus, 403);
 

@@ -40,8 +40,8 @@ export function privateJson(data: unknown, status = 200) {
 export function safeReturnTo(value: unknown) {
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || /[\\\u0000-\u0020]/.test(value)) return "/";
   try {
-    const url = new URL(value, "https://partyplayback.local");
-    return url.origin === "https://partyplayback.local" ? url.pathname + url.search : "/";
+    const url = new URL(value, "https://youple.local");
+    return url.origin === "https://youple.local" ? url.pathname + url.search : "/";
   } catch { return "/"; }
 }
 
