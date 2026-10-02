@@ -52,6 +52,8 @@ export function bootRoom(roomName) {
     addButton.disabled = !joined || adding;
     queueList.querySelectorAll("button").forEach(button => { button.disabled = !joined; });
     const playing = !!room?.isPlaying;
+    const mood = !hasVideo ? "idle" : playing ? "playing" : "paused";
+    if (document.body.dataset.playback !== mood) document.body.dataset.playback = mood;
     $("play-label").textContent = playing ? "Pause" : "Play";
     playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
     $("play-icon").hidden = playing;

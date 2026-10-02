@@ -30,6 +30,21 @@ function setup() {
   return { sync, player, room, messages, calls, settle, advance };
 }
 
+test("missing YouTube video metadata waits for the load to settle", () => {
+  const { sync, player, room, messages } = setup();
+  sync.receive({ ...room, playbackId: "load-2", revision: 2 });
+  const videoData = player.getVideoData;
+  player.getVideoData = () => undefined;
+  player.state = 1;
+  assert.doesNotThrow(() => sync.tick());
+  assert.ok(sync.pending);
+  assert.equal(messages.length, 0);
+  player.getVideoData = videoData;
+  sync.tick();
+  assert.equal(sync.pending, null);
+  assert.equal(messages.length, 0);
+});
+
 test("remote play/pause events do not echo, even after slow loading", () => {
   const { sync, player, room, messages, advance } = setup();
   sync.receive({ ...room, playbackId: "load-2", revision: 2 });

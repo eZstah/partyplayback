@@ -120,7 +120,7 @@ export class RoomPlayer {
     if (this.pending) {
       const matches = this.room.isPlaying ? state === PLAYING : [PAUSED, CUED, ENDED].includes(state);
       const item = this.room.queue[this.room.currentIndex];
-      const videoMatches = item && this.player.getVideoData().video_id === item.videoId;
+      const videoMatches = item && this.player.getVideoData()?.video_id === item.videoId;
       if (matches && videoMatches) {
         if (Math.abs(time - this.targetTime()) <= DRIFT || (!this.room.isPlaying && state === CUED)) {
           this.pending = null;
