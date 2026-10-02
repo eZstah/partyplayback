@@ -1,0 +1,87 @@
+---
+import Icon from '../components/Icon.astro';
+import '../styles/app.css';
+import { verifiedUser, displayName, avatarUrl } from '../lib/auth';
+import { ownedRooms } from '../lib/rooms';
+const user = await verifiedUser(Astro);
+if (!user) return Astro.redirect('/', 303);
+const name = displayName(user);
+const avatar = avatarUrl(user);
+const providers: Record<string, string> = { google: 'Google', discord: 'Discord', email: 'an email link' };
+const provider = providers[String(user.app_metadata.provider)] || 'youple.tv';
+const rooms = await ownedRooms(Astro.locals.runtime.env, user.id);
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+---
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="robots" content="noindex"/><meta name="theme-color" content="#181622"/><title>Your profile — youple.tv</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/></head>
+<body>
+  <main class="profile">
+    <p><a class="back" href="/">← youple.tv</a></p>
+    <section class="identity">
+      <span class="profile-avatar">{avatar ? <img src={avatar} alt="" referrerpolicy="no-referrer"/> : name.slice(0, 1)}</span>
+      <div>
+        <h1 id="profile-name">{name}</h1>
+        <p class="muted">{user.email ? <>{user.email} · </> : null}Signed in with {provider}</p>
+      </div>
+    </section>
+
+    <form id="name-form" class="card">
+      <label for="display-name">Name in rooms</label>
+      <p class="muted">This is what friends see next to you while you watch.</p>
+      <div class="name-row">
+        <input id="display-name" name="name" value={name} maxlength="32" required autocomplete="nickname"/>
+        <button class="primary-button" type="submit">Save</button>
+      </div>
+      <div id="name-message" class="form-message" role="status"></div>
+    </form>
+
+    <section class="card">
+      <h2>Your rooms</h2>
+      {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={22}/><span>{room.title}</span></a></li>)}</ul> : <p class="muted">No saved rooms yet. Make one from the home page.</p>}
+    </section>
+
+    <button id="sign-out" class="soft-button" type="button">Sign out</button>
+  </main>
+  <style>
+    .profile { max-width: 640px; margin: 0 auto; padding: 40px 16px 64px; }
+    .back { color: var(--accent); }
+    .identity { display: flex; align-items: center; gap: 20px; margin: 24px 0 32px; }
+    .identity h1 { font-size: 32px; margin: 0 0 4px; overflow-wrap: anywhere; }
+    .identity p { margin: 0; overflow-wrap: anywhere; }
+    .profile-avatar { flex: none; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 24px; overflow: hidden; background: var(--accent-dark); color: var(--accent); font-size: 30px; font-weight: 700; }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .card { background: var(--surface); border-radius: 23px; padding: 24px; margin-bottom: 16px; }
+    .card h2, .card label { display: block; font-size: 19px; font-weight: 700; margin: 0 0 6px; }
+    .card p { margin: 0 0 16px; }
+    .name-row { display: flex; gap: 10px; }
+    .name-row input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--raised); border: 1px solid #ffffff12; border-radius: 16px; padding: 14px 16px; }
+    .room-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .room-list a { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; background: var(--raised); color: var(--accent); }
+    .room-list span { color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
+    #sign-out { margin-top: 8px; }
+  </style>
+  <script>
+    const form = document.getElementById("name-form") as HTMLFormElement;
+    const message = document.getElementById("name-message")!;
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const button = form.querySelector("button")!;
+      button.disabled = true;
+      message.textContent = "Saving…";
+      try {
+        const response = await fetch("/api/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: (document.getElementById("display-name") as HTMLInputElement).value }) });
+        const data = await response.json();
+        if (data.name) {
+          document.getElementById("profile-name")!.textContent = data.name;
+          message.textContent = "Saved. Rooms will use this name next time you join.";
+        } else message.textContent = data.message || "Please try again.";
+      } catch { message.textContent = "Couldn't connect. Please try again."; }
+      finally { button.disabled = false; }
+    });
+    document.getElementById("sign-out")!.addEventListener("click", async () => {
+      try { await fetch("/auth/signout", { method: "POST" }); } finally { location.assign("/"); }
+    });
+  </script>
+</body>
+</html>
