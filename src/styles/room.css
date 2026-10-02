@@ -867,6 +867,8 @@
 .pal-popcorn { position: absolute; left: -34px; bottom: 16px; width: 40px; transform: rotate(-12deg); }
 .pal-popcorn svg { display: block; width: 100%; }
 .room-page[data-playback=playing] .corner-pal .mascot-rig { animation: pal-bounce 1.5s ease-in-out .4s infinite; }
+/* The purple friend pops into the link hint, so it steps out of its corner meanwhile. */
+.playlist-column:has(#add-feedback:not([hidden])) .corner-pal { opacity: 0; transition: opacity .18s; }
 .room-page[data-playback=playing] .player-pal .mascot-rig { animation: pal-sway 3s ease-in-out .8s infinite; }
 @keyframes pal-bounce { 0%,100% { transform: none; } 50% { transform: translateY(-4%) scale(1.02,.98); } }
 @keyframes pal-sway { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
