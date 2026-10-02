@@ -4,3 +4,5 @@ SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
 SUPABASE_PUBLISHABLE_KEY="sb_publishable_YOUR_KEY"
 # Local preview only: where Google, Discord and email links send you back.
 AUTH_REDIRECT_ORIGIN="http://localhost:8787"
+# Contact and bug report forms: a Resend API key with sending access to youple.tv.
+RESEND_API_KEY="re_YOUR_KEY"

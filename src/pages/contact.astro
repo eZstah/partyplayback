@@ -1,0 +1,142 @@
+---
+import Wordmark from '../components/Wordmark.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import '../styles/app.css';
+import { verifiedUser, displayName } from '../lib/auth';
+import { CONTACT_EMAIL } from '../lib/legal';
+const user = await verifiedUser(Astro);
+const name = user ? displayName(user) : '';
+const email = user?.email || '';
+const bug = Astro.url.searchParams.get('type') === 'bug';
+if (user) Astro.response.headers.set('Cache-Control', 'private, no-store');
+---
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content="Send youple.tv a message or report a bug."/><meta name="theme-color" content="#181622"/><title>Contact — youple.tv</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/><link rel="canonical" href="https://youple.tv/contact"/></head>
+<body class="contact-page">
+  <div class="contact-glow" aria-hidden="true"></div>
+  <main class="contact">
+    <a class="contact-wordmark" href="/" aria-label="youple.tv home"><Wordmark/></a>
+    <div class="contact-card">
+      <div class="contact-tabs" role="tablist" aria-label="What would you like to send?">
+        <button type="button" role="tab" id="tab-message" data-kind="message" aria-selected={bug ? 'false' : 'true'}>Message</button>
+        <button type="button" role="tab" id="tab-bug" data-kind="bug" aria-selected={bug ? 'true' : 'false'}>Report a bug</button>
+      </div>
+      <form id="contact-form" data-kind={bug ? 'bug' : 'message'} novalidate>
+        <h1 id="contact-heading">{bug ? 'Something broke?' : 'Say hi'}</h1>
+        <p class="muted" id="contact-intro">{bug ? 'Tell us what happened and we’ll look into it.' : 'Questions, ideas or feedback. We read everything.'}</p>
+        <div class="field-row">
+          <label><span>Name <span class="optional">(optional)</span></span><input name="name" value={name} maxlength="80" autocomplete="name"/></label>
+          <label><span>Email</span><input name="email" type="email" value={email} maxlength="254" required autocomplete="email" placeholder="So we can reply"/></label>
+        </div>
+        <label class="bug-only"><span>Page or room link <span class="optional">(optional)</span></span><input name="page" maxlength="300" placeholder="https://youple.tv/room/…" autocomplete="off"/></label>
+        <label><span id="message-label">{bug ? 'What happened?' : 'Message'}</span><textarea name="message" rows="6" maxlength="5000" required placeholder={bug ? 'What did you do, what did you expect, and what happened instead?' : ''}></textarea></label>
+        <p class="bug-only fine-print">We’ll also send your browser and screen size{user ? ' and your account' : ''} to help us find it.</p>
+        <label class="trap" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"/></label>
+        <button class="primary-button" type="submit" id="contact-send">{bug ? 'Send report' : 'Send message'}</button>
+        <div id="contact-message" class="form-message" role="status"></div>
+      </form>
+      <div id="contact-sent" class="contact-sent" hidden>
+        <h1>Thanks, it’s on its way.</h1>
+        <p class="muted">We’ll reply to <strong id="sent-email"></strong> if we need anything.</p>
+        <button class="primary-button" type="button" id="contact-again">Send another</button>
+      </div>
+    </div>
+    <p class="contact-alt">Prefer email? <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
+  </main>
+  <SiteFooter/>
+  <style>
+    .contact-page { --bg: #181622; --ink: #f6f2ef; --muted: #bab3c9; --accent: #c3afff; position: relative; isolation: isolate; overflow-x: clip; }
+    .contact-glow { position: absolute; inset: 0 0 auto; height: 520px; z-index: -1; pointer-events: none; background: radial-gradient(ellipse at 50% 10%,#5a426242,transparent 55%),radial-gradient(ellipse at 15% 60%,#ad8bf514,transparent 45%),radial-gradient(ellipse at 85% 50%,#ee9fb112,transparent 45%); }
+    .contact { display: grid; justify-items: center; max-width: 600px; margin: 0 auto; padding: 40px 16px 16px; }
+    .contact-wordmark { font-size: 34px; margin-bottom: 28px; }
+    .contact-card { width: 100%; box-sizing: border-box; background: #f4efe5; color: #322b41; padding: 28px; border-radius: 36px; box-shadow: 0 18px 60px #0002; }
+    .contact-card .muted { color: #756779; margin: 0 0 20px; font-size: 16px; }
+    .contact-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 24px; border-radius: 18px; background: #e7dfd2; }
+    .contact-tabs button { min-height: 44px; border-radius: 14px; background: transparent; color: #61536b; font-weight: 700; font-size: 16px; }
+    .contact-tabs button:hover { color: #322b41; }
+    .contact-tabs button[aria-selected=true] { background: #fffaf2; color: #322b41; box-shadow: 0 2px 8px #322b4114; }
+    .contact-card h1 { font-size: 28px; letter-spacing: -.03em; line-height: 1.2; margin: 0 0 6px; }
+    #contact-form { display: grid; gap: 14px; }
+    #contact-form[hidden], .contact-tabs[hidden] { display: none; }
+    #contact-form .muted { margin: 0 0 4px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    #contact-form label { display: grid; gap: 6px; font-size: 15px; font-weight: 700; color: #61536b; }
+    .optional { font-weight: 400; color: #8a7d8f; }
+    #contact-form input, #contact-form textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 17px; font-weight: 400; color: #322b41; background: #fffaf2; border: 1px solid #322b411f; border-radius: 16px; padding: 13px 16px; }
+    #contact-form textarea { resize: vertical; min-height: 140px; line-height: 1.5; }
+    #contact-form input::placeholder, #contact-form textarea::placeholder { color: #a197a6; }
+    #contact-form input:focus-visible, #contact-form textarea:focus-visible { outline: 3px solid #b8a2f0; outline-offset: 1px; }
+    #contact-form[data-kind=message] .bug-only { display: none; }
+    .fine-print { margin: -4px 0 0; font-size: 14px; color: #756779; }
+    .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+    .contact-card .primary-button { justify-self: start; min-height: 50px; padding: 0 28px; border-radius: 16px; background: #b9a3ef; color: #241d33; font-weight: 700; }
+    .contact-card .primary-button:hover { background: #c9b7f5; }
+    .contact-card .primary-button:disabled { opacity: .6; cursor: default; }
+    .contact-card .form-message { margin: 0; color: #a3364f; font-size: 15px; min-height: 0; }
+    .contact-card .form-message:empty { display: none; }
+    .contact-sent { display: grid; gap: 6px; justify-items: start; }
+    .contact-sent[hidden] { display: none; }
+    .contact-sent strong { color: #322b41; overflow-wrap: anywhere; }
+    .contact-alt { margin: 18px 0 0; color: var(--muted); font-size: 15px; text-align: center; }
+    .contact-alt a { color: var(--accent); overflow-wrap: anywhere; }
+    @media(max-width:600px) { .contact { padding-top: 28px; } .contact-wordmark { font-size: 28px; margin-bottom: 22px; } .contact-card { padding: 20px; border-radius: 29px; } .field-row { grid-template-columns: 1fr; } .contact-card .primary-button { justify-self: stretch; } }
+  </style>
+  <script>
+    const form = document.getElementById("contact-form") as HTMLFormElement;
+    const status = document.getElementById("contact-message")!;
+    const send = document.getElementById("contact-send") as HTMLButtonElement;
+    const sent = document.getElementById("contact-sent")!;
+    const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement;
+    const copy = {
+      message: { heading: "Say hi", intro: "Questions, ideas or feedback. We read everything.", label: "Message", placeholder: "", button: "Send message" },
+      bug: { heading: "Something broke?", intro: "Tell us what happened and we’ll look into it.", label: "What happened?", placeholder: "What did you do, what did you expect, and what happened instead?", button: "Send report" },
+    };
+    function choose(kind: "message" | "bug") {
+      form.dataset.kind = kind;
+      document.querySelectorAll<HTMLButtonElement>(".contact-tabs button").forEach(tab => tab.setAttribute("aria-selected", String(tab.dataset.kind === kind)));
+      document.getElementById("contact-heading")!.textContent = copy[kind].heading;
+      document.getElementById("contact-intro")!.textContent = copy[kind].intro;
+      document.getElementById("message-label")!.textContent = copy[kind].label;
+      (field("message") as unknown as HTMLTextAreaElement).placeholder = copy[kind].placeholder;
+      send.textContent = copy[kind].button;
+      status.textContent = "";
+      history.replaceState({}, "", kind === "bug" ? "?type=bug" : location.pathname);
+    }
+    document.querySelectorAll<HTMLButtonElement>(".contact-tabs button").forEach(tab => tab.addEventListener("click", () => choose(tab.dataset.kind as "message" | "bug")));
+    // The page someone came from is the likeliest place the bug happened.
+    try {
+      const from = new URL(document.referrer);
+      if (from.origin === location.origin && from.pathname !== location.pathname) field("page").value = from.href;
+    } catch {}
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const data = Object.fromEntries(new FormData(form)) as Record<string, string>;
+      if (!field("email").checkValidity()) { status.textContent = "Add an email address so we can reply."; field("email").focus(); return; }
+      if (data.message.trim().length < 5) { status.textContent = form.dataset.kind === "bug" ? "Tell us what went wrong." : "Write a message first."; field("message").focus(); return; }
+      send.disabled = true;
+      status.textContent = "";
+      const label = send.textContent;
+      send.textContent = "Sending…";
+      try {
+        const response = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...data, kind: form.dataset.kind, screen: `${screen.width}x${screen.height}` }) });
+        const result = await response.json();
+        if (result.sent) {
+          document.getElementById("sent-email")!.textContent = data.email;
+          form.hidden = true;
+          document.querySelector<HTMLElement>(".contact-tabs")!.hidden = true;
+          sent.hidden = false;
+        } else status.textContent = result.message || "Couldn't send. Please try again.";
+      } catch { status.textContent = "Couldn't connect. Please try again."; }
+      finally { send.disabled = false; send.textContent = label; }
+    });
+    document.getElementById("contact-again")!.addEventListener("click", () => {
+      field("message").value = "";
+      form.hidden = false;
+      document.querySelector<HTMLElement>(".contact-tabs")!.hidden = false;
+      sent.hidden = true;
+      field("message").focus();
+    });
+  </script>
+</body>
+</html>

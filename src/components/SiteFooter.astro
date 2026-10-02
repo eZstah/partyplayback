@@ -1,10 +1,11 @@
 ---
-import { CONTACT_EMAIL, impressumReady } from '../lib/legal';
+import { impressumReady } from '../lib/legal';
 const links = [
   { href: '/about', label: 'About' },
   { href: '/privacy', label: 'Privacy' },
   ...(impressumReady() ? [{ href: '/impressum', label: 'Impressum' }] : []),
-  { href: `mailto:${CONTACT_EMAIL}`, label: 'Contact' },
+  { href: '/contact', label: 'Contact' },
+  { href: '/contact?type=bug', label: 'Report a bug' },
 ];
 ---
 <footer class="site-footer">
