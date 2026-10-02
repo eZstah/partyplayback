@@ -569,7 +569,7 @@
   min-height: 46px;
   padding: 12px 18px;
 }
-.header-shortcuts {
+.room-tools .header-shortcuts {
   flex: none;
   min-width: 44px;
   width: 44px;
@@ -578,7 +578,7 @@
   color: var(--muted);
   border-radius: 14px;
 }
-.header-shortcuts:hover { background: #262832; color: var(--accent); }
+.room-tools .header-shortcuts:hover { background: #262832; color: var(--accent); }
 .player-view-controls {
   display: flex;
   align-items: center;
@@ -891,7 +891,7 @@
 
 /* Phones keep the header and playback focused on touch controls. */
 @media(max-width:600px), (max-width:900px) and (pointer:coarse) {
-  #theater-btn,.header-shortcuts,.control-key { display: none; }
+  #theater-btn,#help-btn,.control-key { display: none; }
 }
 @media(max-width:600px) {
   .room-nav { grid-template-columns: minmax(0,1fr) auto; padding: 10px 14px 4px; gap: 0 12px; }
