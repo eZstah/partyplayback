@@ -2,7 +2,7 @@ import { RoomPlayer } from "../lib/room-player.js";
 import { bootAuth } from "./auth-client.js";
 import { bootRoomMascots } from "./room-mascots.js";
 import { copyText, takeCreatedRoomNotice } from "./invite-copy.js";
-import { pastedVideo, youtubeUrl } from "./room-paste.js";
+import { pastedVideo, youtubeUrl, playlistLink } from "./room-paste.js";
 import { bindVolumeControl } from "./volume-control.js";
 import { bindFullscreenControls } from "./fullscreen-controls.js";
 
@@ -15,7 +15,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const playButton = $("play-btn"), nextButton = $("next-btn"), enableButton = $("enable-btn");
   let socket = null, room = null, joined = false, stopping = false;
   let reconnectTimer, joinTimer, toastTimer, delay = 1000, lastMessage = 0;
-  let lastServerTime = -1, latency = 0, adding = false;
+  let lastServerTime = -1, latency = 0, adding = false, readingClipboard = false;
   let queueSignature = "", peopleSignature = "", scrubbing = false, overlayTimer;
   const progress = $("progress");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -65,7 +65,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     const hasVideo = !!room?.queue[room.currentIndex];
     playButton.disabled = !joined || !hasVideo;
     nextButton.disabled = !joined || !hasVideo || (room.currentIndex + 1 >= room.queue.length && !room.autoClear);
-    addButton.disabled = !joined || adding;
+    addButton.disabled = !joined || adding || readingClipboard;
     $("auto-clear-btn").disabled = !joined;
     $("auto-clear-btn").setAttribute("aria-checked", String(!!room?.autoClear));
     const playing = !!room?.isPlaying;
@@ -358,7 +358,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   enableButton.addEventListener("click", () => playback.enablePlayback());
 
   async function addVideo(value, fromPaste = false) {
-    if (adding || pastedAddition) { if (fromPaste) toast("A video is being added. Paste again in a moment."); return; }
+    if (adding || pastedAddition || readingClipboard) { if (fromPaste) toast("A video is being added. Paste again in a moment."); return; }
     if (!joined) { toast("Wait for the room to reconnect"); return; }
     const url = youtubeUrl(value);
     if (!url) { toast("Paste a valid YouTube video link"); return; }
@@ -386,7 +386,23 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   }
   $("add-form").addEventListener("submit", event => {
     event.preventDefault();
+    if (readingClipboard) return;
     addVideo(urlInput.value);
+  });
+  addButton.addEventListener("click", async () => {
+    if (!joined || adding || readingClipboard || pastedAddition) return;
+    readingClipboard = true;
+    controls();
+    const link = await playlistLink(urlInput, navigator.clipboard);
+    readingClipboard = false;
+    if (stopping) return;
+    controls();
+    if (!link) {
+      urlInput.focus();
+      toast("Paste a YouTube link.");
+      return;
+    }
+    addVideo(link.value, link.fromClipboard);
   });
   document.addEventListener("paste", event => {
     const url = pastedVideo(event, !!document.querySelector("dialog[open]"));

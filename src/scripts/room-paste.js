@@ -18,3 +18,15 @@ export function pastedVideo(event, dialogOpen = false) {
   if (field && !(field.tagName === "INPUT" && field.type === "range")) return null;
   return youtubeUrl(event.clipboardData?.getData("text/plain"));
 }
+
+export async function playlistLink(input, clipboard) {
+  const value = input.value.trim();
+  if (value) return { value, fromClipboard: false };
+  let copied;
+  try { copied = await clipboard?.readText?.(); } catch {}
+  // A permission prompt can stay open while the viewer starts typing.
+  const current = input.value.trim();
+  if (current) return { value: current, fromClipboard: false };
+  const url = youtubeUrl(copied);
+  return url ? { value: url, fromClipboard: true } : null;
+}

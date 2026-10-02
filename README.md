@@ -25,6 +25,8 @@ then restart it after code changes.
 - Share the room URL with the other viewers.
 - Paste a YouTube watch, short, live, embed, or youtu.be video link into the
   playlist field, or anywhere on the room page (Ctrl+V / Cmd+V).
+- Tap the playlist **+** to add the typed link, or a copied YouTube link when
+  the field is empty. If clipboard access is unavailable, paste into the field.
 - Use the large Play/Pause button, the timeline to seek, and Next to skip.
 - Space or K: play/pause. Left/right: seek 5 seconds. J/L: seek 10 seconds.
   N: next. F: fullscreen. T: theater. M: local mute. ?: shortcuts.
