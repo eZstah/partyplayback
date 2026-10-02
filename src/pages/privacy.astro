@@ -26,6 +26,7 @@ import '../styles/app.css';
     <ul>
       <li><strong>Cloudflare</strong> runs the site and stores rooms. Like any web host, it briefly keeps request logs to run and protect the service.</li>
       <li><strong>Supabase</strong> handles sign-in and stores your account.</li>
+      <li><strong>SponsorBlock</strong> provides the parts of videos a room skips. The room asks for them with only the first characters of a scrambled (hashed) video ID, so SponsorBlock can't tell which video you're watching, and nothing about you is sent.</li>
       <li><strong>YouTube</strong> plays the videos in the embedded player, under <a href="https://policies.google.com/privacy">Google's privacy policy</a>.</li>
     </ul>
 
