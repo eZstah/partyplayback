@@ -1,6 +1,8 @@
 import { RoomPlayer } from "../lib/room-player.js";
+import { bootAuth } from "./auth-client.js";
 
 export function bootRoom(roomName) {
+  const auth = bootAuth();
   const $ = id => document.getElementById(id);
   const conn = $("conn"), count = $("uc"), username = $("uname");
   const queueList = $("q-list"), urlInput = $("url-in"), addButton = $("add-btn");
@@ -294,13 +296,43 @@ export function bootRoom(roomName) {
     $("mute-btn").setAttribute("aria-label", muted ? "Unmute" : "Mute");
     $("volume-icon").hidden = muted; $("mute-icon").hidden = !muted;
   });
-  for (const button of document.querySelectorAll("[data-close-dialog]")) button.addEventListener("click", () => button.closest("dialog").close());
-  for (const dialog of document.querySelectorAll("dialog")) dialog.addEventListener("click", event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } });
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
-  $("invite-btn").addEventListener("click", () => { $("invite-link").value = location.origin + location.pathname; $("invite-dialog").showModal(); });
-  $("copy-link-btn").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText($("invite-link").value); $("invite-dialog").close(); toast("Room link copied. Send it to your friends."); }
-    catch { $("invite-link").focus(); $("invite-link").select(); toast("Select and copy the room link."); }
+  $("own-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));
+  let copyingInvite = false, inviteTimer;
+  $("invite-btn").addEventListener("click", async () => {
+    if (copyingInvite) return;
+    copyingInvite = true;
+    const link = location.origin + location.pathname;
+    try {
+      try { await navigator.clipboard.writeText(link); }
+      catch {
+        const field = document.createElement("textarea");
+        field.value = link;
+        field.setAttribute("aria-label", "Room link");
+        field.style.cssText = "position:fixed;left:-9999px;top:0";
+        $("room-shell").append(field);
+        field.select();
+        let copied;
+        try { copied = document.execCommand("copy"); }
+        finally { field.remove(); $("invite-btn").focus({ preventScroll: true }); }
+        if (!copied) throw new Error("Copy unavailable");
+      }
+      clearTimeout(inviteTimer);
+      $("invite-icon").hidden = true;
+      $("invite-success-icon").hidden = false;
+      $("invite-label").textContent = "Link copied";
+      $("invite-btn").dataset.copied = "true";
+      $("invite-btn").setAttribute("aria-label", "Link copied");
+      toast("Link copied!");
+      inviteTimer = setTimeout(() => {
+        $("invite-icon").hidden = false;
+        $("invite-success-icon").hidden = true;
+        $("invite-label").textContent = "Invite friends";
+        delete $("invite-btn").dataset.copied;
+        $("invite-btn").setAttribute("aria-label", "Invite friends");
+      }, 2600);
+    } catch { toast("Couldn't copy. Copy the link from your address bar."); }
+    finally { copyingInvite = false; }
   });
   document.addEventListener("keydown", event => {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.("input,textarea,select,[contenteditable=true]") || document.querySelector("dialog[open]")) return;

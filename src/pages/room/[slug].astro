@@ -1,6 +1,7 @@
 ---
 import Icon from '../../components/Icon.astro';
 import Mascot from '../../components/Mascot.astro';
+import AuthDialog from '../../components/AuthDialog.astro';
 import '../../styles/app.css';
 import '../../styles/room.css';
 import { verifiedUser, displayName } from '../../lib/auth';
@@ -12,6 +13,7 @@ if (slug.startsWith('m-') && !details) return Astro.redirect('/');
 const user = await verifiedUser(Astro);
 if (details?.mode === 'member' && !user) return Astro.redirect('/?signin=1&next=' + encodeURIComponent('/room/' + slug));
 const title = details?.title || slug;
+const configured = !!Astro.locals.runtime.env.SUPABASE_URL && !!Astro.locals.runtime.env.SUPABASE_PUBLISHABLE_KEY;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 ---
 <!doctype html>
@@ -21,8 +23,8 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
   <div class="room-atmosphere" aria-hidden="true"><span class="room-glow"></span><span class="room-doodle room-note"><svg viewBox="0 0 32 44" fill="none"><path d="M17 33V5c0 11 15 6 10 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><ellipse cx="10" cy="34" rx="8" ry="5" fill="currentColor" transform="rotate(-20 10 34)"/></svg></span><span class="room-doodle room-sound"><svg viewBox="0 0 40 40" fill="none"><path d="M7 26v-9m9 16V8m9 22V12m9 12v-6" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></span><span class="room-orbit"></span><i class="room-dot"></i></div>
   <div id="room-shell" class="room-shell">
   <header class="room-nav">
-    <div class="room-identity"><a class="brand" href="/" aria-label="youple.tv home"><span class="brand-face" aria-hidden="true"><i></i><i></i></span><span>youple.tv</span></a><h1 title={title}>{title}</h1></div>
-    <div class="room-tools"><div class="room-presence"><span id="conn" class="connecting" role="status">Connecting</span><span id="uc">Joining…</span><button id="uname" class="name-button" type="button" disabled={!!user} title={user ? 'Signed in' : 'Change your name'}>Guest</button></div><button id="invite-btn" class="soft-button header-invite" type="button" aria-label="Invite friends" title="Invite friends"><Icon name="link" size={20}/><span>Invite friends</span></button><div class="header-view-controls" role="group" aria-label="Viewing mode"><button id="theater-btn" class="icon-button" type="button" aria-label="Theater mode" aria-pressed="false" aria-keyshortcuts="T" title="Theater mode (T)"><Icon name="theater"/></button><button id="fullscreen-btn" class="icon-button" type="button" aria-label="Fullscreen" aria-pressed="false" aria-keyshortcuts="F" title="Fullscreen (F)"><Icon name="fullscreen"/></button></div></div>
+    <div class="room-identity"><a class="brand" href="/" aria-label="youple.tv home"><span class="brand-face" aria-hidden="true"><i></i><i></i></span><span>youple.tv</span></a><div class="room-name"><h1 title={title}>{title}</h1>{details?.mode !== 'member' && (user ? <a class="own-room-button" href="/?create=member" title="Create a permanent room"><Icon name="spark" size={16}/>Your own room</a> : <button class="own-room-button" id="own-room-btn" type="button" title="Sign in to create a permanent room"><Icon name="spark" size={16}/>Your own room</button>)}</div></div>
+    <div class="room-tools"><div class="room-presence"><span id="conn" class="connecting" role="status">Connecting</span><span id="uc">Joining…</span><button id="uname" class="name-button" type="button" disabled={!!user} title={user ? 'Signed in' : 'Change your name'}>Guest</button></div><button id="invite-btn" class="soft-button header-invite" type="button" aria-label="Invite friends" title="Copy room link"><span id="invite-icon"><Icon name="link" size={20}/></span><span id="invite-success-icon" hidden><Icon name="check" size={20}/></span><span id="invite-label">Invite friends</span></button><div class="header-view-controls" role="group" aria-label="Viewing mode"><button id="theater-btn" class="icon-button" type="button" aria-label="Theater mode" aria-pressed="false" aria-keyshortcuts="T" title="Theater mode (T)"><Icon name="theater"/></button><button id="fullscreen-btn" class="icon-button" type="button" aria-label="Fullscreen" aria-pressed="false" aria-keyshortcuts="F" title="Fullscreen (F)"><Icon name="fullscreen"/></button></div></div>
   </header>
   <main class="watch-layout reveal">
     <section class="watch-column" aria-label="Watch together">
@@ -43,7 +45,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
   </main>
   <dialog id="name-dialog" class="dialog" aria-labelledby="name-heading"><button class="dialog-close" data-close-dialog type="button" aria-label="Close"><Icon name="close" size={16}/></button><h2 id="name-heading">What should we call you?</h2><form id="name-form"><label for="guest-name">Your name</label><input id="guest-name" required maxlength="32" autocomplete="nickname"/><button class="primary-button wide" type="submit">That's me</button></form></dialog>
   <dialog id="help-dialog" class="dialog" aria-labelledby="help-heading"><button class="dialog-close" data-close-dialog type="button" aria-label="Close"><Icon name="close" size={16}/></button><h2 id="help-heading">Keyboard shortcuts</h2><div class="shortcut-table"><div><span>Play / pause</span><span><kbd>Space</kbd> <kbd>K</kbd></span></div><div><span>Seek 5 seconds</span><span><kbd>Left</kbd> <kbd>Right</kbd></span></div><div><span>Seek 10 seconds</span><span><kbd>J</kbd> <kbd>L</kbd></span></div><div><span>Next video</span><kbd>N</kbd></div><div><span>Fullscreen</span><kbd>F</kbd></div><div><span>Theater mode</span><kbd>T</kbd></div><div><span>Playlist</span><kbd>P</kbd></div><div><span>Mute on your device</span><kbd>M</kbd></div></div><p>Shortcuts take a break while you're typing. Press Esc to close this window or leave fullscreen.</p></dialog>
-  <dialog id="invite-dialog" class="dialog" aria-labelledby="invite-heading"><button class="dialog-close" data-close-dialog type="button" aria-label="Close"><Icon name="close" size={16}/></button><h2 id="invite-heading">Invite your friends.</h2><p>{details?.mode === 'member' ? 'Friends need to sign in to join this room.' : 'Send this link. Your friends can join as guests.'}</p><label for="invite-link">Room link</label><input id="invite-link" readonly/><button id="copy-link-btn" class="primary-button wide" type="button">Copy link<Icon name="link" size={18}/></button></dialog>
+  <AuthDialog configured={configured} heading="Your own room" description="Sign in to create a permanent room."/>
   <div id="toast" class="toast" role="status"></div>
   </div>
   <script>import { revealCreatedRoom } from '../../scripts/room-transition.js'; import { bootRoom } from '../../scripts/room-client.js'; revealCreatedRoom(); bootRoom(document.body.dataset.room);</script>
