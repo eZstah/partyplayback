@@ -127,7 +127,7 @@
   border-radius: 20px;
   background: #bba3f1;
   color: #2d2045;
-  font-size: 20px;
+  font-size: 25px;
   gap: 12px;
 }
 .create-room-button:hover {
@@ -611,8 +611,6 @@
 }
 @media(max-width:600px) {
   .join-entry { flex-direction: column; align-items: flex-start; gap: 0; }
-  .launcher-footer { align-items: flex-start; }
-  .launcher-footer .sync-presence { margin-top: 2px; }
   .home-main {
     padding: 0 18px;
   }
@@ -632,7 +630,6 @@
   }
   .create-room-button {
     height: 62px;
-    font-size: 19px;
   }
   .join-launcher {
     font-size: 15px;

@@ -38,7 +38,7 @@ export function bootHome() {
     creating = true;
     const inviteCopy = beginInviteCopy();
     const submit = form.querySelector("button[type=submit]");
-    submit.disabled = true; submit.setAttribute("aria-busy", "true"); submit.querySelector("span").textContent = "Opening your room…"; message.textContent = "";
+    submit.disabled = true; submit.setAttribute("aria-busy", "true"); submit.querySelector("span").textContent = "Creating…"; message.textContent = "";
     try {
       const response = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, title }) });
       const data = await response.json();
