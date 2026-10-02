@@ -186,11 +186,11 @@
 }
 .mascot-beanie {
   position: absolute;
-  width: 106%;
+  width: 104%;
   height: 46%;
-  top: -15%;
-  left: -3%;
-  transform: rotate(-4deg);
+  top: -16%;
+  left: -2%;
+  transform: rotate(-3deg);
   overflow: visible;
 }
 .mascot-vest {
