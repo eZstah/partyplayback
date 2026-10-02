@@ -175,8 +175,8 @@ export function bootRoom(roomName) {
     }
     const item = room.queue[room.currentIndex];
     $("placeholder").style.display = item ? "none" : "flex";
-    $("nowplay").textContent = item ? item.title : "Add the first video.";
-    $("playing-status").textContent = item ? (room.isPlaying ? "Playing together" : "Paused") : "Ready when you are";
+    const status = item ? (room.isPlaying ? "Playing: " : "Paused: ") + item.title : "No video selected.";
+    if ($("playing-status").textContent !== status) $("playing-status").textContent = status;
     $("queue-count").textContent = String(room.queue.length).padStart(2, "0");
     $("queue-empty").hidden = !!room.queue.length;
     controls();
