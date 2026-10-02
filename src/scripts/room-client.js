@@ -456,9 +456,9 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     return seconds >= 3600 ? Math.floor(seconds / 3600) + ":" + String(Math.floor(seconds / 60) % 60).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0") : Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
   }
   function updateProgress() {
-    const p = playback.player;
-    const duration = p?.getDuration?.() || 0;
     const hasVideo = !!room?.queue[room.currentIndex];
+    // A stopped embed still reports the last video's length.
+    const duration = hasVideo ? playback.player?.getDuration?.() || 0 : 0;
     progress.disabled = !joined || !hasVideo || !duration;
     progress.max = String(duration || Math.max(1, playback.targetTime()));
     $("duration").textContent = timeLabel(duration);
