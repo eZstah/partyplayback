@@ -14,7 +14,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   let socket = null, room = null, joined = false, stopping = false;
   let reconnectTimer, joinTimer, toastTimer, delay = 1000, lastMessage = 0;
   let lastServerTime = -1, latency = 0, adding = false;
-  let queueSignature = "", scrubbing = false;
+  let queueSignature = "", peopleSignature = "", scrubbing = false, overlayTimer;
   const progress = $("progress");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const requests = new Map();
@@ -60,11 +60,82 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     queueList.querySelectorAll("button").forEach(button => { button.disabled = !joined; });
     const playing = !!room?.isPlaying;
     const mood = !hasVideo ? "idle" : playing ? "playing" : "paused";
-    if (document.body.dataset.playback !== mood) document.body.dataset.playback = mood;
+    if (document.body.dataset.playback !== mood) {
+      const previous = document.body.dataset.playback;
+      document.body.dataset.playback = mood;
+      showOverlay(mood, previous);
+    }
+    if (mood === "paused") {
+      const by = room.pausedBy;
+      const caption = !by ? "Paused" : by === name ? "You paused" : "Paused by " + by;
+      if ($("overlay-caption").textContent !== caption) $("overlay-caption").textContent = caption;
+    }
     $("play-label").textContent = playing ? "Pause" : "Play";
     playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
     $("play-icon").hidden = playing;
     $("pause-icon").hidden = !playing;
+  }
+
+  // Like a desktop player: pausing leaves a big pause sign up, resuming flashes play.
+  function showOverlay(mood, previous) {
+    const overlay = $("playback-overlay");
+    clearTimeout(overlayTimer);
+    overlay.dataset.state = mood === "paused" ? "paused" : mood === "playing" && previous === "paused" ? "resumed" : "";
+    if (overlay.dataset.state === "resumed") overlayTimer = setTimeout(() => { overlay.dataset.state = ""; }, 650);
+  }
+
+  const avatarColors = ["#aadf97", "#f4adc0", "#c3afff", "#f5be70", "#9fd3e6"];
+  function avatar(person, className) {
+    const face = document.createElement("span");
+    face.className = className;
+    const initial = [...person.name.trim()][0]?.toUpperCase() || "?";
+    let hash = 0;
+    for (const char of person.name) hash = (hash * 31 + char.codePointAt(0)) >>> 0;
+    face.style.setProperty("--face", avatarColors[hash % avatarColors.length]);
+    face.textContent = initial;
+    if (person.avatar) {
+      const img = document.createElement("img");
+      img.src = person.avatar;
+      img.alt = "";
+      img.referrerPolicy = "no-referrer";
+      img.addEventListener("error", () => img.remove());
+      face.append(img);
+    }
+    return face;
+  }
+
+  function renderPeople(members) {
+    if (!Array.isArray(members)) return;
+    const signature = JSON.stringify(members);
+    if (signature === peopleSignature) return;
+    peopleSignature = signature;
+    const list = $("people-list");
+    list.replaceChildren(...members.map(person => {
+      const li = document.createElement("li");
+      li.className = "person" + (person.you ? " is-you" : "");
+      const label = document.createElement("span");
+      label.className = "person-name";
+      label.textContent = person.name;
+      li.append(avatar(person, "person-face"), label);
+      if (person.you) {
+        const you = document.createElement("span");
+        you.className = "person-you";
+        you.textContent = "you";
+        li.append(you);
+      }
+      return li;
+    }));
+    $("people-count").textContent = String(members.length).padStart(2, "0");
+    const faces = document.querySelector(".facepile-faces");
+    const shown = members.length > 4 ? members.slice(0, 3) : members;
+    faces.replaceChildren(...shown.map(person => avatar(person, "facepile-face")));
+    if (shown.length < members.length) {
+      const more = document.createElement("span");
+      more.className = "facepile-face facepile-more";
+      more.textContent = "+" + (members.length - shown.length);
+      faces.append(more);
+    }
+    count.title = members.map(person => person.name + (person.you ? " (you)" : "")).join(", ");
   }
 
   function setConnection(state) {
@@ -127,6 +198,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
         ensurePlayer();
       } else if (data.type === "users") {
         setCount(data.userCount);
+        renderPeople(data.members);
       } else if (data.type === "error") {
         if (pastedAddition) { clearTimeout(pastedAddition.timer); pastedAddition = null; }
         toast(data.message);
@@ -147,10 +219,11 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     current.addEventListener("error", () => current.close());
   }
 
-  function setCount(value) { count.textContent = value + " viewer" + (value === 1 ? "" : "s"); }
+  function setCount(value) { $("uc-label").textContent = value + " watching"; }
 
   function render() {
     setCount(room.userCount);
+    renderPeople(room.members);
     const signature = JSON.stringify([room.queue, room.currentIndex]);
     if (signature !== queueSignature) {
     queueSignature = signature;

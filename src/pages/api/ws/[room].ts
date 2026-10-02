@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { verifiedUser, displayName } from "../../../lib/auth";
+import { verifiedUser, displayName, avatarUrl } from "../../../lib/auth";
 import { roomDetails, rememberJoin } from "../../../lib/rooms";
 
 export const GET: APIRoute = async context => {
@@ -29,9 +29,12 @@ export const GET: APIRoute = async context => {
   // Never trust identity headers supplied by the connecting client.
   headers.delete("X-Party-User");
   headers.delete("X-Party-Name");
+  headers.delete("X-Party-Avatar");
   if (user) {
     headers.set("X-Party-User", user.id);
     headers.set("X-Party-Name", encodeURIComponent(displayName(user)));
+    const avatar = avatarUrl(user);
+    if (avatar) headers.set("X-Party-Avatar", new URL(avatar).href);
     if (details) context.locals.runtime.ctx.waitUntil(rememberJoin(env, user.id, details).catch(() => {}));
   }
   return stub.fetch(new Request(request, { headers }));

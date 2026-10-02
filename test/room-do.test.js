@@ -203,3 +203,40 @@ test("saved rooms never schedule or run cleanup", async () => {
   await room.alarm();
   assert.ok(saved.has("room") && saved.has("details"));
 });
+
+test("everyone sees one entry per person, with themselves marked", async () => {
+  const { send, sockets } = await setup();
+  sockets.push(socket());
+  sockets[2].serializeAttachment({ joined: false, userId: "member-1", verifiedName: "Mara", avatar: "https://cdn.example/mara.png" });
+  await send({ type: "join", sessionId: "tab-a" }, sockets[2]);
+  sockets.push(socket());
+  sockets[3].serializeAttachment({ joined: false, userId: "member-1", verifiedName: "Mara", avatar: "https://cdn.example/mara.png" });
+  await send({ type: "join", sessionId: "tab-b" }, sockets[3]);
+  const seen = sockets[0].messages.at(-1);
+  assert.equal(seen.type, "users");
+  assert.equal(seen.userCount, 3);
+  assert.deepEqual(seen.members.map(person => [person.name, person.you, person.member]), [["Alice", true, false], ["Bob", false, false], ["Mara", false, true]]);
+  assert.equal(seen.members[2].avatar, "https://cdn.example/mara.png");
+  assert.ok(!JSON.stringify(seen).includes("member-1"), "account ids stay on the server");
+  assert.equal(sockets[3].messages.at(-1).members[2].you, true);
+  await send({ type: "join", username: "Alicia" });
+  assert.equal(sockets[1].messages.at(-1).members[0].name, "Alicia");
+});
+
+test("a pause names who paused, and resuming clears it", async () => {
+  const { room, add, control, sockets } = await setup();
+  await add();
+  await control("pause", 12);
+  assert.equal(sockets[1].messages.at(-1).pausedBy, "Alice");
+  await control("seek", 30);
+  assert.equal(room.state.pausedBy, "Alice");
+  await control("play", 30);
+  assert.equal(room.state.pausedBy, null);
+});
+
+test("member avatars must be https", () => {
+  const room = new RoomDO({ storage: { get: async () => null }, blockConcurrencyWhile: fn => fn() }, {});
+  assert.equal(room._avatar("http://cdn.example/a.png"), null);
+  assert.equal(room._avatar("javascript:alert(1)"), null);
+  assert.equal(room._avatar("https://cdn.example/a.png"), "https://cdn.example/a.png");
+});

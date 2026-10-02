@@ -58,7 +58,10 @@ export class RoomDO {
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
     await this._keepAlive();
-    if (userId) server.serializeAttachment({ joined: false, userId, verifiedName: decodeURIComponent(request.headers.get("X-Party-Name") || "Member") });
+    if (userId) server.serializeAttachment({
+      joined: false, userId, verifiedName: decodeURIComponent(request.headers.get("X-Party-Name") || "Member"),
+      avatar: this._avatar(request.headers.get("X-Party-Avatar")),
+    });
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -75,12 +78,13 @@ export class RoomDO {
     if (data.type === "join") {
       const identity = ws.deserializeAttachment();
       ws.serializeAttachment({
-        joined: true, userId: identity?.userId, verifiedName: identity?.verifiedName,
+        joined: true, userId: identity?.userId, verifiedName: identity?.verifiedName, avatar: identity?.avatar || null,
         username: identity?.verifiedName || (typeof data.username === "string" ? data.username : "Guest").slice(0, 32) || "Guest",
-        sessionId: (typeof data.sessionId === "string" ? data.sessionId : crypto.randomUUID()).slice(0, 64),
+        sessionId: identity?.sessionId || (typeof data.sessionId === "string" ? data.sessionId : crypto.randomUUID()).slice(0, 64),
+        joinedAt: identity?.joinedAt || Date.now(),
       });
       this._sendState(ws, data.requestId);
-      this._broadcast({ type: "users", userCount: this._members().length });
+      this._broadcastUsers();
       return;
     }
     if (!ws.deserializeAttachment()?.joined) return;
@@ -99,6 +103,7 @@ export class RoomDO {
         s.currentTime = data.currentTime;
         s.updatedAt = Date.now();
         if (data.type !== "seek") s.isPlaying = data.type === "play";
+        if (data.type === "pause") s.pausedBy = ws.deserializeAttachment().username;
         break;
       }
       case "add": {
@@ -144,9 +149,11 @@ export class RoomDO {
       }
       default: return;
     }
+    // Only an explicit pause names who paused; anything else that stops playback doesn't.
+    if (s.isPlaying || data.type === "next" || data.type === "ended" || s.currentIndex === -1) s.pausedBy = null;
     s.revision++;
     await this.ctx.storage.put("room", s);
-    this._broadcast(this._snapshot());
+    this._broadcast(ws => this._snapshot(undefined, ws));
   }
 
   _matchesPlayback(data, checkRevision = false) {
@@ -167,19 +174,51 @@ export class RoomDO {
     return this.state.currentTime + (this.state.isPlaying ? Math.max(0, Date.now() - this.state.updatedAt) / 1000 : 0);
   }
 
-  _snapshot(requestId) {
+  _snapshot(requestId, ws) {
+    const members = this._people(ws);
     return {
       ...this.state, type: "state", currentTime: this._time(),
-      serverTime: Date.now(), userCount: this._members().length,
+      serverTime: Date.now(), userCount: members.length, members,
       ...(typeof requestId === "string" ? { requestId: requestId.slice(0, 64) } : {}),
     };
   }
 
-  _sendState(ws, requestId) { this._send(ws, this._snapshot(requestId)); }
+  // One entry per person: several tabs of the same account or session count once.
+  // Account ids and session ids stay on the server; `you` marks the recipient.
+  _people(viewer) {
+    const own = viewer?.deserializeAttachment();
+    const people = new Map();
+    for (const ws of this._members()) {
+      const member = ws.deserializeAttachment();
+      const key = member.userId ? "u:" + member.userId : "s:" + member.sessionId;
+      const person = people.get(key);
+      if (person && person.joinedAt <= member.joinedAt) continue;
+      people.set(key, {
+        joinedAt: member.joinedAt || 0, name: member.username, avatar: member.avatar || null,
+        member: !!member.userId,
+        you: !!own && (member.userId ? member.userId === own.userId : member.sessionId === own.sessionId),
+      });
+    }
+    return [...people.values()].sort((a, b) => a.joinedAt - b.joinedAt)
+      .map(({ joinedAt, ...person }, index) => ({ id: index, ...person }));
+  }
+
+  _avatar(value) {
+    if (typeof value !== "string" || value.length > 1000) return null;
+    try { return new URL(value).protocol === "https:" ? value : null; } catch { return null; }
+  }
+
+  _sendState(ws, requestId) { this._send(ws, this._snapshot(requestId, ws)); }
   _error(ws, message) { this._send(ws, { type: "error", message }); }
   _send(ws, data) { try { ws.send(JSON.stringify(data)); } catch {} }
   _members() { return this.ctx.getWebSockets().filter(ws => ws.deserializeAttachment()?.joined); }
-  _broadcast(data) { for (const ws of this._members()) this._send(ws, data); }
+  _broadcast(data) { for (const ws of this._members()) this._send(ws, typeof data === "function" ? data(ws) : data); }
+  _broadcastUsers() {
+    this._broadcast(ws => {
+      const members = this._people(ws);
+      return { type: "users", userCount: members.length, members };
+    });
+  }
 
   async webSocketClose(ws, code, reason) {
     await this.ready;
@@ -201,10 +240,11 @@ export class RoomDO {
       this.state.currentTime = this._time();
       this.state.updatedAt = Date.now();
       this.state.isPlaying = false;
+      this.state.pausedBy = null;
       this.state.revision++;
       await this.ctx.storage.put("room", this.state);
     }
-    this._broadcast({ type: "users", userCount: this._members().length });
+    this._broadcastUsers();
     await this._keepAlive();
   }
 
