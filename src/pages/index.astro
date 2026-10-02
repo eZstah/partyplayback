@@ -42,6 +42,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
       </div>}
       <div class="mascot-cast" aria-hidden="true"><div class="cast-member cast-mint"><span class="speech-bubble">Got a good video?</span><Mascot kind="mint"/><span class="cast-floor"></span></div><div class="cast-member cast-pink"><span class="speech-bubble">I brought snacks.</span><Mascot kind="pink"/><span class="cast-floor"></span></div><div class="cast-member cast-purple"><span class="speech-bubble">6-7</span><Mascot kind="purple"/></div><span class="floating-popcorn"><svg width="65" height="75" viewBox="0 0 65 75" fill="none"><path d="m9 31 7 39h33l7-39H9Z" fill="#F7EBCA"/><path d="m21 32 3 38h7l-1-38m9 0-2 38h7l4-38" fill="#EC8FA3"/><path d="M7 33c-7-10 2-19 10-13-2-16 17-19 21-8 12-7 22 5 14 14 12-2 14 9 6 13H9Z" fill="#FFF5D8"/></svg></span><MusicFlourishes/></div>
     </section>
+    {!user && <>
     <section class="how-it-works reveal delay-2" aria-labelledby="how-title"><h2 id="how-title">Less “3, 2, 1, play!”<br/>More actually watching.</h2><div class="how-grid"><article><span class="step-symbol step-lilac"><Icon name="plus" size={28}/></span><h3>Make a room</h3><p>One click. No account needed.</p></article><article><span class="step-symbol step-pink"><Icon name="link" size={28}/></span><h3>Send the link</h3><p>Invite link copied. Paste it in your group chat.</p></article><article><span class="step-symbol step-mint"><Icon name="play" size={28}/></span><h3>Watch together</h3><p>Paste a YouTube link. Play, pause and skip in sync.</p></article></div></section>
     <section class="faq-list" aria-label="Frequently asked questions">
       <div class="faq-column">
@@ -55,6 +56,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
       <details class="home-faq"><summary>Why won’t a video play?</summary><p>Some YouTube videos can’t play outside YouTube. Try another video.</p></details>
       </div>
     </section>
+    </>}
   </main>
   <footer class="page-footer"><span>youple.tv · <a href="/privacy">Privacy</a></span><span>Watch together. Snacks optional.</span></footer>
   <div id="room-portal" class="room-portal" hidden aria-hidden="true"><div class="portal-tunnel">{Array.from({length:6},(_,i)=><span class="portal-ring" style={'--phase:'+i}></span>)}{Array.from({length:14},(_,i)=><span class="portal-streak" style={'--angle:'+(i*360/14)+'deg;--phase:'+(i%4)}></span>)}<div class="portal-core"><PortalIcon size={88}/></div></div></div>
