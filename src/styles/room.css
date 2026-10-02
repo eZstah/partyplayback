@@ -564,13 +564,22 @@
 }
 .room-tools .room-presence #conn { flex: none; white-space: nowrap; }
 .room-tools .name-button { min-width: 0; }
+/* Invite reads as part of the room name: a quiet accent link beside it, styled like "Save room". */
 .header-invite {
+  display: inline-flex;
+  align-items: center;
   flex: none;
-  gap: 8px;
+  gap: 7px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--accent);
   font-size: 15px;
-  min-height: 40px;
-  padding: 8px 14px;
+  white-space: nowrap;
+  transition: background .25s ease,color .25s ease;
 }
+.header-invite:hover { background: #c3afff0f; color: #e0d4ff; }
 .room-tools .header-shortcuts {
   flex: none;
   min-width: 44px;
@@ -666,9 +675,9 @@
   .room-tools .room-presence #conn { display: inline; }
   .room-tools .name-button { max-width: 105px; padding: 12px; }
   .player-view-controls { gap: 2px; }
-  .header-invite,.player-view-controls .icon-button { min-width: 44px; width: 44px; height: 44px; }
-  .header-invite { padding: 0; min-width: 40px; width: 40px; height: 40px; min-height: 40px; }
-  .header-invite #invite-label { display: none; }
+  .player-view-controls .icon-button { min-width: 44px; width: 44px; height: 44px; }
+  .header-invite { padding: 8px 4px; font-size: 14px; }
+  .header-invite #invite-label { min-width: 6.7em; }
   .room-shell:fullscreen .room-nav { padding: 10px 18px; }
   .room-shell:fullscreen .player-bottom { padding: 12px 16px; }
 }
@@ -828,8 +837,8 @@
 .save-room-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: none; min-height: 44px; padding: 8px 10px; border-radius: 12px; color: var(--muted); background: transparent; font-size: 15px; white-space: nowrap; transition: background .25s ease,color .25s ease; }
 .save-room-button:hover { background: #c3afff0b; color: #e0d4ff; }
 #invite-icon,#invite-success-icon { display: flex; }
-#invite-label { min-width: 105px; text-align: center; }
-.header-invite[data-copied=true] { color: #a9dfba; background: #a9dfba10; }
+#invite-label { min-width: 6.7em; text-align: left; }
+.header-invite[data-copied=true] { color: #a9dfba; background: transparent; }
 @media(max-width:1100px) { .room-identity { gap: 14px; } .room-name { gap: 8px; } }
 @media(max-width:600px) { .room-name { flex: 1; flex-wrap: wrap; gap: 0 8px; } .room-name h1 { flex-basis: 100%; font-size: 17px; } .room-identity { align-items: flex-start; } .save-room-button { padding: 8px 0; font-size: 15px; gap: 6px; } }
 @media(prefers-reduced-motion:reduce) { .save-room-button { transition: none; } }
