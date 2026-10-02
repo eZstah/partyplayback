@@ -12,6 +12,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const $ = id => document.getElementById(id);
   const conn = $("conn"), count = $("uc"), username = $("uname");
   const queueList = $("q-list"), urlInput = $("url-in"), addButton = $("add-btn");
+  const addForm = $("add-form"), addError = $("add-error"), addFeedback = $("add-feedback");
   const playButton = $("play-btn"), nextButton = $("next-btn"), enableButton = $("enable-btn");
   let socket = null, room = null, joined = false, stopping = false;
   let reconnectTimer, joinTimer, toastTimer, delay = 1000, lastMessage = 0;
@@ -361,7 +362,8 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     if (adding || pastedAddition || readingClipboard) { if (fromPaste) toast("A video is being added. Paste again in a moment."); return; }
     if (!joined) { toast("Wait for the room to reconnect"); return; }
     const url = youtubeUrl(value);
-    if (!url) { toast("Paste a valid YouTube video link"); return; }
+    if (!url) { showLinkError(value.trim() ? "Use a YouTube video link." : "Paste a YouTube link."); return; }
+    showLinkError();
     if (room.queue.length >= 100) { toast("The playlist is full"); return; }
     adding = true;
     if (fromPaste) toast("Adding video…");
@@ -384,7 +386,15 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     adding = false;
     controls();
   }
-  $("add-form").addEventListener("submit", event => {
+  function showLinkError(message = "") {
+    addError.textContent = message;
+    addFeedback.hidden = !message;
+    urlInput.setAttribute("aria-invalid", String(!!message));
+    addForm.dataset.invalid = String(!!message);
+    if (message) urlInput.focus();
+  }
+  urlInput.addEventListener("input", () => showLinkError());
+  addForm.addEventListener("submit", event => {
     event.preventDefault();
     if (readingClipboard) return;
     addVideo(urlInput.value);
@@ -398,8 +408,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     if (stopping) return;
     controls();
     if (!link) {
-      urlInput.focus();
-      toast("Paste a YouTube link.");
+      showLinkError("Paste a YouTube link.");
       return;
     }
     addVideo(link.value, link.fromClipboard);
