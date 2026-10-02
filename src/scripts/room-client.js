@@ -24,6 +24,12 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   let pastedAddition = null;
   let youtubePlayer = null, youtubeControls = false;
   const youtubeButton = $("youtube-controls-btn");
+  const skipToggle = $("skip-toggle"), skipBoxes = [...document.querySelectorAll("#skip-categories input")];
+  const SKIPPED = {
+    sponsor: "sponsor", selfpromo: "self-promo", interaction: "subscribe reminder", intro: "intro",
+    outro: "outro", preview: "preview", music_offtopic: "non-music part", filler: "filler",
+  };
+  let segmentSignature = "";
 
   function getStored(storage, key, fallback) {
     try {
@@ -72,6 +78,16 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     addButton.disabled = !joined || adding || readingClipboard;
     $("auto-clear-btn").disabled = !joined;
     $("auto-clear-btn").setAttribute("aria-checked", String(!!room?.autoClear));
+    const skip = room?.sponsorSkip;
+    $("skip-btn").disabled = !joined || !skip;
+    $("skip-btn").dataset.on = String(!!skip?.enabled);
+    $("skip-btn").title = skip?.enabled ? "Skipping sponsors for everyone" : "Sponsor skipping is off";
+    skipToggle.disabled = !joined;
+    skipToggle.setAttribute("aria-checked", String(!!skip?.enabled));
+    for (const box of skipBoxes) {
+      box.checked = !!skip?.categories.includes(box.value);
+      box.disabled = !joined || !skip?.enabled;
+    }
     const playing = !!room?.isPlaying;
     queueList.querySelectorAll(".qi-rm").forEach(button => { button.disabled = !joined; });
     queueList.querySelectorAll(".qi-play").forEach(button => {
@@ -235,6 +251,10 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
           document.dispatchEvent(new Event("youple:room-ready"));
         }
         ensurePlayer();
+      } else if (data.type === "skipped" && Array.isArray(data.skips) && data.skips.length) {
+        const seconds = Math.round(data.skips.reduce((total, skip) => total + Math.max(0, skip.to - skip.from), 0));
+        const names = [...new Set(data.skips.map(skip => SKIPPED[skip.category] || "segment"))].join(" and ");
+        toast("Skipped " + names + (seconds ? " · " + seconds + "s" : ""));
       } else if (data.type === "users") {
         renderPeople(data.members);
         pals.observe({ users: data.userCount });
@@ -369,6 +389,11 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   playButton.addEventListener("click", togglePlayback);
   nextButton.addEventListener("click", () => playback.command("next"));
   $("auto-clear-btn").addEventListener("click", () => send({ type: "auto-clear", enabled: !room.autoClear }));
+  $("skip-btn").addEventListener("click", () => $("skip-dialog").showModal());
+  skipToggle.addEventListener("click", () => send({ type: "sponsor-skip", enabled: !room.sponsorSkip.enabled }));
+  for (const box of skipBoxes) box.addEventListener("change", () => {
+    send({ type: "sponsor-skip", categories: skipBoxes.filter(item => item.checked).map(item => item.value) });
+  });
   enableButton.addEventListener("click", () => playback.enablePlayback());
 
   async function addVideo(value, fromPaste = false) {
@@ -466,6 +491,21 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     $("elapsed").textContent = timeLabel(Number(progress.value));
     progress.style.setProperty("--progress", (duration ? Number(progress.value) / duration * 100 : 0) + "%");
     progress.setAttribute("aria-valuetext", timeLabel(Number(progress.value)) + " of " + timeLabel(duration));
+    // Parts the room will skip show as marks on the timeline.
+    const skip = room?.sponsorSkip;
+    const marks = hasVideo && duration && skip?.enabled && room.segmentsFor === room.queue[room.currentIndex].videoId
+      ? room.segments.filter(segment => skip.categories.includes(segment.category)) : [];
+    const signature = JSON.stringify([marks, duration]);
+    if (signature !== segmentSignature) {
+      segmentSignature = signature;
+      const stops = marks.map(segment => {
+        const from = (Math.min(segment.start, duration) / duration * 100).toFixed(2) + "%";
+        const to = (Math.min(segment.end, duration) / duration * 100).toFixed(2) + "%";
+        return "transparent " + from + ",var(--segment) " + from + ",var(--segment) " + to + ",transparent " + to;
+      });
+      if (stops.length) progress.style.setProperty("--segments", "linear-gradient(to right," + stops.join(",") + ")");
+      else progress.style.removeProperty("--segments");
+    }
   }
   function seek(time) {
     if (!joined || !room?.queue[room.currentIndex]) return;

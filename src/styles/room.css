@@ -141,7 +141,8 @@
   min-width: 0;
   height: 4px;
   border-radius: 10px;
-  background: linear-gradient(to right,var(--accent) var(--progress),#2b2d36 var(--progress));
+  --segment: #f2c94ccc;
+  background: var(--segments,linear-gradient(transparent,transparent)),linear-gradient(to right,var(--accent) var(--progress),#2b2d36 var(--progress));
   cursor: pointer;
 }
 #progress::-webkit-slider-thumb {
@@ -1078,3 +1079,13 @@
 .copied-pop.show .copied-pop-card { animation: copied-pop 2.4s var(--ease) both; }
 @keyframes copied-pop { 0% { opacity: 0; transform: scale(.85); } 12%,80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(.97); } }
 @media(prefers-reduced-motion:reduce) { .copied-pop.show .copied-pop-card { animation: none; opacity: 1; transform: none; } }
+.skip-button { position: relative; }
+.skip-button::after { content: ""; position: absolute; top: 8px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: #f2c94c; box-shadow: 0 0 0 2px var(--bg, #181622); }
+.skip-button[data-on=false]::after { display: none; }
+.skip-dialog p a { color: var(--accent); }
+.skip-toggle { margin: 6px 0 10px; font-size: 16px; }
+.skip-toggle[aria-checked=true] .auto-clear-track::after { background: #191321; }
+.skip-categories { border: 0; padding: 0; margin: 0; display: grid; gap: 2px; }
+.skip-dialog .skip-option { display: flex; align-items: center; gap: 12px; min-height: 40px; font-size: 15px; color: var(--ink); cursor: pointer; }
+.skip-dialog .skip-option input { width: 18px; height: 18px; margin: 0; padding: 0; flex: none; accent-color: var(--accent); cursor: pointer; }
+.skip-dialog .skip-option:has(input:disabled) { color: var(--muted); cursor: default; }

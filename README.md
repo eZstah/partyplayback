@@ -31,6 +31,11 @@ then restart it after code changes.
 - Space or K: play/pause. Left/right: seek 5 seconds. J/L: seek 10 seconds.
   N: next. F: fullscreen. T: theater. M: local mute. ?: shortcuts.
   Shortcuts stay inactive in inputs and dialogs. Esc closes dialogs/fullscreen.
+- Sponsor reads, self-promotion and subscribe reminders are skipped once for
+  the whole room, using [SponsorBlock](https://sponsor.ajay.app/) segments. The
+  skip button next to the YouTube controls turns this off or picks other
+  categories (intros, endcards, previews, non-music parts, filler). Seeking
+  into a segment watches it.
 - If your browser blocks autoplay, click **Join playback**. This enables your
   own player without pausing or seeking everyone else.
 - Removing an upcoming video preserves the current position. Removing the

@@ -2,6 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RoomDO } from "../src/lib/room-do.js";
 
+// Tests never reach SponsorBlock; individual tests swap in their own segments.
+const realLookup = RoomDO.lookupSegments;
+let segmentLookup = async () => [];
+RoomDO.lookupSegments = videoId => segmentLookup(videoId);
+
 function socket() {
   return {
     attachment: null, messages: [],
@@ -20,6 +25,7 @@ async function setup() {
       async get(key) { return structuredClone(saved.get(key)); },
       async put(key, value) { saved.set(key, structuredClone(value)); },
       async setAlarm(time) { ctx.alarmAt = time; },
+      async deleteAlarm() { ctx.alarmAt = undefined; },
       async deleteAll() { saved.clear(); },
     },
     blockConcurrencyWhile(fn) { return fn(); },
@@ -329,9 +335,12 @@ test("unsaved rooms clear themselves once nobody has visited for 30 days", async
   await add();
   await room.webSocketClose(sockets[1], 1000, "");
   assert.ok(ctx.alarmAt > Date.now() + RoomDO.GUEST_ROOM_TTL - 60000);
+  room.expiresAt = Date.now() - 1;
   await room.alarm();
   assert.ok(saved.has("room"), "a room with viewers connected is kept");
+  assert.ok(ctx.alarmAt > Date.now() + RoomDO.GUEST_ROOM_TTL - 60000);
   sockets.length = 0;
+  room.expiresAt = Date.now() - 1;
   await room.alarm();
   assert.equal(saved.size, 0);
   assert.equal(room.state.queue.length, 0);
@@ -385,4 +394,135 @@ test("member avatars must be https", () => {
   assert.equal(room._avatar("http://cdn.example/a.png"), null);
   assert.equal(room._avatar("javascript:alert(1)"), null);
   assert.equal(room._avatar("https://cdn.example/a.png"), "https://cdn.example/a.png");
+});
+
+const SEGMENTS = [
+  { start: 30, end: 60, category: "sponsor" },
+  { start: 100, end: 110, category: "intro" },
+  { start: 200, end: 220, category: "selfpromo" },
+];
+
+async function sponsorRoom(segments = SEGMENTS) {
+  segmentLookup = async () => segments;
+  const env = await setup();
+  await env.add();
+  await env.room.lookup;
+  segmentLookup = async () => [];
+  return env;
+}
+
+test("sponsor skipping defaults on and schedules one room-wide jump", async () => {
+  const { room, ctx, sockets } = await sponsorRoom();
+  assert.deepEqual(room.state.sponsorSkip, { enabled: true, categories: ["sponsor", "selfpromo", "interaction"] });
+  assert.equal(sockets[1].messages.at(-1).segments.length, 3);
+  assert.ok(Math.abs(ctx.alarmAt - (Date.now() + 30000)) < 1000, "alarm at the sponsor start");
+  const revision = room.state.revision;
+  room.state.updatedAt -= 30000;
+  await room.alarm();
+  assert.equal(room.state.currentTime, 60);
+  assert.equal(room.state.revision, revision + 1);
+  for (const ws of sockets) {
+    assert.equal(ws.messages.at(-2).currentTime >= 60, true);
+    assert.deepEqual(ws.messages.at(-1).skips.map(skip => [skip.category, skip.to]), [["sponsor", 60]]);
+  }
+  // The intro is off by default, so the next jump is the self-promo.
+  assert.ok(Math.abs(ctx.alarmAt - (Date.now() + 140000)) < 1000);
+});
+
+test("an intro at the very start is skipped as soon as its segments arrive", async () => {
+  const { room, sockets } = await sponsorRoom([{ start: 0, end: 12, category: "sponsor" }, { start: 12, end: 20, category: "intro" }]);
+  assert.ok(room.state.currentTime >= 12);
+  assert.equal(sockets[0].messages.at(-1).skips[0].category, "sponsor");
+  // Ticking a category mid-segment schedules it right away.
+  await room.webSocketMessage(sockets[0], JSON.stringify({ type: "sponsor-skip", categories: ["sponsor", "intro"] }));
+  await room.alarm();
+  assert.equal(room.state.currentTime, 20);
+  assert.equal(sockets[0].messages.at(-1).skips[0].category, "intro");
+});
+
+test("seeking into a segment watches it; seeking before it skips it again", async () => {
+  const { room, ctx, control } = await sponsorRoom();
+  await control("seek", 40);
+  assert.ok(ctx.alarmAt > Date.now() + 150000, "the sponsor being watched is not scheduled");
+  room.state.updatedAt -= 5000;
+  await room.alarm();
+  assert.ok(room.state.currentTime < 60);
+  await control("seek", 25);
+  assert.ok(Math.abs(ctx.alarmAt - (Date.now() + 5000)) < 1000);
+});
+
+test("pausing, turning skipping off, or unticking a category cancels the jump", async () => {
+  const { room, ctx, control, send } = await sponsorRoom();
+  const expiry = () => ctx.alarmAt > Date.now() + RoomDO.GUEST_ROOM_TTL - 60000;
+  await control("pause", 10);
+  assert.ok(expiry());
+  await control("play", 10);
+  assert.ok(!expiry());
+  await send({ type: "sponsor-skip", enabled: false });
+  assert.ok(expiry());
+  assert.equal(room.state.sponsorSkip.enabled, false);
+  await send({ type: "sponsor-skip", enabled: true, categories: ["selfpromo"] });
+  assert.ok(Math.abs(ctx.alarmAt - (Date.now() + 190000)) < 1000);
+  const revision = room.state.revision;
+  await send({ type: "sponsor-skip", categories: ["ads"] });
+  await send({ type: "sponsor-skip", enabled: "yes" });
+  assert.equal(room.state.revision, revision);
+  assert.deepEqual(room.state.sponsorSkip.categories, ["selfpromo"]);
+});
+
+test("segments follow the current video and a disabled room never looks them up", async () => {
+  const { room, add, send } = await sponsorRoom();
+  let lookups = 0;
+  segmentLookup = async () => { lookups++; return []; };
+  await add("dQw4w9WgXcQ");
+  await send({ type: "next", playbackId: room.state.playbackId });
+  await room.lookup;
+  assert.equal(lookups, 1);
+  assert.deepEqual(room.state.segments, []);
+  assert.equal(room.state.segmentsFor, "dQw4w9WgXcQ");
+  await send({ type: "sponsor-skip", enabled: false });
+  await add("M7lc1UVf-VE");
+  await send({ type: "next", playbackId: room.state.playbackId });
+  await room.lookup;
+  assert.equal(lookups, 1);
+  segmentLookup = async () => [];
+});
+
+test("saved rooms schedule only skip alarms", async () => {
+  const { room, ctx, control } = await sponsorRoom();
+  room.details = { mode: "member" };
+  await control("pause", 5);
+  assert.equal(ctx.alarmAt, undefined);
+  await control("play", 5);
+  assert.ok(Math.abs(ctx.alarmAt - (Date.now() + 25000)) < 1000);
+});
+
+test("SponsorBlock lookups send only a hash prefix and keep skip segments for the video", async () => {
+  const original = globalThis.fetch;
+  let requested;
+  globalThis.fetch = async url => {
+    requested = url;
+    return Response.json([
+      { videoID: "other", segments: [{ segment: [1, 50], category: "sponsor", actionType: "skip" }] },
+      { videoID: "M7lc1UVf-VE", segments: [
+        { segment: [90, 120], category: "selfpromo", actionType: "skip" },
+        { segment: [10, 40], category: "sponsor", actionType: "skip" },
+        { segment: [50, 51], category: "sponsor", actionType: "skip" },
+        { segment: [60, 70], category: "sponsor", actionType: "mute" },
+        { segment: [80, 85], category: "poi_highlight", actionType: "skip" },
+      ] },
+    ]);
+  };
+  try {
+    const segments = await realLookup("M7lc1UVf-VE");
+    assert.match(requested, /^https:\/\/sponsor\.ajay\.app\/api\/skipSegments\/[0-9a-f]{4}\?/);
+    assert.ok(!requested.includes("M7lc1UVf-VE"));
+    assert.deepEqual(segments, [{ start: 10, end: 40, category: "sponsor" }, { start: 90, end: 120, category: "selfpromo" }]);
+    globalThis.fetch = async () => new Response("Not Found", { status: 404 });
+    assert.deepEqual(await realLookup("M7lc1UVf-VE"), []);
+    globalThis.fetch = async () => new Response("", { status: 429 });
+    await assert.rejects(realLookup("M7lc1UVf-VE"));
+  } finally {
+    globalThis.fetch = original;
+  }
 });

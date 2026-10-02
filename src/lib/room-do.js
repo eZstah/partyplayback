@@ -1,19 +1,32 @@
 // Plain JS: exported from the worker by scripts/post-build.mjs.
 export class RoomDO {
   static GUEST_ROOM_TTL = 30 * 24 * 60 * 60 * 1000;
+  // SponsorBlock categories a room can skip, in the order the room settings list them.
+  static SKIP_CATEGORIES = ["sponsor", "selfpromo", "interaction", "intro", "outro", "preview", "music_offtopic", "filler"];
+  static DEFAULT_SKIP = ["sponsor", "selfpromo", "interaction"];
+  // Shorter jumps fall inside the players' drift tolerance and would desync them.
+  static MIN_SEGMENT = 2;
+
+  static initialState() {
+    return {
+      queue: [], currentIndex: -1, isPlaying: false, currentTime: 0,
+      updatedAt: Date.now(), playbackId: null, revision: 0, autoClear: false,
+      sponsorSkip: { enabled: true, categories: [...RoomDO.DEFAULT_SKIP] },
+      segments: [], segmentsFor: null, skipFrom: 0,
+    };
+  }
 
   constructor(ctx, env) {
     this.ctx = ctx;
     this.env = env;
-    this.state = {
-      queue: [], currentIndex: -1, isPlaying: false, currentTime: 0,
-      updatedAt: Date.now(), playbackId: null, revision: 0, autoClear: false,
-    };
+    this.state = RoomDO.initialState();
     // Room state and socket identities must survive WebSocket hibernation.
     this.ready = ctx.blockConcurrencyWhile(async () => {
       const saved = await ctx.storage.get("room");
       if (saved) this.state = { ...this.state, ...saved };
       this.details = await ctx.storage.get("details") || null;
+      // Rooms from before skip alarms existed keep a full TTL from their next wake.
+      this.expiresAt = await ctx.storage.get("expiresAt") || Date.now() + RoomDO.GUEST_ROOM_TTL;
     });
   }
 
@@ -85,6 +98,7 @@ export class RoomDO {
       });
       this._sendState(ws, data.requestId);
       this._broadcastUsers();
+      this.lookup = this._findSegments().catch(() => {});
       return;
     }
     if (!ws.deserializeAttachment()?.joined) return;
@@ -101,6 +115,16 @@ export class RoomDO {
         s.autoClear = data.enabled;
         break;
       }
+      case "sponsor-skip": {
+        const enabled = data.enabled ?? s.sponsorSkip.enabled;
+        const categories = data.categories ?? s.sponsorSkip.categories;
+        if (typeof enabled !== "boolean" || !Array.isArray(categories) || categories.length > 20 ||
+          categories.some(category => !RoomDO.SKIP_CATEGORIES.includes(category))) {
+          return this._error(ws, "Invalid sponsor skip setting");
+        }
+        s.sponsorSkip = { enabled, categories: RoomDO.SKIP_CATEGORIES.filter(category => categories.includes(category)) };
+        break;
+      }
       case "play":
       case "pause":
       case "seek": {
@@ -108,6 +132,8 @@ export class RoomDO {
         if (!this._validTime(data.currentTime)) return this._error(ws, "Invalid playback time");
         s.currentTime = data.currentTime;
         s.updatedAt = Date.now();
+        // Seeking into a segment means someone wants to watch it.
+        if (data.type === "seek") s.skipFrom = data.currentTime;
         if (data.type !== "seek") s.isPlaying = data.type === "play";
         if (data.type === "pause") s.pausedBy = ws.deserializeAttachment().username;
         break;
@@ -130,7 +156,7 @@ export class RoomDO {
         if (index === -1) return this._sendState(ws);
         s.queue.splice(index, 1);
         if (!s.queue.length) {
-          Object.assign(s, { currentIndex: -1, isPlaying: false, currentTime: 0, updatedAt: Date.now(), playbackId: null });
+          Object.assign(s, { currentIndex: -1, isPlaying: false, currentTime: 0, updatedAt: Date.now(), playbackId: null, segments: [], segmentsFor: null });
         } else if (index < s.currentIndex) {
           s.currentIndex--;
         } else if (index === s.currentIndex) {
@@ -181,6 +207,97 @@ export class RoomDO {
     s.revision++;
     await this.ctx.storage.put("room", s);
     this._broadcast(ws => this._snapshot(undefined, ws));
+    await this._schedule();
+    this.lookup = this._findSegments().catch(() => {});
+  }
+
+  // SponsorBlock lookups use a hash prefix, so the API never learns which video a
+  // room watches. Results are cached per video in this data center's cache.
+  static async lookupSegments(videoId) {
+    const cache = globalThis.caches?.default;
+    const key = "https://youple.tv/__sponsorblock/v1/" + videoId;
+    const hit = await cache?.match(key).catch(() => null);
+    if (hit) return hit.json();
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(videoId)));
+    const prefix = [...digest.slice(0, 2)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+    const response = await fetch("https://sponsor.ajay.app/api/skipSegments/" + prefix + "?actionType=skip&categories=" +
+      encodeURIComponent(JSON.stringify(RoomDO.SKIP_CATEGORIES)), {
+      headers: { "User-Agent": "youple.tv (https://youple.tv/about)" }, signal: AbortSignal.timeout(5000),
+    });
+    // 404 means SponsorBlock has nothing for any video with this prefix.
+    if (response.status !== 200 && response.status !== 404) throw new Error("SponsorBlock answered " + response.status);
+    const videos = response.status === 200 ? await response.json() : [];
+    const found = Array.isArray(videos) ? videos.find(video => video?.videoID === videoId)?.segments : null;
+    const segments = (Array.isArray(found) ? found : [])
+      .filter(item => item?.actionType === "skip" && RoomDO.SKIP_CATEGORIES.includes(item.category) && Array.isArray(item.segment))
+      .map(item => ({ start: Number(item.segment[0]), end: Number(item.segment[1]), category: item.category }))
+      .filter(item => Number.isFinite(item.start) && item.start >= 0 && item.end - item.start >= RoomDO.MIN_SEGMENT)
+      .sort((a, b) => a.start - b.start).slice(0, 50);
+    await cache?.put(key, new Response(JSON.stringify(segments), {
+      headers: { "Content-Type": "application/json", "Cache-Control": "max-age=" + (segments.length ? 21600 : 3600) },
+    })).catch(() => {});
+    return segments;
+  }
+
+  async _findSegments() {
+    const s = this.state;
+    const videoId = s.queue[s.currentIndex]?.videoId;
+    if (!videoId || !s.sponsorSkip.enabled || s.segmentsFor === videoId || this.lookingUp === videoId || this.lookupFailed === videoId) return;
+    this.lookingUp = videoId;
+    let segments = null;
+    try { segments = await RoomDO.lookupSegments(videoId); } catch {}
+    if (this.lookingUp === videoId) this.lookingUp = null;
+    // A failed lookup isn't retried for this video, so a struggling API isn't hammered.
+    if (!segments) { this.lookupFailed = videoId; return; }
+    if (s.queue[s.currentIndex]?.videoId !== videoId) return;
+    s.segments = segments;
+    s.segmentsFor = videoId;
+    await this.ctx.storage.put("room", s);
+    // An intro at 0:00 is already due by the time its segments arrive.
+    const skipped = await this._skipDue();
+    this._broadcast(ws => this._snapshot(undefined, ws));
+    if (skipped) this._broadcast({ type: "skipped", skips: skipped });
+    await this._schedule();
+  }
+
+  // The next segment the room will jump over, with the wall-clock time it starts.
+  _nextSkip() {
+    const s = this.state;
+    if (!s.isPlaying || !s.sponsorSkip.enabled || !s.segmentsFor || s.segmentsFor !== s.queue[s.currentIndex]?.videoId) return null;
+    const now = this._time();
+    let next = null;
+    for (const segment of s.segments) {
+      if (!s.sponsorSkip.categories.includes(segment.category) || segment.start < s.skipFrom - 0.5 || segment.end <= now + 1) continue;
+      if (!next || segment.start < next.start) next = segment;
+    }
+    return next && { ...next, at: Date.now() + Math.max(0, next.start - now) * 1000 };
+  }
+
+  // One authoritative jump for the whole room; players follow it like any seek.
+  async _skipDue() {
+    const s = this.state;
+    const skipped = [];
+    for (let next = this._nextSkip(); next && next.at <= Date.now() + 250 && skipped.length < 10; next = this._nextSkip()) {
+      skipped.push({ category: next.category, from: this._time(), to: next.end });
+      s.currentTime = Math.min(next.end, 604800);
+      s.updatedAt = Date.now();
+      // Overlapping segments that start later still count.
+      s.skipFrom = next.start;
+    }
+    if (!skipped.length) return null;
+    s.revision++;
+    await this.ctx.storage.put("room", s);
+    return skipped;
+  }
+
+  // One alarm serves both the next skip and guest-room expiry.
+  async _schedule() {
+    const expiry = this.details?.mode === "member" ? Infinity : this.expiresAt;
+    const at = Math.min(this._nextSkip()?.at ?? Infinity, expiry);
+    if (at === this.alarmAt) return;
+    this.alarmAt = at;
+    if (at === Infinity) await this.ctx.storage.deleteAlarm();
+    else await this.ctx.storage.setAlarm(at);
   }
 
   _matchesPlayback(data, checkRevision = false) {
@@ -191,10 +308,12 @@ export class RoomDO {
   _validTime(value) { return Number.isFinite(value) && value >= 0 && value <= 604800; }
 
   _load(index, isPlaying) {
+    const videoId = this.state.queue[index]?.videoId;
     Object.assign(this.state, {
       currentIndex: index, currentTime: 0, updatedAt: Date.now(),
-      isPlaying, playbackId: crypto.randomUUID(),
+      isPlaying, playbackId: crypto.randomUUID(), skipFrom: 0,
     });
+    if (videoId !== this.state.segmentsFor) Object.assign(this.state, { segments: [], segmentsFor: null });
   }
 
   _time() {
@@ -278,17 +397,29 @@ export class RoomDO {
   // Unsaved rooms are cleared once nobody has opened them for a while.
   // Saved (member) rooms and account catalogs never schedule an alarm.
   async _keepAlive() {
-    if (this.details?.mode === "member") return;
-    await this.ctx.storage.setAlarm(Date.now() + RoomDO.GUEST_ROOM_TTL);
+    if (this.details?.mode === "member") return this._schedule();
+    this.expiresAt = Date.now() + RoomDO.GUEST_ROOM_TTL;
+    await this.ctx.storage.put("expiresAt", this.expiresAt);
+    await this._schedule();
   }
 
   async alarm() {
     await this.ready;
-    if (this.details?.mode === "member") return;
-    if (this.ctx.getWebSockets().length) return this._keepAlive();
-    await this.ctx.storage.deleteAll();
-    this.details = null;
-    this.state = { queue: [], currentIndex: -1, isPlaying: false, currentTime: 0, updatedAt: Date.now(), playbackId: null, revision: 0, autoClear: false };
+    this.alarmAt = undefined;
+    if (this.details?.mode !== "member" && this.expiresAt <= Date.now()) {
+      if (this.ctx.getWebSockets().length) return this._keepAlive();
+      await this.ctx.storage.deleteAll();
+      this.details = null;
+      this.expiresAt = Date.now() + RoomDO.GUEST_ROOM_TTL;
+      this.state = RoomDO.initialState();
+      return;
+    }
+    const skipped = await this._skipDue();
+    if (skipped) {
+      this._broadcast(ws => this._snapshot(undefined, ws));
+      this._broadcast({ type: "skipped", skips: skipped });
+    }
+    await this._schedule();
   }
 
   _extractVideoId(value) {
