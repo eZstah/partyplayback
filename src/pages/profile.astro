@@ -1,5 +1,7 @@
 ---
 import Icon from '../components/Icon.astro';
+import Wordmark from '../components/Wordmark.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 import '../styles/app.css';
 import { verifiedUser, displayName, avatarUrl } from '../lib/auth';
 import { accountRooms } from '../lib/rooms';
@@ -15,52 +17,68 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="robots" content="noindex"/><meta name="theme-color" content="#181622"/><title>Your profile — youple.tv</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/></head>
-<body>
+<body class="profile-page">
+  <div class="profile-glow" aria-hidden="true"></div>
   <main class="profile">
-    <p><a class="back" href="/">← youple.tv</a></p>
-    <section class="identity">
-      <span class="profile-avatar">{avatar ? <img src={avatar} alt="" referrerpolicy="no-referrer"/> : name.slice(0, 1)}</span>
-      <div>
-        <h1 id="profile-name">{name}</h1>
-        <p class="muted">{user.email ? <>{user.email} · </> : null}Signed in with {provider}</p>
-      </div>
-    </section>
+    <a class="profile-wordmark" href="/" aria-label="youple.tv home"><Wordmark/></a>
+    <div class="profile-card">
+      <section class="identity">
+        <span class="profile-avatar">{avatar ? <img src={avatar} alt="" referrerpolicy="no-referrer"/> : name.slice(0, 1)}</span>
+        <div>
+          <h1 id="profile-name">{name}</h1>
+          <p class="muted">{user.email ? <>{user.email} · </> : null}Signed in with {provider}</p>
+        </div>
+      </section>
 
-    <form id="name-form" class="card">
-      <label for="display-name">Name in rooms</label>
-      <p class="muted">This is what friends see next to you while you watch.</p>
-      <div class="name-row">
-        <input id="display-name" name="name" value={name} maxlength="32" required autocomplete="nickname"/>
-        <button class="primary-button" type="submit">Save</button>
-      </div>
-      <div id="name-message" class="form-message" role="status"></div>
-    </form>
+      <form id="name-form" class="profile-section">
+        <label for="display-name">Name in rooms</label>
+        <p class="muted">This is what friends see next to you while you watch.</p>
+        <div class="name-row">
+          <input id="display-name" name="name" value={name} maxlength="32" required autocomplete="nickname"/>
+          <button class="primary-button" type="submit">Save</button>
+        </div>
+        <div id="name-message" class="form-message" role="status"></div>
+      </form>
 
-    <section class="card">
-      <h2>Your rooms</h2>
-      {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={22}/><span>{room.title}</span>{room.joined && <em>Joined</em>}</a></li>)}</ul> : <p class="muted">No rooms yet. Save one from the home page, or join a friend's.</p>}
-    </section>
-
-    <button id="sign-out" class="soft-button" type="button">Sign out</button>
+      <section class="profile-section">
+        <h2>Your rooms</h2>
+        {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={20}/><span>{room.title}</span><em>{room.joined ? 'Joined' : 'Open'}</em></a></li>)}</ul> : <p class="muted">No rooms yet. Save one from the home page, or join a friend's.</p>}
+      </section>
+    </div>
+    <button id="sign-out" class="sign-out" type="button">Sign out</button>
   </main>
+  <SiteFooter/>
   <style>
-    .profile { max-width: 640px; margin: 0 auto; padding: 40px 16px 64px; }
-    .back { color: var(--accent); }
-    .identity { display: flex; align-items: center; gap: 20px; margin: 24px 0 32px; }
-    .identity h1 { font-size: 32px; margin: 0 0 4px; overflow-wrap: anywhere; }
-    .identity p { margin: 0; overflow-wrap: anywhere; }
-    .profile-avatar { flex: none; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 24px; overflow: hidden; background: var(--accent-dark); color: var(--accent); font-size: 30px; font-weight: 700; }
+    .profile-page { --bg: #181622; --ink: #f6f2ef; --muted: #bab3c9; --accent: #c3afff; position: relative; isolation: isolate; overflow-x: clip; }
+    .profile-glow { position: absolute; inset: 0 0 auto; height: 520px; z-index: -1; pointer-events: none; background: radial-gradient(ellipse at 50% 10%,#5a426242,transparent 55%),radial-gradient(ellipse at 15% 60%,#ad8bf514,transparent 45%),radial-gradient(ellipse at 85% 50%,#ee9fb112,transparent 45%); }
+    .profile { display: grid; justify-items: center; max-width: 600px; margin: 0 auto; padding: 40px 16px 16px; }
+    .profile-wordmark { font-size: 34px; margin-bottom: 28px; }
+    .profile-card { width: 100%; box-sizing: border-box; background: #f4efe5; color: #322b41; padding: 28px; border-radius: 36px; box-shadow: 0 18px 60px #0002; }
+    .profile-card .muted { color: #756779; }
+    .identity { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .identity > div { min-width: 0; }
+    .identity h1 { font-size: 26px; letter-spacing: -.03em; line-height: 1.2; margin: 0 0 4px; overflow-wrap: anywhere; }
+    .identity p { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
+    .profile-avatar { flex: none; display: grid; place-items: center; width: 60px; height: 60px; border-radius: 20px; overflow: hidden; background: #e4dceb; color: #61536b; font-size: 26px; font-weight: 700; }
     .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .card { background: var(--surface); border-radius: 23px; padding: 24px; margin-bottom: 16px; }
-    .card h2, .card label { display: block; font-size: 19px; font-weight: 700; margin: 0 0 6px; }
-    .card p { margin: 0 0 16px; }
+    .profile-section { padding-top: 20px; margin-top: 20px; border-top: 1px solid #322b4114; }
+    .profile-section h2, .profile-section label { display: block; font-size: 17px; font-weight: 700; color: #61536b; margin: 0 0 6px; }
+    .profile-section p { margin: 0 0 14px; font-size: 15px; }
     .name-row { display: flex; gap: 10px; }
-    .name-row input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--raised); border: 1px solid #ffffff12; border-radius: 16px; padding: 14px 16px; }
-    .room-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-    .room-list a { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; background: var(--raised); color: var(--accent); }
-    .room-list span { flex: 1; color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
-    .room-list em { font-style: normal; color: var(--muted); font-size: 14px; }
-    #sign-out { margin-top: 8px; }
+    .name-row input { flex: 1; min-width: 0; font: inherit; font-size: 17px; color: #322b41; background: #fffaf2; border: 1px solid #322b411f; border-radius: 16px; padding: 14px 16px; }
+    .name-row input:focus-visible { outline: 3px solid #b8a2f0; outline-offset: 1px; }
+    .name-row .primary-button { flex: none; padding: 0 24px; border-radius: 16px; background: #b9a3ef; color: #241d33; font-weight: 700; }
+    .name-row .primary-button:hover { background: #c9b7f5; }
+    .profile-card .form-message { color: #61536b; margin-top: 10px; font-size: 15px; min-height: 0; }
+    .profile-card .form-message:empty { display: none; }
+    .room-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0,1fr); gap: 6px; }
+    .room-list a { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; border-radius: 16px; background: #ebe4d8; color: #6d55b8; }
+    .room-list a:hover { background: #e3d9ea; }
+    .room-list span { flex: 1; min-width: 0; color: #322b41; font-size: 17px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .room-list em { font-style: normal; color: #756779; font-size: 15px; }
+    .sign-out { margin-top: 18px; min-height: 44px; padding: 0 18px; border-radius: 100px; background: transparent; color: var(--muted); font-size: 16px; }
+    .sign-out:hover { color: var(--ink); background: #ffffff0d; }
+    @media(max-width:600px) { .profile { padding-top: 28px; } .profile-wordmark { font-size: 28px; margin-bottom: 22px; } .profile-card { padding: 24px 20px; border-radius: 29px; } }
   </style>
   <script>
     const form = document.getElementById("name-form") as HTMLFormElement;
