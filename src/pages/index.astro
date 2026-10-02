@@ -4,6 +4,7 @@ import PortalIcon from '../components/PortalIcon.astro';
 import Mascot from '../components/Mascot.astro';
 import MusicFlourishes from '../components/MusicFlourishes.astro';
 import AuthDialog from '../components/AuthDialog.astro';
+import Wordmark from '../components/Wordmark.astro';
 import '../styles/app.css';
 import '../styles/home.css';
 import { verifiedUser, displayName } from '../lib/auth';
@@ -22,7 +23,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
   <div class="playground-background" aria-hidden="true"><span></span><span></span><span></span><i class="bg-dot dot-one"></i><i class="bg-dot dot-two"></i><i class="bg-dot dot-three"></i><i class="bg-spark"><Icon name="spark" size={32}/></i></div>
   <main class="home-main">
     <section class="hangout" aria-labelledby="hero-title">
-      <div class="hangout-heading reveal"><h1 id="hero-title">youple<span>.tv</span><svg class="wordmark-smile" viewBox="0 0 200 28" aria-hidden="true"><path d="M8 5c43 25 121 25 184 0" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></h1><p>Watch YouTube videos in sync.</p></div>
+      <div class="hangout-heading reveal"><h1 id="hero-title"><Wordmark variant="hero"/></h1><p>Watch YouTube videos in sync.</p></div>
       <div class="room-launcher reveal delay-1">
         <form id="create-form"><button class="primary-button wide create-room-button" type="submit"><PortalIcon/><span>Create room</span></button><div id="create-message" class="form-message" role="status"></div></form>
         <div class="launcher-footer"><div class="join-entry"><button class="join-launcher" type="button" data-join-room>Join a room</button><span class="sync-presence"><i aria-hidden="true"></i><span id="sync-count">{illustrativeSyncCount()}</span> in sync</span></div><div class="launcher-account">{user ? <><span class="signed-avatar" title={name} aria-label={name}>{name?.slice(0,1)}</span><button class="account-launcher" type="button" data-sign-out>Sign out</button></> : <button class="account-launcher" type="button" data-sign-in>Sign in</button>}</div></div>

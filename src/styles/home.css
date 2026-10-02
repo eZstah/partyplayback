@@ -103,23 +103,11 @@
   font-weight: 700;
   margin: 0 0 13px;
 }
-.hangout-heading h1>span {
-  color: var(--accent);
-}
 .hangout-heading p {
   font-size: 22px;
   color: #d0c8dc;
   margin: 15px 0 35px;
   letter-spacing: -.02em;
-}
-.wordmark-smile {
-  position: absolute;
-  left: 38%;
-  bottom: -8px;
-  width: 86px;
-  height: 18px;
-  color: #c3afff;
-  transform: rotate(-3deg);
 }
 .room-launcher {
   position: relative;
@@ -629,11 +617,6 @@
   .hangout-heading p {
     font-size: 18px;
     margin: 18px 0 27px;
-  }
-  .wordmark-smile {
-    width: 65px;
-    height: 14px;
-    bottom: -6px;
   }
   .room-launcher {
     padding: 26px 23px 22px;
