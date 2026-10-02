@@ -344,6 +344,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   username.addEventListener("click", () => {
     $("guest-name").value = name;
     $("name-dialog").showModal();
+    $("guest-name").select();
   });
   $("name-form").addEventListener("submit", event => {
     event.preventDefault();
