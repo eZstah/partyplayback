@@ -209,6 +209,36 @@
   color: #756779;
   padding: 12px 0 0;
 }
+.launcher-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 14px 4px 0;
+}
+.launcher-footer .join-launcher {
+  width: auto;
+  padding: 8px 0;
+  text-align: left;
+  font-size: 17px;
+}
+.sync-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #706576;
+  font-size: 15px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.sync-presence i {
+  width: 7px;
+  height: 7px;
+  margin-right: 3px;
+  background: #649C73;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px #649C7310;
+}
 .room-launcher:focus-within~.mascot-cast .arm-right {
   animation: arm-wave .8s var(--ease) 2;
 }

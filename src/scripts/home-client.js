@@ -1,5 +1,6 @@
 import { bootAuth } from "./auth-client.js";
 import { enterCreatedRoom } from "./room-transition.js";
+import { illustrativeSyncCount } from "../lib/activity.js";
 
 export function bootHome() {
   const auth = bootAuth();
@@ -10,6 +11,9 @@ export function bootHome() {
   const savedDialog = document.getElementById("saved-room-dialog");
   const savedMessage = document.getElementById("saved-room-message");
   const signedIn = document.body.dataset.signedIn === "true";
+  const updateSyncCount = () => { document.getElementById("sync-count").textContent = String(illustrativeSyncCount()); };
+  updateSyncCount();
+  setInterval(updateSyncCount, 60000);
   let creating = false, leaving = false;
   function openSavedRoom() {
     if (!signedIn) { auth.open("/?create=member"); return; }
