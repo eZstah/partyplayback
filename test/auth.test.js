@@ -34,3 +34,8 @@ test('avatars only come from https provider URLs', () => {
   assert.equal(avatarUrl({ user_metadata: { picture: 'https://lh3.googleusercontent.com/a' } }), 'https://lh3.googleusercontent.com/a');
   for (const value of ['javascript:alert(1)', 'http://x.example/a.png', 'not a url', 7]) assert.equal(avatarUrl({ user_metadata: { avatar_url: value } }), null);
 });
+test('the Impressum stays hidden until name and address are filled in', async () => {
+  const { impressumReady } = await import('../src/lib/legal.ts');
+  assert.equal(impressumReady({ name: '', street: '', postalCodeAndCity: '', country: '', email: 'a@b.c' }), false);
+  assert.equal(impressumReady({ name: 'A B', street: 'Str. 1', postalCodeAndCity: '10115 Berlin', country: '', email: 'a@b.c' }), true);
+});

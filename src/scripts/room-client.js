@@ -6,7 +6,7 @@ import { pastedVideo, youtubeUrl } from "./room-paste.js";
 
 export function bootRoom(roomName, arrival = Promise.resolve()) {
   const auth = bootAuth();
-  bootRoomMascots();
+  const pals = bootRoomMascots();
   const $ = id => document.getElementById(id);
   const conn = $("conn"), count = $("uc"), username = $("uname");
   const queueList = $("q-list"), urlInput = $("url-in"), addButton = $("add-btn");
@@ -208,6 +208,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       } else if (data.type === "users") {
         setCount(data.userCount);
         renderPeople(data.members);
+        pals.observe({ users: data.userCount });
       } else if (data.type === "error") {
         if (pastedAddition) { clearTimeout(pastedAddition.timer); pastedAddition = null; }
         toast(data.message);
@@ -233,6 +234,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   function render() {
     setCount(room.userCount);
     renderPeople(room.members);
+    pals.observe({ users: room.userCount, queue: room.queue.length, current: room.queue[room.currentIndex]?.id ?? null });
     const signature = JSON.stringify([room.queue, room.currentIndex]);
     if (signature !== queueSignature) {
     queueSignature = signature;

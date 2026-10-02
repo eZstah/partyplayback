@@ -1,4 +1,5 @@
 .home-page {
+  overflow-x: clip;
   --bg: #181622;
   --surface: #24212f;
   --raised: #302b3e;
@@ -8,7 +9,6 @@
   --accent-dark: #392c57;
   position: relative;
   isolation: isolate;
-  overflow-x: clip;
 }
 .playground-background {
   position: absolute;
@@ -232,6 +232,21 @@
   height: 120px;
   transform: rotate(8deg);
 }
+.cast-member .mascot {
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.cast-member .mascot-rig {
+  transition: scale .3s var(--ease);
+}
+@media(hover:hover) and (pointer:fine) {
+  .cast-member .mascot:hover .mascot-rig {
+    scale: 1.04;
+  }
+}
 .speech-bubble {
   position: absolute;
   top: -38px;
@@ -436,17 +451,6 @@
 .home-faq p {
   margin: 0 36px 16px 0;
 }
-.home-page .page-footer {
-  font-size: 16px;
-  padding: 35px 42px;
-  max-width: 1280px;
-  color: #a39aac;
-}
-.home-page .page-footer>span:first-child {
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: -.04em;
-}
 .saved-rooms {
   padding: 28px 0 40px;
 }
@@ -618,10 +622,6 @@
   .how-grid p {
     font-size: 16px;
   }
-  .home-page .page-footer {
-    padding: 30px 28px;
-    font-size: 15px;
-  }
 }
 @media(max-width:600px) {
   .join-entry { flex-direction: column; align-items: flex-start; gap: 0; }
@@ -751,14 +751,6 @@
   .home-faq summary {
     font-size: 18px;
   }
-  .home-page .page-footer {
-    padding: 28px 20px;
-    font-size: 14px;
-    gap: 14px;
-  }
-  .home-page .page-footer>span:last-child {
-    text-align: right;
-  }
   .saved-grid {
     grid-template-columns: 1fr;
   }
@@ -868,9 +860,6 @@
   0% { transform: scale(.55) rotate(-18deg); opacity: 0; }
   30% { transform: scale(1) rotate(0); opacity: 1; }
   100% { transform: scale(1.8) rotate(20deg); opacity: 0; }
-}
-.home-page .page-footer a {
-  color: inherit;
 }
 .member-hello {
   display: flex;
