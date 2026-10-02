@@ -5,6 +5,7 @@ import Mascot from '../components/Mascot.astro';
 import MusicFlourishes from '../components/MusicFlourishes.astro';
 import AuthDialog from '../components/AuthDialog.astro';
 import Wordmark from '../components/Wordmark.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 import '../styles/app.css';
 import '../styles/home.css';
 import { verifiedUser, displayName, avatarUrl } from '../lib/auth';
@@ -58,7 +59,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
     </section>
     </>}
   </main>
-  <footer class="page-footer"><span>youple.tv · <a href="/privacy">Privacy</a></span><span>Watch together. Snacks optional.</span></footer>
+  <SiteFooter/>
   <div id="room-portal" class="room-portal" hidden aria-hidden="true"><div class="portal-tunnel">{Array.from({length:6},(_,i)=><span class="portal-ring" style={'--phase:'+i}></span>)}{Array.from({length:14},(_,i)=><span class="portal-streak" style={'--angle:'+(i*360/14)+'deg;--phase:'+(i%4)}></span>)}<div class="portal-core"><PortalIcon size={88}/></div></div></div>
   <AuthDialog configured={configured}/>
   <dialog id="saved-room-dialog" class="dialog" aria-labelledby="saved-room-heading"><button class="dialog-close" type="button" data-close-dialog aria-label="Close saved room"><Icon name="close" size={20}/></button><h2 id="saved-room-heading">Your regular hangout.</h2><p>Keep a room in your account for next time.</p><form id="saved-room-form"><label for="saved-room-title">Room name (optional)</label><input id="saved-room-title" name="title" placeholder="Movie night" maxlength="64" autocomplete="off"/><button class="primary-button wide" type="submit"><span>Create saved room</span></button><div id="saved-room-message" class="form-message" role="status"></div></form></dialog>

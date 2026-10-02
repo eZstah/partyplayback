@@ -1,0 +1,32 @@
+---
+import SiteFooter from '../components/SiteFooter.astro';
+import { IMPRESSUM, impressumReady } from '../lib/legal';
+import '../styles/app.css';
+// Never publish a half-filled Impressum.
+if (!impressumReady()) return new Response('Not found', { status: 404 });
+const { name, street, postalCodeAndCity, country, email } = IMPRESSUM;
+---
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="theme-color" content="#181622"/><title>Impressum — youple.tv</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/><link rel="canonical" href="https://youple.tv/impressum"/></head>
+<body>
+  <main class="text-page">
+    <p><a href="/">← youple.tv</a></p>
+    <h1>Impressum</h1>
+    <h2>Angaben gemäß § 5 DDG</h2>
+    <p>{name}<br/>{street}<br/>{postalCodeAndCity}{country && <><br/>{country}</>}</p>
+    <h2>Kontakt</h2>
+    <p>E-Mail: <a href={`mailto:${email}`}>{email}</a></p>
+    <h2>Verantwortlich für den Inhalt</h2>
+    <p>{name}, Anschrift wie oben</p>
+  </main>
+  <SiteFooter/>
+  <style>
+    .text-page { max-width: 680px; margin: 0 auto; padding: 48px 16px 24px; line-height: 1.6; }
+    .text-page h1 { font-size: 40px; margin: 24px 0 12px; }
+    .text-page h2 { font-size: 20px; margin: 32px 0 8px; }
+    .text-page p { color: var(--muted); }
+    .text-page a { color: var(--accent); }
+  </style>
+</body>
+</html>
