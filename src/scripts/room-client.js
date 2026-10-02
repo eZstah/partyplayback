@@ -10,7 +10,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const auth = bootAuth();
   const pals = bootRoomMascots();
   const $ = id => document.getElementById(id);
-  const conn = $("conn"), count = $("uc"), username = $("uname");
+  const conn = $("conn"), count = $("uc"), username = $("uname"), usernameLabel = $("uname-label");
   const queueList = $("q-list"), urlInput = $("url-in"), addButton = $("add-btn");
   const addForm = $("add-form"), addError = $("add-error"), addFeedback = $("add-feedback");
   const playButton = $("play-btn"), nextButton = $("next-btn"), enableButton = $("enable-btn");
@@ -34,7 +34,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   }
   let name = document.body.dataset.userName || getStored(localStorage, "pp_user", "Guest" + Math.floor(Math.random() * 9000 + 1000));
   const sessionId = getStored(sessionStorage, "pp_sid", crypto.randomUUID());
-  username.textContent = name;
+  usernameLabel.textContent = name;
 
   function toast(message) {
     $("toast").textContent = message;
@@ -160,6 +160,8 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       return li;
     }));
     $("people-count").textContent = String(members.length).padStart(2, "0");
+    const me = members.find(person => person.you);
+    $("uname-face").replaceChildren(...(me ? [avatar(me, "person-face")] : []));
     const faces = document.querySelector(".facepile-faces");
     const shown = members.length > 4 ? members.slice(0, 3) : members;
     faces.replaceChildren(...shown.map(person => avatar(person, "facepile-face")));
@@ -349,7 +351,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     if (!value?.trim()) return;
     name = value.trim().slice(0, 32);
     try { localStorage.setItem("pp_user", name); } catch {}
-    username.textContent = name;
+    usernameLabel.textContent = name;
     requestState("join");
     $("name-dialog").close();
   });
