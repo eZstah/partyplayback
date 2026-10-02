@@ -1,4 +1,5 @@
 import { animate, burst, centerOf, hop, lookVector, pickLine, pointIn, reducedMotion, setLook, setMood, wave } from "./mascot-fx.js";
+import * as moves from "./mascot-moves.js";
 
 // Each friend has their own voice. Lines stay short so bubbles fit on phones.
 export const PERSONALITIES = {
@@ -65,40 +66,15 @@ export function bootHomeMascots() {
   const chatter = friend => say(friend, pickLine(PERSONALITIES[friend.kind].lines, friend.last || friend.home));
 
   // Signature moves.
-  function adjustGlasses(friend) {
-    animate(friend.mascot.querySelector(".mascot-glasses"), [{ transform: "none" }, { transform: "translateY(-16%) rotate(-7deg)", offset: .35 }, { transform: "translateY(-4%) rotate(3deg)", offset: .7 }, { transform: "none" }], { duration: 900 });
-    const glasses = friend.mascot.querySelector(".mascot-glasses");
-    if (glasses) burst(friend.el, "spark", { ...pointIn(friend.el, glasses, .85, .2), count: 2, color: "#FFF0CD", size: 14, rise: 40, spread: 50, duration: 900 });
-  }
-  function bop(friend, beats = 6) {
-    const rig = friend.mascot.querySelector(".mascot-rig");
-    animate(rig, [{ transform: "rotate(0)" }, { transform: "rotate(-6deg) translateY(-2%)" }, { transform: "rotate(0)" }, { transform: "rotate(6deg) translateY(-2%)" }, { transform: "rotate(0)" }], { duration: 760, iterations: beats / 2, easing: "ease-in-out" });
-    const phones = friend.mascot.querySelector(".mascot-headphones") || friend.mascot;
-    const colors = ["#C3AFFF", "#F4ADC0", "#F5BE70", "#AADF97"];
-    for (let i = 0; i < beats / 2; i++) setTimeout(() => burst(friend.el, "note", { ...pointIn(friend.el, phones, i % 2 ? .95 : .05, .6), count: 1, color: colors[i % colors.length], size: 20, spread: 60, rise: 90 }), i * 760);
-    setMood(friend.mascot, "happy", 380 * beats);
-  }
+  const adjustGlasses = friend => moves.adjustGlasses(friend.mascot, friend.el);
+  const bop = (friend, beats) => moves.bop(friend.mascot, friend.el, beats);
   function snacks(friend, toward = byKind.purple) {
-    const from = pointIn(friend.el, friend.mascot, .5, .45);
-    burst(friend.el, "kernel", { ...from, count: 4, size: 16, spread: 120, rise: 110, duration: 1300 });
+    moves.tossSnacks(friend.mascot, friend.el);
     if (toward) { lookAt(toward, centerOf(friend.mascot), 1400); setTimeout(() => { hop(toward.mascot, 9); setMood(toward.mascot, "happy", 900); }, 500); }
   }
   function sixSeven(friend, rounds = 3) {
-    const left = friend.mascot.querySelector(".arm-left"), right = friend.mascot.querySelector(".arm-right");
-    // Palms up, weighing 6 against 7.
-    const rest = { left: "rotate(30deg)", right: "rotate(-35deg)" };
-    const leftUp = "translateY(-22%) rotate(-62deg)", leftDown = "translateY(8%) rotate(-82deg)";
-    const rightUp = "translateY(-22%) rotate(62deg)", rightDown = "translateY(8%) rotate(82deg)";
-    const timing = { duration: 640 * rounds, easing: "ease-in-out" };
-    const swing = (a, b, restPose) => [{ transform: restPose }, ...Array.from({ length: rounds * 2 }, (_, i) => ({ transform: i % 2 ? b : a })), { transform: restPose }];
-    animate(left, swing(leftUp, leftDown, rest.left), timing);
-    animate(right, swing(rightDown, rightUp, rest.right), timing);
-    animate(friend.mascot.querySelector(".mascot-rig"), [{ transform: "none" }, { transform: "rotate(-4deg)" }, { transform: "rotate(4deg)" }, { transform: "none" }], { duration: 640, iterations: rounds });
-    for (let i = 0; i < rounds * 2; i++) setTimeout(() => {
-      if (friend.bubble) friend.bubble.textContent = i % 2 ? "7" : "6";
-      burst(friend.el, i % 2 ? "7" : "6", { ...pointIn(friend.el, friend.mascot, i % 2 ? .85 : .15, .4), count: 1, color: i % 2 ? "#F5BE70" : "#C3AFFF", size: 22, spread: 40, rise: 70 });
-    }, i * 320);
-    setTimeout(() => say(friend, rounds > 3 ? "SIX SEVEN!!" : "6-7!", 2200), rounds * 640);
+    const length = moves.sixSeven(friend.mascot, friend.el, { rounds, onBeat: digit => { if (friend.bubble) friend.bubble.textContent = digit; } });
+    setTimeout(() => say(friend, rounds > 3 ? "SIX SEVEN!!" : "6-7!", 2200), length);
   }
   const signature = { mint: f => { adjustGlasses(f); setMood(f.mascot, "surprised", 700); }, pink: f => (Math.random() < .5 ? bop(f) : snacks(f)), purple: f => sixSeven(f) };
 
