@@ -3,6 +3,7 @@ import { bootAuth } from "./auth-client.js";
 import { bootRoomMascots } from "./room-mascots.js";
 import { copyText, takeCreatedRoomNotice } from "./invite-copy.js";
 import { pastedVideo, youtubeUrl } from "./room-paste.js";
+import { bindVolumeControl } from "./volume-control.js";
 
 export function bootRoom(roomName, arrival = Promise.resolve()) {
   const auth = bootAuth();
@@ -404,28 +405,17 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     $("fullscreen-btn").setAttribute("aria-label", active ? "Exit fullscreen" : "Fullscreen");
     $("fullscreen-btn").title = active ? "Exit fullscreen (F)" : "Fullscreen (F)";
   });
-  function updateMuteControl() {
-    const player = playback.player;
-    $("mute-btn").disabled = !player;
-    if (!player) return;
-    const muted = player.isMuted();
-    if ($("mute-btn").dataset.muted === String(muted)) return;
-    const label = muted ? "Unmute" : "Mute";
-    $("mute-btn").dataset.muted = String(muted);
-    $("mute-btn").setAttribute("aria-label", label);
-    $("mute-btn").title = label + " on your device (M)";
-    $("mute-label").textContent = label;
-    $("unmute-icon").hidden = !muted;
-    $("mute-icon").hidden = muted;
-  }
-  $("mute-btn").addEventListener("click", () => {
-    const player = playback.player;
-    if (!player) return;
-    const muted = !player.isMuted();
-    if (muted) player.mute(); else player.unMute();
-    updateMuteControl();
-    if (room?.queue[room.currentIndex]) flashOverlay(muted ? "muted" : "unmuted");
+  const deviceVolume = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  $("device-volume-hint").hidden = !deviceVolume;
+  $("device-volume-hint").title = "Use your device’s volume buttons";
+  let volumeStorage;
+  try { volumeStorage = localStorage; } catch {}
+  const sound = bindVolumeControl({
+    slider: $("volume"), muteButton: $("mute-btn"), muteLabel: $("mute-label"), muteIcon: $("mute-icon"), unmuteIcon: $("unmute-icon"),
+    getPlayer: () => playback.player, storage: volumeStorage, deviceVolume,
+    onToggle(muted) { if (room?.queue[room.currentIndex]) flashOverlay(muted ? "muted" : "unmuted"); },
   });
+  function updateMuteControl() { sound.sync(); }
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
   $("save-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));
   let copyingInvite = false, inviteTimer;
@@ -481,7 +471,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       height: "100%", width: "100%",
       playerVars: { controls: 0, disablekb: 1, rel: 0, playsinline: 1, origin: location.origin },
       events: {
-        onReady() { playback.ready(player); updateMuteControl(); },
+        onReady() { sound.ready(player); playback.ready(player); updateMuteControl(); },
         onStateChange(event) { playback.stateChanged(event.data); },
         onAutoplayBlocked() { playback.autoplayBlocked(); },
         onError() {

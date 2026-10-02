@@ -868,6 +868,22 @@
 }
 @media(max-width:360px) { .next-control span { display: none; } }
 
+.volume-control { display: flex; align-items: center; gap: 8px; }
+.volume-slider { --volume: 100%; appearance: none; flex: none; width: 110px; height: 32px; margin: 0; border-radius: 12px; background: transparent; cursor: pointer; }
+.volume-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 99px; background: linear-gradient(to right,var(--accent) var(--volume),#34313f var(--volume)); }
+.volume-slider::-moz-range-track { height: 4px; border-radius: 99px; background: linear-gradient(to right,var(--accent) var(--volume),#34313f var(--volume)); }
+.volume-slider::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--accent); }
+.volume-slider::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: var(--accent); }
+.volume-slider:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.volume-slider:disabled { opacity: .4; cursor: default; }
+.device-volume-hint { color: var(--muted); font-size: 14px; white-space: nowrap; }
+@container playback (max-width:699px) {
+  .volume-control { flex-direction: column; gap: 0; }
+  .volume-slider { width: 92px; height: 32px; }
+  .control-bar .control-key { display: none; }
+}
+@media(max-width:600px) { .volume-control .sound-control { min-height: 36px; } }
+
 /* Big centered play/pause sign over the video, like a desktop player. */
 .playback-overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center,#0a0a1066,#0a0a1033 60%,transparent 85%); transition: opacity .35s ease; }
 .overlay-disc { display: grid; place-items: center; width: clamp(76px,13cqi,128px); aspect-ratio: 1; border-radius: 50%; background: #12121acc; color: #f3f2f5; box-shadow: 0 10px 40px #0007; backdrop-filter: blur(6px); }
