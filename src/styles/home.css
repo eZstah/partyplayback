@@ -250,6 +250,14 @@
   top: -32px;
   border-radius: 18px 18px 4px 18px;
 }
+.cast-purple .speech-bubble {
+  top: -46px;
+  left: 50%;
+  padding: 10px 15px;
+  font-size: 17px;
+  transform: translateX(-50%) rotate(-8deg);
+  z-index: 2;
+}
 .floating-popcorn {
   position: absolute;
   right: 160px;
