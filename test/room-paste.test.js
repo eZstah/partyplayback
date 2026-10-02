@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pastedVideo, youtubeUrl } from "../src/scripts/room-paste.js";
+import { pastedVideo, youtubeUrl, playlistLink } from "../src/scripts/room-paste.js";
 
 const id = "M7lc1UVf-VE", canonical = "https://www.youtube.com/watch?v=" + id;
 
@@ -26,4 +26,27 @@ test("paste inside fields, dialogs, or an already handled event stays untouched"
 
 test("paste still adds a video when the playback slider has focus", () => {
   assert.equal(pastedVideo({ target: { closest: () => ({ tagName: "INPUT", type: "range" }) }, clipboardData: { getData: () => canonical } }), canonical);
+});
+
+test("playlist button uses a typed link without requesting clipboard access", async () => {
+  assert.deepEqual(await playlistLink({ value: canonical }, { readText() { throw new Error("Must not read"); } }), { value: canonical, fromClipboard: false });
+});
+
+test("empty playlist input imports and normalizes a copied YouTube link", async () => {
+  assert.deepEqual(await playlistLink({ value: "  " }, { readText: async () => ` https://youtu.be/${id}?si=share ` }), { value: canonical, fromClipboard: true });
+});
+
+test("unavailable, denied, and unrelated clipboards fall back without adding", async () => {
+  for (const clipboard of [undefined, {}, { readText: async () => { throw new Error("Denied"); } }, { readText: async () => "https://youple.tv/room/g-test" }, { readText: async () => "" }]) {
+    assert.equal(await playlistLink({ value: "" }, clipboard), null);
+  }
+});
+
+test("typing during a clipboard prompt takes priority over the copied link", async () => {
+  const input = { value: "" };
+  let complete;
+  const pending = playlistLink(input, { readText: () => new Promise(resolve => { complete = resolve; }) });
+  input.value = "https://youtu.be/aqz-KE-bpKQ";
+  complete(canonical);
+  assert.deepEqual(await pending, { value: input.value, fromClipboard: false });
 });

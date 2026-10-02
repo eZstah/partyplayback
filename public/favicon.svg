@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="6" width="56" height="53" rx="23" fill="#c3afff"/><ellipse cx="23" cy="29" rx="4" ry="7" fill="#322b41"/><ellipse cx="41" cy="29" rx="4" ry="7" fill="#322b41"/><path d="M24 43q8 8 16 0" fill="none" stroke="#322b41" stroke-width="4" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>youple.tv</title>
+  <path d="M3 31C3 15 9 8 21 8s19 8 19 23v15c0 9-6 14-18 14S3 55 3 46Z" fill="#c3afff" transform="rotate(-8 22 34)"/>
+  <path d="M29 36c0-15 6-23 17-23s15 8 15 23v13c0 8-5 12-16 12S29 56 29 49Z" fill="#aadf97" transform="rotate(8 45 37)"/>
+  <g fill="#322b41">
+    <ellipse cx="14" cy="29" rx="2.5" ry="4"/>
+    <ellipse cx="25" cy="28" rx="2.5" ry="4"/>
+    <ellipse cx="40" cy="34" rx="2.5" ry="4"/>
+    <ellipse cx="51" cy="35" rx="2.5" ry="4"/>
+  </g>
+</svg>

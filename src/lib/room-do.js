@@ -7,12 +7,12 @@ export class RoomDO {
     this.env = env;
     this.state = {
       queue: [], currentIndex: -1, isPlaying: false, currentTime: 0,
-      updatedAt: Date.now(), playbackId: null, revision: 0,
+      updatedAt: Date.now(), playbackId: null, revision: 0, autoClear: false,
     };
     // Room state and socket identities must survive WebSocket hibernation.
     this.ready = ctx.blockConcurrencyWhile(async () => {
       const saved = await ctx.storage.get("room");
-      if (saved) this.state = saved;
+      if (saved) this.state = { ...this.state, ...saved };
       this.details = await ctx.storage.get("details") || null;
     });
   }
@@ -95,6 +95,12 @@ export class RoomDO {
 
     const s = this.state;
     switch (data.type) {
+      case "auto-clear": {
+        if (typeof data.enabled !== "boolean") return this._error(ws, "Invalid Auto-clear setting");
+        if (s.autoClear === data.enabled) return this._sendState(ws);
+        s.autoClear = data.enabled;
+        break;
+      }
       case "play":
       case "pause":
       case "seek": {
@@ -132,13 +138,34 @@ export class RoomDO {
         }
         break;
       }
+      case "select": {
+        // Resolve the item on the server: queue positions can change between clicks.
+        let index = s.queue.findIndex(item => item.id === data.itemId);
+        if (index === -1 || (index === s.currentIndex && s.isPlaying)) return this._sendState(ws);
+        if (index === s.currentIndex) {
+          s.isPlaying = true;
+          s.updatedAt = Date.now();
+        } else {
+          if (s.autoClear && s.currentIndex >= 0) {
+            s.queue.splice(s.currentIndex, 1);
+            index = s.queue.findIndex(item => item.id === data.itemId);
+          }
+          this._load(index, true);
+        }
+        break;
+      }
       case "next":
       case "ended": {
         // Load identities distinguish consecutive copies and reject late end reports.
         if (!this._matchesPlayback(data) || (data.type === "ended" && !s.isPlaying)) {
           return this._sendState(ws);
         }
-        if (s.currentIndex + 1 < s.queue.length) this._load(s.currentIndex + 1, true);
+        if (s.autoClear) {
+          const index = s.currentIndex;
+          s.queue.splice(index, 1);
+          if (index < s.queue.length) this._load(index, true);
+          else Object.assign(s, { currentIndex: -1, currentTime: 0, isPlaying: false, updatedAt: Date.now(), playbackId: null });
+        } else if (s.currentIndex + 1 < s.queue.length) this._load(s.currentIndex + 1, true);
         else {
           s.currentTime = this._validTime(data.currentTime) ? data.currentTime : this._time();
           s.updatedAt = Date.now();
@@ -261,7 +288,7 @@ export class RoomDO {
     if (this.ctx.getWebSockets().length) return this._keepAlive();
     await this.ctx.storage.deleteAll();
     this.details = null;
-    this.state = { queue: [], currentIndex: -1, isPlaying: false, currentTime: 0, updatedAt: Date.now(), playbackId: null, revision: 0 };
+    this.state = { queue: [], currentIndex: -1, isPlaying: false, currentTime: 0, updatedAt: Date.now(), playbackId: null, revision: 0, autoClear: false };
   }
 
   _extractVideoId(value) {

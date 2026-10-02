@@ -115,6 +115,152 @@ test("concurrent removal uses item identity and clearing the room stops playback
   assert.equal(room.state.isPlaying, false);
 });
 
+test("selecting a queued item starts it for everyone and rejects old playback reports", async () => {
+  const { room, add, send, control, sockets } = await setup();
+  await add(); await add("dQw4w9WgXcQ"); await add();
+  await control("pause", 42);
+  const old = { playbackId: room.state.playbackId, revision: room.state.revision };
+  const target = room.state.queue[2].id;
+  await send({ type: "select", itemId: target }, sockets[1]);
+  assert.equal(room.state.currentIndex, 2);
+  assert.equal(room.state.currentTime, 0);
+  assert.equal(room.state.isPlaying, true);
+  assert.equal(room.state.pausedBy, null);
+  assert.notEqual(room.state.playbackId, old.playbackId);
+  for (const ws of sockets) {
+    assert.equal(ws.messages.at(-1).queue[ws.messages.at(-1).currentIndex].id, target);
+    assert.equal(ws.messages.at(-1).isPlaying, true);
+  }
+  await send({ type: "ended", ...old, currentTime: 100 });
+  await send({ type: "pause", ...old, currentTime: 42 });
+  assert.equal(room.state.currentIndex, 2);
+  assert.equal(room.state.isPlaying, true);
+});
+
+test("select resolves stable item identity after queue edits and can return to an earlier item", async () => {
+  const { room, add, send } = await setup();
+  await add(); await add(); await add("dQw4w9WgXcQ");
+  const first = room.state.queue[0].id, target = room.state.queue[2].id;
+  await send({ type: "remove", itemId: room.state.queue[1].id });
+  await send({ type: "select", itemId: target });
+  assert.equal(room.state.currentIndex, 1);
+  await send({ type: "select", itemId: first });
+  assert.equal(room.state.currentIndex, 0);
+  assert.equal(room.state.currentTime, 0);
+});
+
+test("selecting the paused current item resumes without restarting; repeated play does not reload", async () => {
+  const { room, add, send, control } = await setup();
+  await add(); await control("pause", 64);
+  const itemId = room.state.queue[0].id, playbackId = room.state.playbackId;
+  await send({ type: "select", itemId });
+  assert.equal(room.state.currentTime, 64);
+  assert.equal(room.state.isPlaying, true);
+  assert.equal(room.state.playbackId, playbackId);
+  const revision = room.state.revision;
+  await send({ type: "select", itemId });
+  assert.equal(room.state.revision, revision);
+  assert.equal(room.state.currentTime, 64);
+});
+
+test("missing, removed, or unjoined selections cannot change playback", async () => {
+  const { room, add, send, sockets } = await setup();
+  await add(); await add("dQw4w9WgXcQ");
+  const target = room.state.queue[1].id;
+  await send({ type: "remove", itemId: target });
+  const state = structuredClone(room.state);
+  for (const itemId of [undefined, 0, {}, target]) await send({ type: "select", itemId });
+  sockets[1].serializeAttachment(null);
+  await send({ type: "select", itemId: room.state.queue[0].id }, sockets[1]);
+  assert.deepEqual(room.state, state);
+});
+
+test("Auto-clear defaults off, broadcasts its setting, and survives reconstruction", async () => {
+  const { room, add, send, ctx, sockets, control } = await setup();
+  assert.equal(room.state.autoClear, false);
+  await add(); await control("pause", 37);
+  const playbackId = room.state.playbackId;
+  await send({ type: "auto-clear", enabled: true }, sockets[1]);
+  assert.equal(room.state.currentTime, 37);
+  assert.equal(room.state.playbackId, playbackId);
+  for (const ws of sockets) assert.equal(ws.messages.at(-1).autoClear, true);
+  const restored = new RoomDO(ctx, {});
+  await restored.webSocketMessage(sockets[0], JSON.stringify({ type: "sync" }));
+  assert.equal(sockets[0].messages.at(-1).autoClear, true);
+  for (const enabled of [null, 1, "true", undefined]) await send({ type: "auto-clear", enabled });
+  assert.equal(room.state.autoClear, true);
+  await send({ type: "auto-clear", enabled: false });
+  assert.equal(room.state.autoClear, false);
+  assert.equal(room.state.queue.length, 1);
+});
+
+test("Auto-clear removes a skipped item and advances once despite duplicate end reports", async () => {
+  const { room, add, send, sockets } = await setup();
+  await add(); await add(); await add("dQw4w9WgXcQ");
+  const ids = room.state.queue.map(item => item.id);
+  await send({ type: "auto-clear", enabled: true });
+  const firstLoad = room.state.playbackId;
+  await send({ type: "next", playbackId: firstLoad });
+  assert.deepEqual(room.state.queue.map(item => item.id), ids.slice(1));
+  assert.equal(room.state.currentIndex, 0);
+  assert.equal(room.state.isPlaying, true);
+  assert.equal(room.state.currentTime, 0);
+  await send({ type: "ended", playbackId: firstLoad, currentTime: 100 }, sockets[1]);
+  assert.equal(room.state.queue.length, 2);
+  const secondLoad = room.state.playbackId;
+  await send({ type: "ended", playbackId: secondLoad, currentTime: 100 });
+  await send({ type: "ended", playbackId: secondLoad, currentTime: 100 }, sockets[1]);
+  assert.deepEqual(room.state.queue.map(item => item.id), [ids[2]]);
+  for (const ws of sockets) assert.equal(ws.messages.at(-1).queue[0].id, ids[2]);
+});
+
+test("Auto-clear empties playback after the last item finishes or is skipped", async () => {
+  for (const type of ["ended", "next"]) {
+    const { room, add, send } = await setup();
+    await add(); await send({ type: "auto-clear", enabled: true });
+    const playbackId = room.state.playbackId;
+    await send({ type, playbackId, currentTime: 100 });
+    assert.equal(room.state.queue.length, 0);
+    assert.equal(room.state.currentIndex, -1);
+    assert.equal(room.state.playbackId, null);
+    assert.equal(room.state.isPlaying, false);
+    assert.equal(room.state.currentTime, 0);
+    assert.equal(room.state.autoClear, true);
+    await add();
+    assert.equal(room.state.currentIndex, 0);
+    assert.equal(room.state.isPlaying, true);
+  }
+});
+
+test("Auto-clear selection removes only the abandoned item and keeps the selected ID", async () => {
+  const { room, add, send, control } = await setup();
+  await add(); await add(); await add();
+  const ids = room.state.queue.map(item => item.id);
+  await send({ type: "auto-clear", enabled: true });
+  await send({ type: "select", itemId: ids[2] });
+  assert.deepEqual(room.state.queue.map(item => item.id), ids.slice(1));
+  assert.equal(room.state.currentIndex, 1);
+  await control("pause", 12);
+  await send({ type: "select", itemId: ids[2] });
+  assert.equal(room.state.queue.length, 2);
+  assert.equal(room.state.currentTime, 12);
+  await send({ type: "select", itemId: ids[1] });
+  assert.deepEqual(room.state.queue.map(item => item.id), [ids[1]]);
+  assert.equal(room.state.currentIndex, 0);
+});
+
+test("turning Auto-clear off retains future skipped videos without restoring removed ones", async () => {
+  const { room, add, send } = await setup();
+  await add(); await add(); await add();
+  await send({ type: "auto-clear", enabled: true });
+  await send({ type: "next", playbackId: room.state.playbackId });
+  assert.equal(room.state.queue.length, 2);
+  await send({ type: "auto-clear", enabled: false });
+  await send({ type: "next", playbackId: room.state.playbackId });
+  assert.equal(room.state.queue.length, 2);
+  assert.equal(room.state.currentIndex, 1);
+});
+
 test("malformed messages and invalid times do not corrupt state", async () => {
   const { room, add, send, control, sockets } = await setup();
   await add();

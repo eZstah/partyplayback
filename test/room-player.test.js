@@ -165,3 +165,36 @@ test("drift correction is local and compensates for response transit time", () =
   sync.tick();
   assert.equal(messages.length, 0);
 });
+
+test("replacing the embed reloads the current room timeline without broadcasting a command", () => {
+  const { sync, player, room, calls, messages, advance } = setup();
+  advance(20000);
+  sync.tick();
+  sync.detach();
+  assert.equal(sync.player, null);
+  // Other viewers can change the room while YouTube is reloading.
+  sync.receive({ ...room, currentTime: 45, revision: 2 });
+  advance(3000, 0);
+  calls.length = 0;
+  const replacement = { ...player, time: 0, videoId: "" };
+  sync.ready(replacement);
+  assert.deepEqual(calls[0], ["load", { videoId: room.queue[0].videoId, startSeconds: 48 }]);
+  replacement.state = 1;
+  sync.stateChanged(1);
+  assert.equal(sync.pending, null);
+  assert.equal(messages.length, 0);
+});
+
+test("replacing a paused or blocked embed stays paused at the room position", () => {
+  const { sync, player, room, calls, messages } = setup();
+  sync.receive({ ...room, currentTime: 60, isPlaying: false, revision: 2 });
+  sync.autoplayBlocked();
+  sync.failed();
+  sync.detach();
+  calls.length = 0;
+  sync.ready({ ...player, time: 0, videoId: "" });
+  assert.deepEqual(calls[0], ["cue", { videoId: room.queue[0].videoId, startSeconds: 60 }]);
+  assert.equal(sync.blocked, false);
+  assert.equal(sync.failedId, null);
+  assert.equal(messages.length, 0);
+});

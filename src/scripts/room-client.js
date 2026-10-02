@@ -2,7 +2,9 @@ import { RoomPlayer } from "../lib/room-player.js";
 import { bootAuth } from "./auth-client.js";
 import { bootRoomMascots } from "./room-mascots.js";
 import { copyText, takeCreatedRoomNotice } from "./invite-copy.js";
-import { pastedVideo, youtubeUrl } from "./room-paste.js";
+import { pastedVideo, youtubeUrl, playlistLink } from "./room-paste.js";
+import { bindVolumeControl } from "./volume-control.js";
+import { bindFullscreenControls } from "./fullscreen-controls.js";
 
 export function bootRoom(roomName, arrival = Promise.resolve()) {
   const auth = bootAuth();
@@ -10,15 +12,18 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const $ = id => document.getElementById(id);
   const conn = $("conn"), count = $("uc"), username = $("uname");
   const queueList = $("q-list"), urlInput = $("url-in"), addButton = $("add-btn");
+  const addForm = $("add-form"), addError = $("add-error"), addFeedback = $("add-feedback");
   const playButton = $("play-btn"), nextButton = $("next-btn"), enableButton = $("enable-btn");
   let socket = null, room = null, joined = false, stopping = false;
-  let reconnectTimer, joinTimer, toastTimer, delay = 1000, lastMessage = 0;
-  let lastServerTime = -1, latency = 0, adding = false;
+  let reconnectTimer, joinTimer, toastTimer, linkFeedbackTimer, linkFeedbackHideTimer, delay = 1000, lastMessage = 0;
+  let lastServerTime = -1, latency = 0, adding = false, readingClipboard = false;
   let queueSignature = "", peopleSignature = "", scrubbing = false, overlayTimer;
   const progress = $("progress");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const requests = new Map();
   let pastedAddition = null;
+  let youtubePlayer = null, youtubeControls = false;
+  const youtubeButton = $("youtube-controls-btn");
 
   function getStored(storage, key, fallback) {
     try {
@@ -52,13 +57,32 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     },
   });
 
+  const fullscreenControls = bindFullscreenControls({ shell: $("room-shell"), document });
+  function updateFullscreenControls() {
+    const canHide = !!(!youtubeControls && joined && room?.isPlaying && room.queue[room.currentIndex] &&
+      playback.player?.getPlayerState() === 1 && !playback.blocked && !playback.pending &&
+      playback.failedId !== room.playbackId && !document.querySelector("dialog[open]"));
+    fullscreenControls.update(canHide, room?.playbackId);
+  }
   function controls() {
     const hasVideo = !!room?.queue[room.currentIndex];
+    youtubeButton.disabled = !hasVideo || !playback.player;
     playButton.disabled = !joined || !hasVideo;
-    nextButton.disabled = !joined || !hasVideo || room.currentIndex + 1 >= room.queue.length;
-    addButton.disabled = !joined || adding;
-    queueList.querySelectorAll("button").forEach(button => { button.disabled = !joined; });
+    nextButton.disabled = !joined || !hasVideo || (room.currentIndex + 1 >= room.queue.length && !room.autoClear);
+    addButton.disabled = !joined || adding || readingClipboard;
+    $("auto-clear-btn").disabled = !joined;
+    $("auto-clear-btn").setAttribute("aria-checked", String(!!room?.autoClear));
     const playing = !!room?.isPlaying;
+    queueList.querySelectorAll(".qi-rm").forEach(button => { button.disabled = !joined; });
+    queueList.querySelectorAll(".qi-play").forEach(button => {
+      const current = button.closest("li").dataset.itemId === room?.queue[room.currentIndex]?.id;
+      const active = current && playing;
+      button.disabled = !joined || active;
+      button.dataset.playing = String(active);
+      button.title = (active ? "Playing " : "Play ") + button.dataset.videoTitle;
+      button.setAttribute("aria-label", button.title);
+      if (current) button.closest("li").querySelector(".qi-sub").textContent = playing ? "Now playing" : "Paused";
+    });
     const mood = !hasVideo ? "idle" : playing ? "playing" : "paused";
     if (document.body.dataset.playback !== mood) {
       const previous = document.body.dataset.playback;
@@ -74,6 +98,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
     $("play-icon").hidden = playing;
     $("pause-icon").hidden = !playing;
+    updateFullscreenControls();
   }
 
   // Like a desktop player: pausing leaves a big pause sign up, resuming flashes play,
@@ -256,6 +281,26 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       img.src = "https://img.youtube.com/vi/" + item.videoId + "/mqdefault.jpg";
       img.alt = "";
       img.loading = "lazy";
+      const select = document.createElement("button");
+      select.className = "qi-play";
+      select.type = "button";
+      select.dataset.videoTitle = item.title;
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("viewBox", "0 0 24 24");
+      icon.setAttribute("aria-hidden", "true");
+      const triangle = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      triangle.setAttribute("d", "M8 5v14l11-7-11-7Z");
+      triangle.setAttribute("class", "qi-play-symbol");
+      const bars = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      bars.setAttribute("d", "M6 10v4M12 6v12M18 8v8");
+      bars.setAttribute("class", "qi-playing-symbol");
+      icon.append(triangle, bars);
+      select.append(img, icon);
+      select.addEventListener("click", () => {
+        if (!joined) return;
+        playback.enablePlayback(true);
+        send({ type: "select", itemId: item.id });
+      });
       const info = document.createElement("div");
       info.className = "qi-info";
       const title = document.createElement("div");
@@ -272,7 +317,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       remove.setAttribute("aria-label", remove.title);
       remove.textContent = "×";
       remove.addEventListener("click", () => send({ type: "remove", itemId: item.id }));
-      li.append(img, info, remove);
+      li.append(select, info, remove);
       queueList.insertBefore(li, queueList.children[index] || null);
       if (!reducedMotion.matches) li.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }], { duration: 450, easing: "cubic-bezier(.22,1,.36,1)" });
     });
@@ -313,13 +358,15 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   }
   playButton.addEventListener("click", togglePlayback);
   nextButton.addEventListener("click", () => playback.command("next"));
+  $("auto-clear-btn").addEventListener("click", () => send({ type: "auto-clear", enabled: !room.autoClear }));
   enableButton.addEventListener("click", () => playback.enablePlayback());
 
   async function addVideo(value, fromPaste = false) {
-    if (adding || pastedAddition) { if (fromPaste) toast("A video is being added. Paste again in a moment."); return; }
+    if (adding || pastedAddition || readingClipboard) { if (fromPaste) toast("A video is being added. Paste again in a moment."); return; }
     if (!joined) { toast("Wait for the room to reconnect"); return; }
     const url = youtubeUrl(value);
-    if (!url) { toast("Paste a valid YouTube video link"); return; }
+    if (!url) { showLinkError(value.trim() ? "Use a YouTube video link." : "Paste a YouTube link."); return; }
+    showLinkError();
     if (room.queue.length >= 100) { toast("The playlist is full"); return; }
     adding = true;
     if (fromPaste) toast("Adding video…");
@@ -342,9 +389,50 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     adding = false;
     controls();
   }
-  $("add-form").addEventListener("submit", event => {
+  function showLinkError(message = "") {
+    clearTimeout(linkFeedbackTimer);
+    clearTimeout(linkFeedbackHideTimer);
+    addFeedback.classList.remove("is-leaving");
+    addError.textContent = message;
+    addFeedback.hidden = !message;
+    urlInput.setAttribute("aria-invalid", String(!!message));
+    addForm.dataset.invalid = String(!!message);
+    if (message) {
+      urlInput.focus();
+      linkFeedbackTimer = setTimeout(hideLinkFeedback, 4000);
+    }
+  }
+  function hideLinkFeedback() {
+    clearTimeout(linkFeedbackTimer);
+    clearTimeout(linkFeedbackHideTimer);
+    if (addFeedback.hidden) return;
+    urlInput.setAttribute("aria-invalid", "false");
+    addForm.dataset.invalid = "false";
+    addFeedback.classList.add("is-leaving");
+    linkFeedbackHideTimer = setTimeout(() => showLinkError(), reducedMotion.matches ? 0 : 180);
+  }
+  urlInput.addEventListener("input", () => showLinkError());
+  addForm.addEventListener("focusout", event => {
+    if (!addForm.contains(event.relatedTarget)) hideLinkFeedback();
+  });
+  addForm.addEventListener("submit", event => {
     event.preventDefault();
+    if (readingClipboard) return;
     addVideo(urlInput.value);
+  });
+  addButton.addEventListener("click", async () => {
+    if (!joined || adding || readingClipboard || pastedAddition) return;
+    readingClipboard = true;
+    controls();
+    const link = await playlistLink(urlInput, navigator.clipboard);
+    readingClipboard = false;
+    if (stopping) return;
+    controls();
+    if (!link) {
+      showLinkError("Paste a YouTube link.");
+      return;
+    }
+    addVideo(link.value, link.fromClipboard);
   });
   document.addEventListener("paste", event => {
     const url = pastedVideo(event, !!document.querySelector("dialog[open]"));
@@ -374,20 +462,24 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     const duration = playback.player?.getDuration?.() || 604800;
     playback.command("seek", Math.max(0, Math.min(time, duration)));
   }
+  function setTheater(active) {
+    document.body.classList.toggle("theater", active);
+    $("theater-btn").setAttribute("aria-pressed", String(active));
+    try { localStorage.setItem("youple-theater", String(active)); } catch {}
+  }
+  $("theater-btn").setAttribute("aria-pressed", String(document.body.classList.contains("theater")));
   progress.addEventListener("input", () => { scrubbing = true; updateProgress(); });
   progress.addEventListener("change", () => { seek(Number(progress.value)); scrubbing = false; });
   progress.addEventListener("blur", () => { scrubbing = false; });
   $("first-video-btn").addEventListener("click", async () => {
     if (document.fullscreenElement) await document.exitFullscreen();
-    document.body.classList.remove("theater");
-    $("theater-btn").setAttribute("aria-pressed", "false");
+    setTheater(false);
     urlInput.focus();
     urlInput.scrollIntoView({ block: "center", behavior: reducedMotion.matches ? "instant" : "smooth" });
   });
   $("theater-btn").addEventListener("click", async () => {
     if (document.fullscreenElement) await document.exitFullscreen();
-    const active = document.body.classList.toggle("theater");
-    $("theater-btn").setAttribute("aria-pressed", String(active));
+    setTheater(!document.body.classList.contains("theater"));
     if (!reducedMotion.matches) $("stage").animate([{ opacity: .65 }, { opacity: 1 }], { duration: 400 });
   });
   $("fullscreen-btn").hidden = !document.fullscreenEnabled || !$("room-shell").requestFullscreen;
@@ -404,39 +496,35 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     $("fullscreen-btn").setAttribute("aria-label", active ? "Exit fullscreen" : "Fullscreen");
     $("fullscreen-btn").title = active ? "Exit fullscreen (F)" : "Fullscreen (F)";
   });
-  function updateMuteControl() {
-    const player = playback.player;
-    $("mute-btn").disabled = !player;
-    if (!player) return;
-    const muted = player.isMuted();
-    if ($("mute-btn").dataset.muted === String(muted)) return;
-    const label = muted ? "Unmute" : "Mute";
-    $("mute-btn").dataset.muted = String(muted);
-    $("mute-btn").setAttribute("aria-label", label);
-    $("mute-btn").title = label + " on your device (M)";
-    $("mute-label").textContent = label;
-    $("unmute-icon").hidden = !muted;
-    $("mute-icon").hidden = muted;
-  }
-  $("mute-btn").addEventListener("click", () => {
-    const player = playback.player;
-    if (!player) return;
-    const muted = !player.isMuted();
-    if (muted) player.mute(); else player.unMute();
-    updateMuteControl();
-    if (room?.queue[room.currentIndex]) flashOverlay(muted ? "muted" : "unmuted");
+  const deviceVolume = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  $("device-volume-hint").hidden = !deviceVolume;
+  $("device-volume-hint").title = "Use your device’s volume buttons";
+  let volumeStorage;
+  try { volumeStorage = localStorage; } catch {}
+  const sound = bindVolumeControl({
+    slider: $("volume"), muteButton: $("mute-btn"), muteLabel: $("mute-label"), muteIcon: $("mute-icon"), unmuteIcon: $("unmute-icon"),
+    getPlayer: () => playback.player, storage: volumeStorage, deviceVolume,
+    onToggle(muted) { if (room?.queue[room.currentIndex]) flashOverlay(muted ? "muted" : "unmuted"); },
   });
+  function updateMuteControl() { sound.sync(); }
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
   $("save-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));
-  let copyingInvite = false, inviteTimer;
-  function showCopiedInvite(message = "Link copied!") {
+  let copyingInvite = false, inviteTimer, copiedTimer;
+  // Copy confirmations pop up mid-screen so nobody misses that the link is ready to paste.
+  function showCopiedInvite(message = "Paste it anywhere to invite friends.") {
     clearTimeout(inviteTimer);
     $("invite-icon").hidden = true;
     $("invite-success-icon").hidden = false;
     $("invite-label").textContent = "Link copied";
     $("invite-btn").dataset.copied = "true";
     $("invite-btn").setAttribute("aria-label", "Link copied");
-    toast(message);
+    $("copied-pop-title").textContent = "Link copied";
+    $("copied-pop-text").textContent = message;
+    $("copied-pop").classList.remove("show");
+    void $("copied-pop").offsetWidth;
+    $("copied-pop").classList.add("show");
+    clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => $("copied-pop").classList.remove("show"), 2400);
     inviteTimer = setTimeout(() => {
       $("invite-icon").hidden = false;
       $("invite-success-icon").hidden = true;
@@ -448,7 +536,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const created = takeCreatedRoomNotice();
   if (created) arrival.then(() => {
     if (stopping) return;
-    if (created.copied) showCopiedInvite("Invite link copied. Share it with friends.");
+    if (created.copied) showCopiedInvite("Your room is ready. Send the link to your friends.");
     else toast("Room ready. Tap Invite friends to copy the link.");
   });
   $("invite-btn").addEventListener("click", async () => {
@@ -463,6 +551,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   });
   document.addEventListener("keydown", event => {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.("input,textarea,select,[contenteditable=true]") || document.querySelector("dialog[open]")) return;
+    if ((event.key === " " || event.key === "Enter") && event.target.closest?.("button")) return;
     const key = event.key.toLowerCase();
     const actions = {
       " ": togglePlayback, k: togglePlayback,
@@ -476,23 +565,49 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     if (actions[key]) { event.preventDefault(); actions[key](); }
   });
 
-  window.onYouTubeIframeAPIReady = () => {
+  function createPlayer() {
     const player = new window.YT.Player("yt-player", {
       height: "100%", width: "100%",
-      playerVars: { controls: 0, disablekb: 1, rel: 0, playsinline: 1, origin: location.origin },
+      playerVars: { controls: youtubeControls ? 1 : 0, disablekb: 1, rel: 0, playsinline: 1, fs: 0, origin: location.origin },
       events: {
-        onReady() { playback.ready(player); updateMuteControl(); },
-        onStateChange(event) { playback.stateChanged(event.data); },
-        onAutoplayBlocked() { playback.autoplayBlocked(); },
+        onReady() {
+          if (stopping || player !== youtubePlayer) return;
+          sound.ready(player); playback.ready(player); updateMuteControl(); controls();
+        },
+        onStateChange(event) { if (player === youtubePlayer) playback.stateChanged(event.data); },
+        onAutoplayBlocked() { if (player === youtubePlayer) playback.autoplayBlocked(); },
         onError() {
+          if (player !== youtubePlayer) return;
           playback.failed();
           toast("Video unavailable or embedding blocked. Try another video or use Next.");
         },
       },
     });
-  };
+    youtubePlayer = player;
+  }
+  window.onYouTubeIframeAPIReady = createPlayer;
+  youtubeButton.addEventListener("click", () => {
+    if (youtubeButton.disabled || !youtubePlayer) return;
+    youtubeControls = !youtubeControls;
+    $("room-shell").dataset.youtubeControls = String(youtubeControls);
+    youtubeButton.setAttribute("aria-pressed", String(youtubeControls));
+    youtubeButton.title = youtubeControls ? "Hide YouTube controls" : "Show subtitles and quality controls";
+    const previous = youtubePlayer;
+    youtubePlayer = null;
+    playback.detach();
+    controls();
+    previous.destroy();
+    // YouTube restores its original mount when destroyed.
+    if (!$("yt-player")) {
+      const mount = document.createElement("div");
+      mount.id = "yt-player";
+      $("player-wrap").prepend(mount);
+    }
+    createPlayer();
+    toast(youtubeControls ? "Use YouTube’s CC or settings for subtitles and quality." : "YouTube controls hidden.");
+  });
 
-  const sampleTimer = setInterval(() => { playback.tick(); updateProgress(); updateMuteControl(); }, 250);
+  const sampleTimer = setInterval(() => { playback.tick(); updateProgress(); updateMuteControl(); updateFullscreenControls(); }, 250);
   const syncTimer = setInterval(() => {
     if (joined && performance.now() - lastMessage > 20000) socket?.close();
     else if (joined) requestState();
@@ -502,12 +617,16 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   });
   window.addEventListener("pagehide", () => {
     stopping = true;
+    fullscreenControls.destroy();
     clearInterval(sampleTimer);
     clearInterval(syncTimer);
     clearTimeout(reconnectTimer);
     clearTimeout(joinTimer);
+    clearTimeout(linkFeedbackTimer);
+    clearTimeout(linkFeedbackHideTimer);
     if (pastedAddition) clearTimeout(pastedAddition.timer);
     clearTimeout(inviteTimer);
+    clearTimeout(copiedTimer);
     socket?.close(1000, "Leaving room");
   });
   window.addEventListener("pageshow", event => { if (event.persisted) location.reload(); });
