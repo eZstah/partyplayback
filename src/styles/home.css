@@ -869,3 +869,6 @@
   30% { transform: scale(1) rotate(0); opacity: 1; }
   100% { transform: scale(1.8) rotate(20deg); opacity: 0; }
 }
+.home-page .page-footer a {
+  color: inherit;
+}
