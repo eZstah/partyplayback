@@ -1037,4 +1037,81 @@
     top: 220px;
   }
 }
-.guest-note { margin: 17px 0 0; text-align: center; color: #706576; font-size: 17px; line-height: 1.5; }
+.portal-icon { flex: none; }
+.portal-orbits { transform-origin: 20px 20px; transition: transform .65s var(--ease); }
+.create-room-button:hover .portal-orbits { transform: rotate(80deg); }
+.create-room-button:disabled { opacity: 1; cursor: wait; }
+.create-room-button[aria-busy=true] .portal-orbits { animation: portal-orbit 1.4s linear infinite; }
+@keyframes portal-orbit { to { transform: rotate(360deg); } }
+.room-departing { overflow: hidden; }
+.room-departing .home-main { animation: portal-scene-out .85s var(--ease) both; }
+.room-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: radial-gradient(ellipse at var(--portal-x,50%) var(--portal-y,50%),#493068 0%,#211b34 48%,#181622 85%);
+  animation: portal-cover .85s ease both;
+  cursor: wait;
+}
+.portal-tunnel {
+  position: absolute;
+  left: var(--portal-x,50%);
+  top: var(--portal-y,50%);
+  width: 0;
+  height: 0;
+  perspective: 600px;
+}
+.portal-ring {
+  position: absolute;
+  width: min(70vw,560px);
+  aspect-ratio: 1;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  border: 2px solid #C3AFFf;
+  box-shadow: 0 0 32px #C3AFFf22,inset 0 0 28px #C3AFFf11;
+  opacity: 0;
+  animation: portal-ring-flight .7s cubic-bezier(.3,.05,.55,1) both;
+  animation-delay: calc(var(--phase) * 30ms);
+}
+.portal-ring:nth-child(even) { border-color: #F4ADC0; }
+.portal-streak {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 34px;
+  height: 3px;
+  border-radius: 100px;
+  background: linear-gradient(90deg,transparent,#C3AFFf);
+  transform-origin: 0 50%;
+  opacity: 0;
+  animation: portal-streak-flight .8s ease-in both;
+  animation-delay: calc(var(--phase) * 15ms);
+}
+.portal-streak:nth-child(3n) { background: linear-gradient(90deg,transparent,#F5BE70); }
+.portal-core {
+  position: absolute;
+  left: -44px;
+  top: -44px;
+  color: #D8C9FF;
+  animation: portal-core-flight .85s var(--ease) both;
+}
+.portal-core .portal-orbits { animation: portal-orbit .85s linear both; }
+@keyframes portal-cover { 0% { opacity: 0; } 30%,100% { opacity: 1; } }
+@keyframes portal-scene-out { to { transform: scale(1.035); opacity: .25; } }
+@keyframes portal-ring-flight {
+  0% { transform: translate(-50%,-50%) scale(.08) rotateX(12deg); opacity: 0; }
+  22% { opacity: .65; }
+  100% { transform: translate(-50%,-50%) scale(5) rotateX(0deg); opacity: 0; }
+}
+@keyframes portal-streak-flight {
+  0% { transform: rotate(var(--angle)) translateX(36px) scaleX(.3); opacity: 0; }
+  35% { opacity: .55; }
+  100% { transform: rotate(var(--angle)) translateX(90vmax) scaleX(7); opacity: 0; }
+}
+@keyframes portal-core-flight {
+  0% { transform: scale(.55) rotate(-18deg); opacity: 0; }
+  30% { transform: scale(1) rotate(0); opacity: 1; }
+  100% { transform: scale(1.8) rotate(20deg); opacity: 0; }
+}

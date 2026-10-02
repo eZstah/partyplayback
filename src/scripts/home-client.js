@@ -1,4 +1,5 @@
 import { bootAuth } from "./auth-client.js";
+import { enterCreatedRoom } from "./room-transition.js";
 
 export function bootHome() {
   const auth = bootAuth();
@@ -9,6 +10,7 @@ export function bootHome() {
   const savedDialog = document.getElementById("saved-room-dialog");
   const savedMessage = document.getElementById("saved-room-message");
   const signedIn = document.body.dataset.signedIn === "true";
+  let creating = false, leaving = false;
   function openSavedRoom() {
     if (!signedIn) { auth.open("/?create=member"); return; }
     if (!savedDialog.open) savedDialog.showModal();
@@ -19,31 +21,39 @@ export function bootHome() {
   }));
   document.querySelectorAll("[data-join-room]").forEach(button => button.addEventListener("click", () => joinDialog.showModal()));
   function bindCreation(form, mode, message) {
-    let busy = false;
     form.addEventListener("submit", async event => {
     event.preventDefault();
-    if (busy) return;
+    if (creating || leaving) return;
     const title = mode === "member" ? form.elements.title.value : undefined;
     if (mode === "member" && !signedIn) {
       try { sessionStorage.setItem("pp_room_draft", title); } catch {}
       savedDialog.close(); auth.open("/?create=member");
       return;
     }
-    busy = true;
+    creating = true;
     const submit = form.querySelector("button[type=submit]");
-    submit.disabled = true; submit.querySelector("span").textContent = "Making room…"; message.textContent = "";
+    submit.disabled = true; submit.setAttribute("aria-busy", "true"); submit.querySelector("span").textContent = "Opening your room…"; message.textContent = "";
     try {
       const response = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, title }) });
       const data = await response.json();
-      if (response.ok) location.assign(data.url);
+      if (response.ok) { leaving = true; await enterCreatedRoom(data.url, submit); }
       else if (data.signIn) { try { sessionStorage.setItem("pp_room_draft", title || ""); } catch {} savedDialog.close(); auth.open("/?create=member"); }
       else message.textContent = data.message || "Couldn't create your room. Try again.";
-    } catch { message.textContent = "Couldn't connect. Please try again."; }
-    finally { busy = false; submit.disabled = false; submit.querySelector("span").textContent = mode === "member" ? "Create saved room" : "Create room"; }
+    } catch { leaving = false; document.body.classList.remove("room-departing"); document.getElementById("room-portal").hidden = true; message.textContent = "Couldn't connect. Please try again."; }
+    finally { creating = false; if (!leaving) { submit.disabled = false; submit.removeAttribute("aria-busy"); submit.querySelector("span").textContent = mode === "member" ? "Create saved room" : "Create room"; } }
     });
   }
   bindCreation(createForm, "guest", createMessage);
   bindCreation(savedForm, "member", savedMessage);
+  window.addEventListener("pageshow", () => {
+    creating = false; leaving = false;
+    document.body.classList.remove("room-departing");
+    document.getElementById("room-portal").hidden = true;
+    for (const [form, label] of [[createForm, "Create room"], [savedForm, "Create saved room"]]) {
+      const submit = form.querySelector("button[type=submit]");
+      submit.disabled = false; submit.removeAttribute("aria-busy"); submit.querySelector("span").textContent = label;
+    }
+  });
   document.getElementById("join-form").addEventListener("submit", event => {
     event.preventDefault();
     let value = document.getElementById("room-code").value.trim();

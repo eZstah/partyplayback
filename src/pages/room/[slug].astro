@@ -43,5 +43,5 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
   <dialog id="invite-dialog" class="dialog" aria-labelledby="invite-heading"><button class="dialog-close" data-close-dialog type="button" aria-label="Close"><Icon name="close" size={16}/></button><h2 id="invite-heading">Invite your friends.</h2><p>{details?.mode === 'member' ? 'Friends need to sign in to join this room.' : 'Send this link. Your friends can join as guests.'}</p><label for="invite-link">Room link</label><input id="invite-link" readonly/><button id="copy-link-btn" class="primary-button wide" type="button">Copy link<Icon name="link" size={18}/></button></dialog>
   <div id="toast" class="toast" role="status"></div>
   </div>
-  <script>import { bootRoom } from '../../scripts/room-client.js'; bootRoom(document.body.dataset.room);</script>
+  <script>import { revealCreatedRoom } from '../../scripts/room-transition.js'; import { bootRoom } from '../../scripts/room-client.js'; revealCreatedRoom(); bootRoom(document.body.dataset.room);</script>
 </body></html>
