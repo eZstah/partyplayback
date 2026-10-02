@@ -263,7 +263,7 @@ export function bootRoom(roomName) {
     if (document.fullscreenElement) { await document.exitFullscreen(); setPlaylist(true); $("sidebar").scrollIntoView({ block: "nearest" }); }
     else setPlaylist(document.body.classList.contains("playlist-hidden"));
   });
-  $("first-video-btn").addEventListener("click", () => { setPlaylist(true); urlInput.focus(); urlInput.scrollIntoView({ block: "center", behavior: reducedMotion.matches ? "instant" : "smooth" }); });
+  $("first-video-btn").addEventListener("click", async () => { if (document.fullscreenElement) await document.exitFullscreen(); setPlaylist(true); urlInput.focus(); urlInput.scrollIntoView({ block: "center", behavior: reducedMotion.matches ? "instant" : "smooth" }); });
   $("theater-btn").addEventListener("click", async () => {
     if (document.fullscreenElement) await document.exitFullscreen();
     const active = document.body.classList.toggle("theater");
@@ -273,14 +273,15 @@ export function bootRoom(roomName) {
   $("fullscreen-btn").addEventListener("click", async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
-      else if ($("stage").requestFullscreen) await $("stage").requestFullscreen();
+      else if ($("room-shell").requestFullscreen) await $("room-shell").requestFullscreen();
       else toast("Fullscreen is unavailable in this browser. Try theater mode.");
     } catch { toast("Fullscreen couldn't open. Try theater mode."); }
   });
   document.addEventListener("fullscreenchange", () => {
-    const active = document.fullscreenElement === $("stage");
+    const active = document.fullscreenElement === $("room-shell");
     $("fullscreen-btn").setAttribute("aria-pressed", String(active));
     $("fullscreen-btn").setAttribute("aria-label", active ? "Exit fullscreen" : "Fullscreen");
+    $("fullscreen-btn").title = active ? "Exit fullscreen (F)" : "Fullscreen (F)";
   });
   $("mute-btn").addEventListener("click", () => {
     const player = playback.player;
