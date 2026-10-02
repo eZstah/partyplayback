@@ -578,3 +578,55 @@ kbd {
   background: #322b41;
   border-radius: 50%;
 }
+.compact-dialog {
+  width: min(420px,calc(100% - 32px));
+  padding: 30px;
+}
+.compact-dialog h2 {
+  margin: 8px 42px 26px 0;
+  line-height: 1.2;
+}
+.compact-dialog input {
+  margin: 0 0 14px;
+}
+.compact-dialog .primary-button {
+  min-height: 56px;
+}
+.auth-providers {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+}
+.auth-providers .provider-button {
+  margin: 0;
+  min-height: 56px;
+  padding: 16px 12px;
+  gap: 8px;
+  justify-content: center;
+}
+.auth-providers .provider-button:hover {
+  transform: translateY(-2px);
+}
+.compact-dialog .auth-divider {
+  justify-content: center;
+  margin: 18px 0;
+}
+.compact-dialog .auth-divider::before,.compact-dialog .auth-divider::after {
+  display: none;
+}
+.compact-dialog .form-message {
+  min-height: 0;
+  text-align: center;
+  margin-top: 16px;
+}
+.compact-dialog .form-message:empty {
+  display: none;
+}
+.compact-dialog .dialog-foot {
+  min-height: 44px;
+  margin-top: 10px;
+}
+@media(max-width:380px) {
+  .compact-dialog { padding: 26px 22px; }
+  .auth-providers { gap: 8px; }
+}

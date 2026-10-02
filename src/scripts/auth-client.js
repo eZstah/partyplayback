@@ -45,7 +45,7 @@ export function bootAuth() {
   const query = new URLSearchParams(location.search);
   if (query.has("signin")) {
     open(query.get("next") || "/");
-    if (query.has("auth_error")) message.textContent = "That link expired or couldn't be verified. Please sign in again.";
+    if (query.has("auth_error")) message.textContent = "Couldn't verify that link. Try again.";
     history.replaceState({}, "", location.pathname);
   }
   return { open };

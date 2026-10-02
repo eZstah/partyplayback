@@ -62,7 +62,7 @@ export function bootHome() {
       else value = value.replace(/^\/room\//, "");
       if (!/^[a-zA-Z0-9_-]{1,64}$/.test(value)) throw new Error("Invalid code");
       location.assign("/room/" + value);
-    } catch { document.getElementById("join-message").textContent = "That invite doesn't look right. Paste a room link or room code."; }
+    } catch { document.getElementById("join-message").textContent = "Enter a valid room link or code."; }
   });
   if (new URLSearchParams(location.search).get("create") === "member") {
     try { savedForm.elements.title.value = sessionStorage.getItem("pp_room_draft") || ""; sessionStorage.removeItem("pp_room_draft"); } catch {}
