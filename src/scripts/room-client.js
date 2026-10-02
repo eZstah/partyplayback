@@ -1,6 +1,8 @@
 import { RoomPlayer } from "../lib/room-player.js";
 import { bootAuth } from "./auth-client.js";
 import { bootRoomMascots } from "./room-mascots.js";
+import { copyText, takeCreatedRoomNotice } from "./invite-copy.js";
+import { pastedVideo, youtubeUrl } from "./room-paste.js";
 
 export function bootRoom(roomName, arrival = Promise.resolve()) {
   const auth = bootAuth();
@@ -16,6 +18,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const progress = $("progress");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const requests = new Map();
+  let pastedAddition = null;
 
   function getStored(storage, key, fallback) {
     try {
@@ -112,6 +115,11 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
         playback.receive(data, latency);
         render();
         setConnection("connected");
+        if (pastedAddition && room.queue.some(item => item.url === pastedAddition.url && !pastedAddition.before.has(item.id))) {
+          clearTimeout(pastedAddition.timer);
+          pastedAddition = null;
+          toast("Video added to playlist");
+        }
         if (firstState) {
           performance.mark("youple:room-connected");
           document.dispatchEvent(new Event("youple:room-ready"));
@@ -120,6 +128,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       } else if (data.type === "users") {
         setCount(data.userCount);
       } else if (data.type === "error") {
+        if (pastedAddition) { clearTimeout(pastedAddition.timer); pastedAddition = null; }
         toast(data.message);
         requestState();
       }
@@ -222,13 +231,14 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   nextButton.addEventListener("click", () => playback.command("next"));
   enableButton.addEventListener("click", () => playback.enablePlayback());
 
-  $("add-form").addEventListener("submit", async event => {
-    event.preventDefault();
-    if (adding) return;
+  async function addVideo(value, fromPaste = false) {
+    if (adding || pastedAddition) { if (fromPaste) toast("A video is being added. Paste again in a moment."); return; }
     if (!joined) { toast("Wait for the room to reconnect"); return; }
-    const url = urlInput.value.trim();
-    if (!url) return;
+    const url = youtubeUrl(value);
+    if (!url) { toast("Paste a valid YouTube video link"); return; }
+    if (room.queue.length >= 100) { toast("The playlist is full"); return; }
     adding = true;
+    if (fromPaste) toast("Adding video…");
     addButton.disabled = true;
     addButton.setAttribute("aria-label", "Adding video");
     let title = url;
@@ -236,11 +246,27 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       const response = await fetch("https://www.youtube.com/oembed?url=" + encodeURIComponent(url) + "&format=json", { signal: AbortSignal.timeout(4000) });
       if (response.ok) title = (await response.json()).title || url;
     } catch {}
-    if (send({ type: "add", url, title })) urlInput.value = "";
-    else toast("Connection lost. Your URL is still here; try again after reconnecting.");
+    if (send({ type: "add", url, title })) {
+      if (fromPaste) {
+        pastedAddition = { url, before: new Set(room.queue.map(item => item.id)), timer: setTimeout(() => {
+          pastedAddition = null;
+          toast("Room is slow to respond. Check the playlist.");
+        }, 6000) };
+      } else if (urlInput.value.trim() === value.trim()) urlInput.value = "";
+    } else toast(fromPaste ? "Connection lost. Reconnect and paste again." : "Connection lost. Your URL is still here; try again after reconnecting.");
     addButton.setAttribute("aria-label", "Add to playlist");
     adding = false;
     controls();
+  }
+  $("add-form").addEventListener("submit", event => {
+    event.preventDefault();
+    addVideo(urlInput.value);
+  });
+  document.addEventListener("paste", event => {
+    const url = pastedVideo(event, !!document.querySelector("dialog[open]"));
+    if (!url) return;
+    event.preventDefault();
+    addVideo(url, true);
   });
 
   function timeLabel(time) {
@@ -317,38 +343,35 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
   $("save-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));
   let copyingInvite = false, inviteTimer;
+  function showCopiedInvite(message = "Link copied!") {
+    clearTimeout(inviteTimer);
+    $("invite-icon").hidden = true;
+    $("invite-success-icon").hidden = false;
+    $("invite-label").textContent = "Link copied";
+    $("invite-btn").dataset.copied = "true";
+    $("invite-btn").setAttribute("aria-label", "Link copied");
+    toast(message);
+    inviteTimer = setTimeout(() => {
+      $("invite-icon").hidden = false;
+      $("invite-success-icon").hidden = true;
+      $("invite-label").textContent = "Invite friends";
+      delete $("invite-btn").dataset.copied;
+      $("invite-btn").setAttribute("aria-label", "Invite friends");
+    }, 3200);
+  }
+  const created = takeCreatedRoomNotice();
+  if (created) arrival.then(() => {
+    if (stopping) return;
+    if (created.copied) showCopiedInvite("Invite link copied. Share it with friends.");
+    else toast("Room ready. Tap Invite friends to copy the link.");
+  });
   $("invite-btn").addEventListener("click", async () => {
     if (copyingInvite) return;
     copyingInvite = true;
     const link = location.origin + location.pathname;
     try {
-      try { await navigator.clipboard.writeText(link); }
-      catch {
-        const field = document.createElement("textarea");
-        field.value = link;
-        field.setAttribute("aria-label", "Room link");
-        field.style.cssText = "position:fixed;left:-9999px;top:0";
-        $("room-shell").append(field);
-        field.select();
-        let copied;
-        try { copied = document.execCommand("copy"); }
-        finally { field.remove(); $("invite-btn").focus({ preventScroll: true }); }
-        if (!copied) throw new Error("Copy unavailable");
-      }
-      clearTimeout(inviteTimer);
-      $("invite-icon").hidden = true;
-      $("invite-success-icon").hidden = false;
-      $("invite-label").textContent = "Link copied";
-      $("invite-btn").dataset.copied = "true";
-      $("invite-btn").setAttribute("aria-label", "Link copied");
-      toast("Link copied!");
-      inviteTimer = setTimeout(() => {
-        $("invite-icon").hidden = false;
-        $("invite-success-icon").hidden = true;
-        $("invite-label").textContent = "Invite friends";
-        delete $("invite-btn").dataset.copied;
-        $("invite-btn").setAttribute("aria-label", "Invite friends");
-      }, 2600);
+      if (!await copyText(link)) throw new Error("Copy unavailable");
+      showCopiedInvite();
     } catch { toast("Couldn't copy. Copy the link from your address bar."); }
     finally { copyingInvite = false; }
   });
@@ -397,6 +420,8 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     clearInterval(syncTimer);
     clearTimeout(reconnectTimer);
     clearTimeout(joinTimer);
+    if (pastedAddition) clearTimeout(pastedAddition.timer);
+    clearTimeout(inviteTimer);
     socket?.close(1000, "Leaving room");
   });
   window.addEventListener("pageshow", event => { if (event.persisted) location.reload(); });

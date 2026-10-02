@@ -1,5 +1,6 @@
 import { bootAuth } from "./auth-client.js";
 import { enterCreatedRoom } from "./room-transition.js";
+import { beginInviteCopy } from "./invite-copy.js";
 import { illustrativeSyncCount } from "../lib/activity.js";
 
 export function bootHome() {
@@ -35,16 +36,17 @@ export function bootHome() {
       return;
     }
     creating = true;
+    const inviteCopy = beginInviteCopy();
     const submit = form.querySelector("button[type=submit]");
     submit.disabled = true; submit.setAttribute("aria-busy", "true"); submit.querySelector("span").textContent = "Opening your room…"; message.textContent = "";
     try {
       const response = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, title }) });
       const data = await response.json();
-      if (response.ok) { leaving = true; await enterCreatedRoom(data.url, submit); }
+      if (response.ok) { leaving = true; await enterCreatedRoom(data.url, submit, inviteCopy.complete(data.url)); }
       else if (data.signIn) { try { sessionStorage.setItem("pp_room_draft", title || ""); } catch {} savedDialog.close(); auth.open("/?create=member"); }
       else message.textContent = data.message || "Couldn't create your room. Try again.";
     } catch { leaving = false; document.body.classList.remove("room-departing"); document.getElementById("room-portal").hidden = true; message.textContent = "Couldn't connect. Please try again."; }
-    finally { creating = false; if (!leaving) { submit.disabled = false; submit.removeAttribute("aria-busy"); submit.querySelector("span").textContent = mode === "member" ? "Create saved room" : "Create room"; } }
+    finally { inviteCopy.cancel(); creating = false; if (!leaving) { submit.disabled = false; submit.removeAttribute("aria-busy"); submit.querySelector("span").textContent = mode === "member" ? "Create saved room" : "Create room"; } }
     });
   }
   bindCreation(createForm, "guest", createMessage);

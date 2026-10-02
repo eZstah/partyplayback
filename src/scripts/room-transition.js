@@ -1,7 +1,8 @@
-export async function enterCreatedRoom(url, trigger) {
+export async function enterCreatedRoom(url, trigger, copying = Promise.resolve(false)) {
   if (typeof url !== "string" || !/^\/room\/[a-zA-Z0-9_-]{1,64}$/.test(url)) throw new Error("Invalid room URL");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const portal = document.getElementById("room-portal");
+  let animation = Promise.resolve(), point = null;
   if (portal && !reducedMotion.matches) {
     const bounds = trigger.getBoundingClientRect();
     const x = (bounds.left + bounds.width / 2) / innerWidth * 100;
@@ -11,9 +12,14 @@ export async function enterCreatedRoom(url, trigger) {
     document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close());
     portal.hidden = false;
     document.body.classList.add("room-departing");
-    await new Promise(resolve => setTimeout(resolve, 850));
-    try { sessionStorage.setItem("youple-room-arrival", JSON.stringify({ at: Date.now(), url, x, y })); } catch {}
+    animation = new Promise(resolve => setTimeout(resolve, 850));
+    point = { x, y };
   }
+  const [copied] = await Promise.all([Promise.race([copying.catch(() => false), new Promise(resolve => setTimeout(() => resolve(false), 1000))]), animation]);
+  try {
+    if (point) sessionStorage.setItem("youple-room-arrival", JSON.stringify({ at: Date.now(), url, ...point }));
+    sessionStorage.setItem("youple-created-room", JSON.stringify({ at: Date.now(), url, copied: copied === true }));
+  } catch {}
   location.assign(url);
 }
 

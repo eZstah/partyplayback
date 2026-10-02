@@ -9,7 +9,7 @@ const marker = { at: 10000, url: "/room/g-test", x: 60, y: 70 };
 
 function setup({ arrival = marker, reducedMotion = false } = {}) {
   let clock = 10000, nextId = 0, stored = JSON.stringify(arrival);
-  const timers = new Map(), frames = [], classes = new Set(), marks = [];
+  const timers = new Map(), frames = [], classes = new Set(), marks = [], writes = new Map(), navigations = [];
   const events = new EventTarget();
   const root = {
     classList: { add: (...names) => names.forEach(name => classes.add(name)), remove: (...names) => names.forEach(name => classes.delete(name)), contains: name => classes.has(name) },
@@ -17,17 +17,17 @@ function setup({ arrival = marker, reducedMotion = false } = {}) {
   };
   const context = vm.createContext({
     Date: { now: () => clock },
-    location: { pathname: marker.url },
-    sessionStorage: { getItem: () => stored, removeItem: () => { stored = null; } },
+    location: { pathname: marker.url, assign: path => navigations.push(path) },
+    sessionStorage: { getItem: () => stored, removeItem: () => { stored = null; }, setItem: (key, value) => writes.set(key, value) },
     matchMedia: () => ({ matches: reducedMotion }),
-    document: { documentElement: root, fonts: { ready: Promise.resolve() }, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events) },
+    document: { documentElement: root, getElementById: () => null, fonts: { ready: Promise.resolve() }, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events) },
     setTimeout(fn, delay) { const id = ++nextId; timers.set(id, { fn, at: clock + delay }); return id; },
     clearTimeout: id => timers.delete(id),
     requestAnimationFrame: fn => frames.push(fn),
     performance: { mark: name => marks.push(name) },
   });
   vm.runInContext(head, context);
-  vm.runInContext(client + "\nglobalThis.reveal = revealCreatedRoom;", context);
+  vm.runInContext(client + "\nglobalThis.reveal = revealCreatedRoom; globalThis.enter = enterCreatedRoom;", context);
   async function flush() { for (let i = 0; i < 8; i++) await Promise.resolve(); }
   async function advance(ms) {
     clock += ms;
@@ -37,7 +37,7 @@ function setup({ arrival = marker, reducedMotion = false } = {}) {
     await flush();
   }
   async function paint() { await flush(); frames.splice(0).forEach(fn => fn()); await flush(); }
-  return { classes, marks, context, events, advance, paint, flush };
+  return { classes, marks, context, events, advance, paint, flush, writes, navigations };
 }
 
 test("the arrival cover holds until connected, then fades once and clears", async () => {
@@ -92,4 +92,21 @@ test("direct room visits do not wait for an arrival animation", async () => {
   await env.context.reveal();
   assert.equal(env.classes.size, 0);
   assert.equal(env.marks.length, 0);
+});
+
+test("reduced-motion entry retains its copy notice without a portal delay", async () => {
+  const env = setup({ arrival: null, reducedMotion: true });
+  await env.context.enter(marker.url, null, Promise.resolve(true));
+  assert.deepEqual(env.navigations, [marker.url]);
+  assert.equal(JSON.parse(env.writes.get("youple-created-room")).copied, true);
+  assert.equal(env.writes.has("youple-room-arrival"), false);
+});
+
+test("a stalled clipboard never blocks room navigation or reports a false success", async () => {
+  const env = setup({ arrival: null });
+  const finished = env.context.enter(marker.url, null, new Promise(() => {}));
+  await env.advance(1000);
+  await finished;
+  assert.deepEqual(env.navigations, [marker.url]);
+  assert.equal(JSON.parse(env.writes.get("youple-created-room")).copied, false);
 });
