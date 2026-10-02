@@ -315,7 +315,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     updateMuteControl();
   });
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
-  $("own-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));
+  $("save-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));
   let copyingInvite = false, inviteTimer;
   $("invite-btn").addEventListener("click", async () => {
     if (copyingInvite) return;
