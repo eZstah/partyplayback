@@ -1,0 +1,28 @@
+---
+import Mascot from '../components/Mascot.astro';
+import Wordmark from '../components/Wordmark.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import '../styles/app.css';
+---
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="robots" content="noindex"/><meta name="theme-color" content="#181622"/><title>Page not found — youple.tv</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/></head>
+<body>
+  <main class="lost-page">
+    <a class="lost-wordmark" href="/" aria-label="youple.tv home"><Wordmark/></a>
+    <div class="lost-friend" aria-hidden="true"><Mascot kind="purple"/></div>
+    <h1>This page wandered off.</h1>
+    <p>The link might be old or mistyped. Ask your friends for a fresh room link, or start a new room.</p>
+    <a class="primary-button lost-home" href="/">Go to youple.tv</a>
+  </main>
+  <SiteFooter/>
+  <style>
+    .lost-page { display: grid; justify-items: center; max-width: 520px; margin: 0 auto; padding: 48px 16px 24px; text-align: center; }
+    .lost-wordmark { font-size: 30px; }
+    .lost-friend { width: 120px; height: 150px; margin: 40px 0 20px; }
+    .lost-page h1 { font-size: 34px; letter-spacing: -.04em; line-height: 1.15; margin: 0 0 12px; }
+    .lost-page p { color: var(--muted); line-height: 1.6; margin: 0 0 28px; }
+    .lost-home { display: inline-flex; align-items: center; min-height: 52px; padding: 0 28px; border-radius: 100px; font-weight: 700; }
+  </style>
+</body>
+</html>
