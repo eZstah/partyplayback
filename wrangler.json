@@ -22,5 +22,9 @@
 	},
 	"migrations": [
 		{ "tag": "v1", "new_sqlite_classes": ["RoomDO"] }
-	]
+	],
+	"vars": {
+		"SUPABASE_URL": "https://bracoxtbzzparrntdvsn.supabase.co",
+		"SUPABASE_PUBLISHABLE_KEY": "sb_publishable_iShn05j5EWc691bB78awsw_gTFLN8d1"
+	}
 }
