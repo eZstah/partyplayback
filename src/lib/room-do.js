@@ -39,6 +39,16 @@ export class RoomDO {
         }
         return Response.json(rooms);
       }
+      // Other people's saved rooms this account has joined, most recent first.
+      if (url.pathname === "/joined") {
+        let rooms = await this.ctx.storage.get("joined") || [];
+        if (request.method === "POST") {
+          const room = await request.json();
+          rooms = [room, ...rooms.filter(item => item.slug !== room.slug)].slice(0, 20);
+          await this.ctx.storage.put("joined", rooms);
+        }
+        return Response.json(rooms);
+      }
     }
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
       return new Response("Expected WebSocket", { status: 426 });

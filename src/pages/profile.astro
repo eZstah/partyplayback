@@ -2,14 +2,14 @@
 import Icon from '../components/Icon.astro';
 import '../styles/app.css';
 import { verifiedUser, displayName, avatarUrl } from '../lib/auth';
-import { ownedRooms } from '../lib/rooms';
+import { accountRooms } from '../lib/rooms';
 const user = await verifiedUser(Astro);
 if (!user) return Astro.redirect('/', 303);
 const name = displayName(user);
 const avatar = avatarUrl(user);
 const providers: Record<string, string> = { google: 'Google', discord: 'Discord', email: 'an email link' };
 const provider = providers[String(user.app_metadata.provider)] || 'youple.tv';
-const rooms = await ownedRooms(Astro.locals.runtime.env, user.id);
+const rooms = await accountRooms(Astro.locals.runtime.env, user.id);
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 ---
 <!doctype html>
@@ -38,7 +38,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 
     <section class="card">
       <h2>Your rooms</h2>
-      {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={22}/><span>{room.title}</span></a></li>)}</ul> : <p class="muted">No saved rooms yet. Make one from the home page.</p>}
+      {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={22}/><span>{room.title}</span>{room.joined && <em>Joined</em>}</a></li>)}</ul> : <p class="muted">No rooms yet. Save one from the home page, or join a friend's.</p>}
     </section>
 
     <button id="sign-out" class="soft-button" type="button">Sign out</button>
@@ -58,7 +58,8 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
     .name-row input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--raised); border: 1px solid #ffffff12; border-radius: 16px; padding: 14px 16px; }
     .room-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
     .room-list a { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; background: var(--raised); color: var(--accent); }
-    .room-list span { color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
+    .room-list span { flex: 1; color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
+    .room-list em { font-style: normal; color: var(--muted); font-size: 14px; }
     #sign-out { margin-top: 8px; }
   </style>
   <script>

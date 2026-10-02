@@ -1,4 +1,9 @@
-export async function enterCreatedRoom(url, trigger, copying = Promise.resolve(false)) {
+// Opening an existing room plays the same portal, without the "invite copied" notice.
+export function enterRoom(url, trigger) {
+  return enterCreatedRoom(url, trigger, Promise.resolve(false), false);
+}
+
+export async function enterCreatedRoom(url, trigger, copying = Promise.resolve(false), created = true) {
   if (typeof url !== "string" || !/^\/room\/[a-zA-Z0-9_-]{1,64}$/.test(url)) throw new Error("Invalid room URL");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const portal = document.getElementById("room-portal");
@@ -18,7 +23,7 @@ export async function enterCreatedRoom(url, trigger, copying = Promise.resolve(f
   const [copied] = await Promise.all([Promise.race([copying.catch(() => false), new Promise(resolve => setTimeout(() => resolve(false), 1000))]), animation]);
   try {
     if (point) sessionStorage.setItem("youple-room-arrival", JSON.stringify({ at: Date.now(), url, ...point }));
-    sessionStorage.setItem("youple-created-room", JSON.stringify({ at: Date.now(), url, copied: copied === true }));
+    if (created) sessionStorage.setItem("youple-created-room", JSON.stringify({ at: Date.now(), url, copied: copied === true }));
   } catch {}
   location.assign(url);
 }
