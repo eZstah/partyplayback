@@ -7,6 +7,7 @@ declare namespace App {
 interface Env {
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
+  AUTH_REDIRECT_ORIGIN?: string;
   ASSETS: Fetcher;
   ROOM: DurableObjectNamespace;
 }
