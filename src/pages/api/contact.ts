@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { verifiedUser, privateJson, sameOrigin, displayName } from "../../lib/auth";
 import { readContact, contactEmail, sendContact } from "../../lib/contact";
-import { CONTACT_EMAIL } from "../../lib/legal";
+import { CONTACT_EMAIL, CONTACT_INBOX } from "../../lib/legal";
 
 export const POST: APIRoute = async context => {
   const { request } = context;
@@ -21,7 +21,7 @@ export const POST: APIRoute = async context => {
   if (!env.RESEND_API_KEY) return privateJson({ message: `The form isn't set up yet. Email ${CONTACT_EMAIL} instead.` }, 503);
   const user = await verifiedUser(context);
   const screen = (input as Record<string, unknown>).screen;
-  const email = contactEmail(CONTACT_EMAIL, form.value, {
+  const email = contactEmail(CONTACT_INBOX, form.value, {
     userAgent: request.headers.get("User-Agent"),
     screen: typeof screen === "string" && /^\d{2,5}x\d{2,5}$/.test(screen) ? screen : undefined,
     user: user ? { id: user.id, email: user.email, name: displayName(user) } : null,

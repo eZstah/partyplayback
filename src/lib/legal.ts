@@ -5,10 +5,13 @@ export const IMPRESSUM = {
   street: "Bernhardstr. 7",
   postalCodeAndCity: "09212 Limbach-Oberfrohna",
   country: "Deutschland",
-  email: "xiseah@googlemail.com",
+  email: "contact@youple.tv",
 };
 
+// The public address, forwarded to the operator by Cloudflare Email Routing.
 export const CONTACT_EMAIL = IMPRESSUM.email;
+// Where contact form messages are delivered.
+export const CONTACT_INBOX = "xiseah@googlemail.com";
 
 export function impressumReady(details = IMPRESSUM) {
   return Boolean(details.name.trim() && details.street.trim() && details.postalCodeAndCity.trim() && details.email.trim());

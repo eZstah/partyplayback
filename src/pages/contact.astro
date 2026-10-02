@@ -3,7 +3,6 @@ import Wordmark from '../components/Wordmark.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import '../styles/app.css';
 import { verifiedUser, displayName } from '../lib/auth';
-import { CONTACT_EMAIL } from '../lib/legal';
 const user = await verifiedUser(Astro);
 const name = user ? displayName(user) : '';
 const email = user?.email || '';
@@ -26,12 +25,11 @@ if (user) Astro.response.headers.set('Cache-Control', 'private, no-store');
         <h1 id="contact-heading">{bug ? 'Something broke?' : 'Say hi'}</h1>
         <p class="muted" id="contact-intro">{bug ? 'Tell us what happened and we’ll look into it.' : 'Questions, ideas or feedback. We read everything.'}</p>
         <div class="field-row">
-          <label><span>Name <span class="optional">(optional)</span></span><input name="name" value={name} maxlength="80" autocomplete="name"/></label>
-          <label><span>Email</span><input name="email" type="email" value={email} maxlength="254" required autocomplete="email" placeholder="So we can reply"/></label>
+          <label><span>Name</span><input name="name" value={name} maxlength="80" autocomplete="name"/></label>
+          <label><span>Email</span><input name="email" type="email" value={email} maxlength="254" required autocomplete="email"/></label>
         </div>
-        <label class="bug-only"><span>Page or room link <span class="optional">(optional)</span></span><input name="page" maxlength="300" placeholder="https://youple.tv/room/…" autocomplete="off"/></label>
-        <label><span id="message-label">{bug ? 'What happened?' : 'Message'}</span><textarea name="message" rows="6" maxlength="5000" required placeholder={bug ? 'What did you do, what did you expect, and what happened instead?' : ''}></textarea></label>
-        <p class="bug-only fine-print">We’ll also send your browser and screen size{user ? ' and your account' : ''} to help us find it.</p>
+        <label class="bug-only"><span>Page or room link</span><input name="page" maxlength="300" autocomplete="off"/></label>
+        <label><span id="message-label">{bug ? 'What happened?' : 'Message'}</span><textarea name="message" rows="6" maxlength="5000" required></textarea></label>
         <label class="trap" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"/></label>
         <button class="primary-button" type="submit" id="contact-send">{bug ? 'Send report' : 'Send message'}</button>
         <div id="contact-message" class="form-message" role="status"></div>
@@ -42,7 +40,6 @@ if (user) Astro.response.headers.set('Cache-Control', 'private, no-store');
         <button class="primary-button" type="button" id="contact-again">Send another</button>
       </div>
     </div>
-    <p class="contact-alt">Prefer email? <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
   </main>
   <SiteFooter/>
   <style>
@@ -62,13 +59,10 @@ if (user) Astro.response.headers.set('Cache-Control', 'private, no-store');
     #contact-form .muted { margin: 0 0 4px; }
     .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     #contact-form label { display: grid; gap: 6px; font-size: 15px; font-weight: 700; color: #61536b; }
-    .optional { font-weight: 400; color: #8a7d8f; }
     #contact-form input, #contact-form textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 17px; font-weight: 400; color: #322b41; background: #fffaf2; border: 1px solid #322b411f; border-radius: 16px; padding: 13px 16px; }
     #contact-form textarea { resize: vertical; min-height: 140px; line-height: 1.5; }
-    #contact-form input::placeholder, #contact-form textarea::placeholder { color: #a197a6; }
     #contact-form input:focus-visible, #contact-form textarea:focus-visible { outline: 3px solid #b8a2f0; outline-offset: 1px; }
     #contact-form[data-kind=message] .bug-only { display: none; }
-    .fine-print { margin: -4px 0 0; font-size: 14px; color: #756779; }
     .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
     .contact-card .primary-button { justify-self: start; min-height: 50px; padding: 0 28px; border-radius: 16px; background: #b9a3ef; color: #241d33; font-weight: 700; }
     .contact-card .primary-button:hover { background: #c9b7f5; }
@@ -78,8 +72,6 @@ if (user) Astro.response.headers.set('Cache-Control', 'private, no-store');
     .contact-sent { display: grid; gap: 6px; justify-items: start; }
     .contact-sent[hidden] { display: none; }
     .contact-sent strong { color: #322b41; overflow-wrap: anywhere; }
-    .contact-alt { margin: 18px 0 0; color: var(--muted); font-size: 15px; text-align: center; }
-    .contact-alt a { color: var(--accent); overflow-wrap: anywhere; }
     @media(max-width:600px) { .contact { padding-top: 28px; } .contact-wordmark { font-size: 28px; margin-bottom: 22px; } .contact-card { padding: 20px; border-radius: 29px; } .field-row { grid-template-columns: 1fr; } .contact-card .primary-button { justify-self: stretch; } }
   </style>
   <script>
@@ -89,8 +81,8 @@ if (user) Astro.response.headers.set('Cache-Control', 'private, no-store');
     const sent = document.getElementById("contact-sent")!;
     const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement;
     const copy = {
-      message: { heading: "Say hi", intro: "Questions, ideas or feedback. We read everything.", label: "Message", placeholder: "", button: "Send message" },
-      bug: { heading: "Something broke?", intro: "Tell us what happened and we’ll look into it.", label: "What happened?", placeholder: "What did you do, what did you expect, and what happened instead?", button: "Send report" },
+      message: { heading: "Say hi", intro: "Questions, ideas or feedback. We read everything.", label: "Message", button: "Send message" },
+      bug: { heading: "Something broke?", intro: "Tell us what happened and we’ll look into it.", label: "What happened?", button: "Send report" },
     };
     function choose(kind: "message" | "bug") {
       form.dataset.kind = kind;
@@ -98,7 +90,6 @@ if (user) Astro.response.headers.set('Cache-Control', 'private, no-store');
       document.getElementById("contact-heading")!.textContent = copy[kind].heading;
       document.getElementById("contact-intro")!.textContent = copy[kind].intro;
       document.getElementById("message-label")!.textContent = copy[kind].label;
-      (field("message") as unknown as HTMLTextAreaElement).placeholder = copy[kind].placeholder;
       send.textContent = copy[kind].button;
       status.textContent = "";
       history.replaceState({}, "", kind === "bug" ? "?type=bug" : location.pathname);
