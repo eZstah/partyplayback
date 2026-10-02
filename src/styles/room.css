@@ -882,6 +882,16 @@
   .volume-slider { width: 92px; height: 32px; }
   .control-bar .control-key { display: none; }
 }
+.qi-play { position: relative; display: grid; place-items: center; flex: none; padding: 0; border-radius: 9px; overflow: hidden; background: #24262d; color: var(--ink); }
+.qi-play .qi-thumb { display: block; opacity: .65; transition: opacity .2s; }
+.qi-play svg { position: absolute; width: 36px; height: 36px; padding: 8px; border-radius: 50%; background: #101018cc; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: background .2s,transform .2s; }
+.qi-play:hover:not(:disabled) svg { background: var(--accent); color: #171321; transform: scale(1.08); }
+.qi-play:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.qi-playing-symbol { display: none; }
+.qi-play[data-playing=true] { opacity: 1; cursor: default; color: var(--accent); }
+.qi-play[data-playing=true] .qi-play-symbol { display: none; }
+.qi-play[data-playing=true] .qi-playing-symbol { display: block; }
+@media(prefers-reduced-motion:reduce) { .qi-play svg,.qi-play .qi-thumb { transition: none; } }
 @media(max-width:600px) { .volume-control .sound-control { min-height: 36px; } }
 
 /* Big centered play/pause sign over the video, like a desktop player. */

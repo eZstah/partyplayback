@@ -132,6 +132,16 @@ export class RoomDO {
         }
         break;
       }
+      case "select": {
+        // Resolve the item on the server: queue positions can change between clicks.
+        const index = s.queue.findIndex(item => item.id === data.itemId);
+        if (index === -1 || (index === s.currentIndex && s.isPlaying)) return this._sendState(ws);
+        if (index === s.currentIndex) {
+          s.isPlaying = true;
+          s.updatedAt = Date.now();
+        } else this._load(index, true);
+        break;
+      }
       case "next":
       case "ended": {
         // Load identities distinguish consecutive copies and reject late end reports.

@@ -58,8 +58,17 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     playButton.disabled = !joined || !hasVideo;
     nextButton.disabled = !joined || !hasVideo || room.currentIndex + 1 >= room.queue.length;
     addButton.disabled = !joined || adding;
-    queueList.querySelectorAll("button").forEach(button => { button.disabled = !joined; });
     const playing = !!room?.isPlaying;
+    queueList.querySelectorAll(".qi-rm").forEach(button => { button.disabled = !joined; });
+    queueList.querySelectorAll(".qi-play").forEach(button => {
+      const current = button.closest("li").dataset.itemId === room?.queue[room.currentIndex]?.id;
+      const active = current && playing;
+      button.disabled = !joined || active;
+      button.dataset.playing = String(active);
+      button.title = (active ? "Playing " : "Play ") + button.dataset.videoTitle;
+      button.setAttribute("aria-label", button.title);
+      if (current) button.closest("li").querySelector(".qi-sub").textContent = playing ? "Now playing" : "Paused";
+    });
     const mood = !hasVideo ? "idle" : playing ? "playing" : "paused";
     if (document.body.dataset.playback !== mood) {
       const previous = document.body.dataset.playback;
@@ -257,6 +266,26 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       img.src = "https://img.youtube.com/vi/" + item.videoId + "/mqdefault.jpg";
       img.alt = "";
       img.loading = "lazy";
+      const select = document.createElement("button");
+      select.className = "qi-play";
+      select.type = "button";
+      select.dataset.videoTitle = item.title;
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("viewBox", "0 0 24 24");
+      icon.setAttribute("aria-hidden", "true");
+      const triangle = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      triangle.setAttribute("d", "M8 5v14l11-7-11-7Z");
+      triangle.setAttribute("class", "qi-play-symbol");
+      const bars = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      bars.setAttribute("d", "M6 10v4M12 6v12M18 8v8");
+      bars.setAttribute("class", "qi-playing-symbol");
+      icon.append(triangle, bars);
+      select.append(img, icon);
+      select.addEventListener("click", () => {
+        if (!joined) return;
+        playback.enablePlayback(true);
+        send({ type: "select", itemId: item.id });
+      });
       const info = document.createElement("div");
       info.className = "qi-info";
       const title = document.createElement("div");
@@ -273,7 +302,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       remove.setAttribute("aria-label", remove.title);
       remove.textContent = "×";
       remove.addEventListener("click", () => send({ type: "remove", itemId: item.id }));
-      li.append(img, info, remove);
+      li.append(select, info, remove);
       queueList.insertBefore(li, queueList.children[index] || null);
       if (!reducedMotion.matches) li.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }], { duration: 450, easing: "cubic-bezier(.22,1,.36,1)" });
     });

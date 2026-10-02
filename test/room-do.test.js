@@ -115,6 +115,66 @@ test("concurrent removal uses item identity and clearing the room stops playback
   assert.equal(room.state.isPlaying, false);
 });
 
+test("selecting a queued item starts it for everyone and rejects old playback reports", async () => {
+  const { room, add, send, control, sockets } = await setup();
+  await add(); await add("dQw4w9WgXcQ"); await add();
+  await control("pause", 42);
+  const old = { playbackId: room.state.playbackId, revision: room.state.revision };
+  const target = room.state.queue[2].id;
+  await send({ type: "select", itemId: target }, sockets[1]);
+  assert.equal(room.state.currentIndex, 2);
+  assert.equal(room.state.currentTime, 0);
+  assert.equal(room.state.isPlaying, true);
+  assert.equal(room.state.pausedBy, null);
+  assert.notEqual(room.state.playbackId, old.playbackId);
+  for (const ws of sockets) {
+    assert.equal(ws.messages.at(-1).queue[ws.messages.at(-1).currentIndex].id, target);
+    assert.equal(ws.messages.at(-1).isPlaying, true);
+  }
+  await send({ type: "ended", ...old, currentTime: 100 });
+  await send({ type: "pause", ...old, currentTime: 42 });
+  assert.equal(room.state.currentIndex, 2);
+  assert.equal(room.state.isPlaying, true);
+});
+
+test("select resolves stable item identity after queue edits and can return to an earlier item", async () => {
+  const { room, add, send } = await setup();
+  await add(); await add(); await add("dQw4w9WgXcQ");
+  const first = room.state.queue[0].id, target = room.state.queue[2].id;
+  await send({ type: "remove", itemId: room.state.queue[1].id });
+  await send({ type: "select", itemId: target });
+  assert.equal(room.state.currentIndex, 1);
+  await send({ type: "select", itemId: first });
+  assert.equal(room.state.currentIndex, 0);
+  assert.equal(room.state.currentTime, 0);
+});
+
+test("selecting the paused current item resumes without restarting; repeated play does not reload", async () => {
+  const { room, add, send, control } = await setup();
+  await add(); await control("pause", 64);
+  const itemId = room.state.queue[0].id, playbackId = room.state.playbackId;
+  await send({ type: "select", itemId });
+  assert.equal(room.state.currentTime, 64);
+  assert.equal(room.state.isPlaying, true);
+  assert.equal(room.state.playbackId, playbackId);
+  const revision = room.state.revision;
+  await send({ type: "select", itemId });
+  assert.equal(room.state.revision, revision);
+  assert.equal(room.state.currentTime, 64);
+});
+
+test("missing, removed, or unjoined selections cannot change playback", async () => {
+  const { room, add, send, sockets } = await setup();
+  await add(); await add("dQw4w9WgXcQ");
+  const target = room.state.queue[1].id;
+  await send({ type: "remove", itemId: target });
+  const state = structuredClone(room.state);
+  for (const itemId of [undefined, 0, {}, target]) await send({ type: "select", itemId });
+  sockets[1].serializeAttachment(null);
+  await send({ type: "select", itemId: room.state.queue[0].id }, sockets[1]);
+  assert.deepEqual(room.state, state);
+});
+
 test("malformed messages and invalid times do not corrupt state", async () => {
   const { room, add, send, control, sockets } = await setup();
   await add();
