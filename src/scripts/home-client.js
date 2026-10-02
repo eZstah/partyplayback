@@ -2,6 +2,7 @@ import { bootAuth } from "./auth-client.js";
 import { enterCreatedRoom } from "./room-transition.js";
 import { beginInviteCopy } from "./invite-copy.js";
 import { illustrativeSyncCount } from "../lib/activity.js";
+import { bootHomeMascots } from "./home-mascots.js";
 
 export function bootHome() {
   const auth = bootAuth();
@@ -75,13 +76,5 @@ export function bootHome() {
     openSavedRoom();
     history.replaceState({}, "", "/");
   }
-  const art = document.querySelector(".mascot-cast");
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches && matchMedia("(pointer: fine)").matches) {
-    document.querySelector(".hangout").addEventListener("pointermove", event => {
-      const rect = art.getBoundingClientRect();
-      art.style.setProperty("--look-x", Math.max(-3, Math.min(3, ((event.clientX - rect.left) / rect.width - .5) * 6)) + "px");
-      art.style.setProperty("--look-y", Math.max(-3, Math.min(3, ((event.clientY - rect.top) / rect.height - .5) * 6)) + "px");
-    });
-    document.querySelector(".hangout").addEventListener("pointerleave", () => { art.style.setProperty("--look-x", "0px"); art.style.setProperty("--look-y", "0px"); });
-  }
+  bootHomeMascots();
 }
