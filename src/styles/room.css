@@ -1035,3 +1035,14 @@
   .room-shell[data-youtube-controls=true] #player-wrap { min-height: 240px; }
 }
 @media(prefers-reduced-motion:reduce) { .room-shell:fullscreen .room-nav,.room-shell:fullscreen .player-bottom { transition: none; } }
+
+/* "Link copied" pops up mid-screen, above everything, without blocking clicks. */
+.copied-pop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; pointer-events: none; visibility: hidden; }
+.copied-pop-card { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 340px; padding: 26px 30px 24px; border-radius: 28px; background: #22232dee; box-shadow: 0 24px 80px #0009; backdrop-filter: blur(10px); text-align: center; color: var(--muted); font-size: 16px; line-height: 1.4; opacity: 0; transform: scale(.85); }
+.copied-pop-card strong { color: var(--ink); font-size: 24px; font-weight: 400; letter-spacing: -.02em; }
+.copied-pop-check { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 8px; border-radius: 50%; background: #a9dfba; color: #18301f; }
+.copied-pop-check svg { width: 34px; }
+.copied-pop.show { visibility: visible; }
+.copied-pop.show .copied-pop-card { animation: copied-pop 2.4s var(--ease) both; }
+@keyframes copied-pop { 0% { opacity: 0; transform: scale(.85); } 12%,80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(.97); } }
+@media(prefers-reduced-motion:reduce) { .copied-pop.show .copied-pop-card { animation: none; opacity: 1; transform: none; } }

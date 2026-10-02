@@ -509,15 +509,22 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   function updateMuteControl() { sound.sync(); }
   $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
   $("save-room-btn")?.addEventListener("click", () => auth.open("/?create=member"));
-  let copyingInvite = false, inviteTimer;
-  function showCopiedInvite(message = "Link copied!") {
+  let copyingInvite = false, inviteTimer, copiedTimer;
+  // Copy confirmations pop up mid-screen so nobody misses that the link is ready to paste.
+  function showCopiedInvite(message = "Paste it anywhere to invite friends.") {
     clearTimeout(inviteTimer);
     $("invite-icon").hidden = true;
     $("invite-success-icon").hidden = false;
     $("invite-label").textContent = "Link copied";
     $("invite-btn").dataset.copied = "true";
     $("invite-btn").setAttribute("aria-label", "Link copied");
-    toast(message);
+    $("copied-pop-title").textContent = "Link copied";
+    $("copied-pop-text").textContent = message;
+    $("copied-pop").classList.remove("show");
+    void $("copied-pop").offsetWidth;
+    $("copied-pop").classList.add("show");
+    clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => $("copied-pop").classList.remove("show"), 2400);
     inviteTimer = setTimeout(() => {
       $("invite-icon").hidden = false;
       $("invite-success-icon").hidden = true;
@@ -529,7 +536,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const created = takeCreatedRoomNotice();
   if (created) arrival.then(() => {
     if (stopping) return;
-    if (created.copied) showCopiedInvite("Invite link copied. Share it with friends.");
+    if (created.copied) showCopiedInvite("Your room is ready. Send the link to your friends.");
     else toast("Room ready. Tap Invite friends to copy the link.");
   });
   $("invite-btn").addEventListener("click", async () => {
@@ -619,6 +626,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     clearTimeout(linkFeedbackHideTimer);
     if (pastedAddition) clearTimeout(pastedAddition.timer);
     clearTimeout(inviteTimer);
+    clearTimeout(copiedTimer);
     socket?.close(1000, "Leaving room");
   });
   window.addEventListener("pageshow", event => { if (event.persisted) location.reload(); });
