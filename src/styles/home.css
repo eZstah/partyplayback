@@ -85,7 +85,7 @@
 }
 .hangout {
   position: relative;
-  padding: 72px 0 72px;
+  padding: 45px 0 72px;
   isolation: isolate;
   min-height: 550px;
 }
@@ -301,7 +301,7 @@
   .music-six { right: 2%; bottom: 0; width: 20px; }
 }
 .how-it-works {
-  padding: 50px 0 45px;
+  padding: 0 0 45px;
 }
 .how-it-works>h2 {
   font-size: 36px;
@@ -759,9 +759,6 @@
 }
 /* Keep room creation in reach on shorter desktop windows. */
 @media(min-width:901px) and (max-height:850px) {
-  .hangout {
-    padding-top: 60px;
-  }
   .hangout-heading h1 {
     font-size: 84px;
   }
