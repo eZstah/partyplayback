@@ -1089,3 +1089,10 @@
 .skip-dialog .skip-option { display: flex; align-items: center; gap: 12px; min-height: 40px; font-size: 15px; color: var(--ink); cursor: pointer; }
 .skip-dialog .skip-option input { width: 18px; height: 18px; margin: 0; padding: 0; flex: none; accent-color: var(--accent); cursor: pointer; }
 .skip-dialog .skip-option:has(input:disabled) { color: var(--muted); cursor: default; }
+/* Phones have volume buttons, and the subtitles toggle is rarely used there;
+   both only crowded the controls. */
+@media(max-width:600px), (max-width:900px) and (pointer:coarse) {
+  .volume-control { flex-direction: row; }
+  .volume-control .volume-slider,.device-volume-hint,#youtube-controls-btn { display: none; }
+  .volume-control .sound-control { min-height: 46px; }
+}
