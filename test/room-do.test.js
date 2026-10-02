@@ -148,3 +148,30 @@ test("last departure freezes the room instead of playing unattended", async () =
   assert.equal(room.state.isPlaying, false);
   assert.ok(room.state.currentTime >= 10);
 });
+
+test('member-room metadata survives hibernation and rejects unauthenticated admission', async () => {
+  const { room, ctx } = await setup();
+  const details = { slug: 'm-test', mode: 'member', ownerId: 'owner', title: 'Our room' };
+  const initialized = await room.fetch(new Request('https://room.internal/initialize', { method: 'POST', body: JSON.stringify(details) }));
+  assert.equal(initialized.status, 200);
+  assert.equal((await room.fetch(new Request('https://room.internal/initialize', { method: 'POST', body: JSON.stringify(details) }))).status, 409);
+  const restored = new RoomDO(ctx, {});
+  assert.deepEqual(await (await restored.fetch(new Request('https://room.internal/info'))).json(), details);
+  assert.equal((await restored.fetch(new Request('https://public.example/api/ws/m-test', { headers: { Upgrade: 'websocket' } }))).status, 401);
+});
+test('joining cannot replace an identity verified by the server', async () => {
+  const { send, sockets } = await setup();
+  sockets[0].serializeAttachment({ userId: 'verified-id', verifiedName: 'Verified Member', joined: false });
+  await send({ type: 'join', username: 'Impersonator' });
+  assert.equal(sockets[0].deserializeAttachment().username, 'Verified Member');
+  assert.equal(sockets[0].deserializeAttachment().userId, 'verified-id');
+  await send({ type: 'join', username: 'Another name' });
+  assert.equal(sockets[0].deserializeAttachment().username, 'Verified Member');
+});
+test('saved room catalog deduplicates and survives object reconstruction', async () => {
+  const { room, ctx } = await setup();
+  const request = () => new Request('https://room.internal/catalog', { method: 'POST', body: JSON.stringify({ slug: 'm-one', title: 'Friday' }) });
+  await room.fetch(request()); await room.fetch(request());
+  const restored = new RoomDO(ctx, {});
+  assert.deepEqual(await (await restored.fetch(new Request('https://room.internal/catalog'))).json(), [{ slug: 'm-one', title: 'Friday' }]);
+});

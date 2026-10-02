@@ -11,16 +11,40 @@ export class RoomDO {
     this.ready = ctx.blockConcurrencyWhile(async () => {
       const saved = await ctx.storage.get("room");
       if (saved) this.state = saved;
+      this.details = await ctx.storage.get("details") || null;
     });
   }
 
   async fetch(request) {
     await this.ready;
+    const url = new URL(request.url);
+    // These calls are reachable only through the Worker's Durable Object binding.
+    if (url.hostname === "room.internal") {
+      if (url.pathname === "/info") return Response.json(this.details);
+      if (url.pathname === "/initialize" && request.method === "POST") {
+        if (this.details) return new Response("Room exists", { status: 409 });
+        this.details = await request.json();
+        await this.ctx.storage.put("details", this.details);
+        return Response.json({ ok: true });
+      }
+      if (url.pathname === "/catalog") {
+        const rooms = await this.ctx.storage.get("catalog") || [];
+        if (request.method === "POST") {
+          const room = await request.json();
+          if (!rooms.some(item => item.slug === room.slug) && rooms.length < 50) rooms.unshift(room);
+          await this.ctx.storage.put("catalog", rooms);
+        }
+        return Response.json(rooms);
+      }
+    }
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
       return new Response("Expected WebSocket", { status: 426 });
     }
+    const userId = request.headers.get("X-Party-User");
+    if (this.details?.mode === "member" && !userId) return new Response("Sign in to join", { status: 401 });
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
+    if (userId) server.serializeAttachment({ joined: false, userId, verifiedName: decodeURIComponent(request.headers.get("X-Party-Name") || "Member") });
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -35,15 +59,17 @@ export class RoomDO {
     } catch { return; }
 
     if (data.type === "join") {
+      const identity = ws.deserializeAttachment();
       ws.serializeAttachment({
-        username: (typeof data.username === "string" ? data.username : "Guest").slice(0, 32) || "Guest",
+        joined: true, userId: identity?.userId, verifiedName: identity?.verifiedName,
+        username: identity?.verifiedName || (typeof data.username === "string" ? data.username : "Guest").slice(0, 32) || "Guest",
         sessionId: (typeof data.sessionId === "string" ? data.sessionId : crypto.randomUUID()).slice(0, 64),
       });
       this._sendState(ws, data.requestId);
       this._broadcast({ type: "users", userCount: this._members().length });
       return;
     }
-    if (!ws.deserializeAttachment()) return;
+    if (!ws.deserializeAttachment()?.joined) return;
     if (data.type === "sync") {
       this._sendState(ws, data.requestId);
       return;
@@ -138,7 +164,7 @@ export class RoomDO {
   _sendState(ws, requestId) { this._send(ws, this._snapshot(requestId)); }
   _error(ws, message) { this._send(ws, { type: "error", message }); }
   _send(ws, data) { try { ws.send(JSON.stringify(data)); } catch {} }
-  _members() { return this.ctx.getWebSockets().filter(ws => ws.deserializeAttachment()); }
+  _members() { return this.ctx.getWebSockets().filter(ws => ws.deserializeAttachment()?.joined); }
   _broadcast(data) { for (const ws of this._members()) this._send(ws, data); }
 
   async webSocketClose(ws, code, reason) {

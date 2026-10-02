@@ -1,6 +1,9 @@
 import type { APIRoute } from "astro";
+import { verifiedUser, displayName } from "../../../lib/auth";
+import { roomDetails } from "../../../lib/rooms";
 
-export const GET: APIRoute = async ({ params, request, locals }) => {
+export const GET: APIRoute = async context => {
+  const { params, request, locals } = context;
   const { room } = params;
 
   if (!room || !/^[a-zA-Z0-9_-]{1,64}$/.test(room)) {
@@ -18,6 +21,17 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
 
   const env = locals.runtime.env;
   const stub = env.ROOM.get(env.ROOM.idFromName(room));
-
-  return stub.fetch(request);
+  const details = await roomDetails(env, room);
+  if (room.startsWith("m-") && !details) return new Response("Room not found", { status: 404 });
+  const user = await verifiedUser(context);
+  if (details?.mode === "member" && !user) return new Response("Sign in to join", { status: 401 });
+  const headers = new Headers(request.headers);
+  // Never trust identity headers supplied by the connecting client.
+  headers.delete("X-Party-User");
+  headers.delete("X-Party-Name");
+  if (user) {
+    headers.set("X-Party-User", user.id);
+    headers.set("X-Party-Name", encodeURIComponent(displayName(user)));
+  }
+  return stub.fetch(new Request(request, { headers }));
 };

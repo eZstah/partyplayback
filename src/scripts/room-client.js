@@ -8,6 +8,9 @@ export function bootRoom(roomName) {
   let socket = null, room = null, joined = false, stopping = false;
   let reconnectTimer, joinTimer, toastTimer, delay = 1000, lastMessage = 0;
   let lastServerTime = -1, latency = 0, adding = false;
+  let queueSignature = "", scrubbing = false;
+  const progress = $("progress");
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const requests = new Map();
 
   function getStored(storage, key, fallback) {
@@ -17,7 +20,7 @@ export function bootRoom(roomName) {
       return value;
     } catch { return fallback; }
   }
-  let name = getStored(localStorage, "pp_user", "Guest" + Math.floor(Math.random() * 9000 + 1000));
+  let name = document.body.dataset.userName || getStored(localStorage, "pp_user", "Guest" + Math.floor(Math.random() * 9000 + 1000));
   const sessionId = getStored(sessionStorage, "pp_sid", crypto.randomUUID());
   username.textContent = name;
 
@@ -38,17 +41,21 @@ export function bootRoom(roomName) {
     send,
     onBlocked(blocked) {
       enableButton.hidden = !blocked;
-      if (blocked) toast("Click Enable playback to join the video");
+      if (blocked) toast("Press Join playback to watch with everyone");
     },
   });
 
   function controls() {
     const hasVideo = !!room?.queue[room.currentIndex];
     playButton.disabled = !joined || !hasVideo;
-    nextButton.disabled = !joined || !hasVideo;
+    nextButton.disabled = !joined || !hasVideo || room.currentIndex + 1 >= room.queue.length;
     addButton.disabled = !joined || adding;
     queueList.querySelectorAll("button").forEach(button => { button.disabled = !joined; });
-    playButton.textContent = room?.isPlaying ? "Pause" : "Play";
+    const playing = !!room?.isPlaying;
+    $("play-label").textContent = playing ? "Pause" : "Play";
+    playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
+    $("play-icon").hidden = playing;
+    $("pause-icon").hidden = !playing;
   }
 
   function setConnection(state) {
@@ -123,9 +130,21 @@ export function bootRoom(roomName) {
 
   function render() {
     setCount(room.userCount);
-    queueList.replaceChildren();
+    const signature = JSON.stringify([room.queue, room.currentIndex]);
+    if (signature !== queueSignature) {
+    queueSignature = signature;
+    const rows = new Map([...queueList.children].map(li => [li.dataset.itemId, li]));
     room.queue.forEach((item, index) => {
+      let existing = rows.get(item.id);
+      if (existing) {
+        rows.delete(item.id);
+        existing.classList.toggle("now", index === room.currentIndex);
+        existing.querySelector(".qi-sub").textContent = index === room.currentIndex ? "Now playing" : "#" + (index + 1);
+        if (queueList.children[index] !== existing) queueList.insertBefore(existing, queueList.children[index] || null);
+        return;
+      }
       const li = document.createElement("li");
+      li.dataset.itemId = item.id;
       li.className = "qi" + (index === room.currentIndex ? " now" : "");
       const img = document.createElement("img");
       img.className = "qi-thumb";
@@ -149,31 +168,45 @@ export function bootRoom(roomName) {
       remove.textContent = "×";
       remove.addEventListener("click", () => send({ type: "remove", itemId: item.id }));
       li.append(img, info, remove);
-      queueList.append(li);
+      queueList.insertBefore(li, queueList.children[index] || null);
+      if (!reducedMotion.matches) li.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }], { duration: 450, easing: "cubic-bezier(.22,1,.36,1)" });
     });
+    for (const row of rows.values()) row.remove();
+    }
     const item = room.queue[room.currentIndex];
     $("placeholder").style.display = item ? "none" : "flex";
-    $("nowplay").textContent = item ? "Now playing: " + item.title : "Nothing playing";
+    $("nowplay").textContent = item ? item.title : "A blank canvas for your evening.";
+    $("playing-status").textContent = item ? (room.isPlaying ? "Now playing together" : "Taking a breath") : "Make it a good one";
+    $("queue-count").textContent = String(room.queue.length).padStart(2, "0");
+    $("queue-empty").hidden = !!room.queue.length;
     controls();
   }
 
   username.addEventListener("click", () => {
-    const value = prompt("Display name:", name);
+    $("guest-name").value = name;
+    $("name-dialog").showModal();
+  });
+  $("name-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const value = $("guest-name").value;
     if (!value?.trim()) return;
     name = value.trim().slice(0, 32);
     try { localStorage.setItem("pp_user", name); } catch {}
     username.textContent = name;
     requestState("join");
+    $("name-dialog").close();
   });
 
-  playButton.addEventListener("click", () => {
+  function togglePlayback() {
+    if (playButton.disabled) return;
     if (room?.isPlaying) playback.command("pause", playback.targetTime());
     else {
       // Keep this call in the gesture handler for browser autoplay policy.
       playback.enablePlayback(true);
       playback.command("play", playback.targetTime());
     }
-  });
+  }
+  playButton.addEventListener("click", togglePlayback);
   nextButton.addEventListener("click", () => playback.command("next"));
   enableButton.addEventListener("click", () => playback.enablePlayback());
 
@@ -185,7 +218,7 @@ export function bootRoom(roomName) {
     if (!url) return;
     adding = true;
     addButton.disabled = true;
-    addButton.textContent = "Loading…";
+    addButton.setAttribute("aria-label", "Adding video");
     let title = url;
     try {
       const response = await fetch("https://www.youtube.com/oembed?url=" + encodeURIComponent(url) + "&format=json", { signal: AbortSignal.timeout(4000) });
@@ -193,15 +226,98 @@ export function bootRoom(roomName) {
     } catch {}
     if (send({ type: "add", url, title })) urlInput.value = "";
     else toast("Connection lost. Your URL is still here; try again after reconnecting.");
-    addButton.textContent = "Add to Queue";
+    addButton.setAttribute("aria-label", "Add to playlist");
     adding = false;
     controls();
+  });
+
+  function timeLabel(time) {
+    const seconds = Math.max(0, Math.floor(time || 0));
+    return seconds >= 3600 ? Math.floor(seconds / 3600) + ":" + String(Math.floor(seconds / 60) % 60).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0") : Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+  }
+  function updateProgress() {
+    const p = playback.player;
+    const duration = p?.getDuration?.() || 0;
+    const hasVideo = !!room?.queue[room.currentIndex];
+    progress.disabled = !joined || !hasVideo || !duration;
+    progress.max = String(duration || Math.max(1, playback.targetTime()));
+    $("duration").textContent = timeLabel(duration);
+    if (!scrubbing) progress.value = String(hasVideo ? Math.min(playback.targetTime(), duration || playback.targetTime()) : 0);
+    $("elapsed").textContent = timeLabel(Number(progress.value));
+    progress.style.setProperty("--progress", (duration ? Number(progress.value) / duration * 100 : 0) + "%");
+    progress.setAttribute("aria-valuetext", timeLabel(Number(progress.value)) + " of " + timeLabel(duration));
+  }
+  function seek(time) {
+    if (!joined || !room?.queue[room.currentIndex]) return;
+    const duration = playback.player?.getDuration?.() || 604800;
+    playback.command("seek", Math.max(0, Math.min(time, duration)));
+  }
+  progress.addEventListener("input", () => { scrubbing = true; updateProgress(); });
+  progress.addEventListener("change", () => { seek(Number(progress.value)); scrubbing = false; });
+  progress.addEventListener("blur", () => { scrubbing = false; });
+  function setPlaylist(open) {
+    document.body.classList.toggle("playlist-hidden", !open);
+    $("playlist-btn").setAttribute("aria-expanded", String(open));
+  }
+  $("playlist-btn").addEventListener("click", async () => {
+    if (document.fullscreenElement) { await document.exitFullscreen(); setPlaylist(true); $("sidebar").scrollIntoView({ block: "nearest" }); }
+    else setPlaylist(document.body.classList.contains("playlist-hidden"));
+  });
+  $("first-video-btn").addEventListener("click", () => { setPlaylist(true); urlInput.focus(); urlInput.scrollIntoView({ block: "center", behavior: reducedMotion.matches ? "instant" : "smooth" }); });
+  $("theater-btn").addEventListener("click", async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    const active = document.body.classList.toggle("theater");
+    $("theater-btn").setAttribute("aria-pressed", String(active));
+    if (!reducedMotion.matches) $("stage").animate([{ opacity: .65 }, { opacity: 1 }], { duration: 400 });
+  });
+  $("fullscreen-btn").addEventListener("click", async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else if ($("stage").requestFullscreen) await $("stage").requestFullscreen();
+      else toast("Fullscreen is unavailable in this browser. Try theater mode.");
+    } catch { toast("Fullscreen couldn't open. Try theater mode."); }
+  });
+  document.addEventListener("fullscreenchange", () => {
+    const active = document.fullscreenElement === $("stage");
+    $("fullscreen-btn").setAttribute("aria-pressed", String(active));
+    $("fullscreen-btn").setAttribute("aria-label", active ? "Exit fullscreen" : "Fullscreen");
+  });
+  $("mute-btn").addEventListener("click", () => {
+    const player = playback.player;
+    if (!player) return;
+    const muted = !player.isMuted();
+    if (muted) player.mute(); else player.unMute();
+    $("mute-btn").setAttribute("aria-pressed", String(muted));
+    $("mute-btn").setAttribute("aria-label", muted ? "Unmute" : "Mute");
+    $("volume-icon").hidden = muted; $("mute-icon").hidden = !muted;
+  });
+  for (const button of document.querySelectorAll("[data-close-dialog]")) button.addEventListener("click", () => button.closest("dialog").close());
+  for (const dialog of document.querySelectorAll("dialog")) dialog.addEventListener("click", event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } });
+  $("help-btn").addEventListener("click", () => $("help-dialog").showModal());
+  $("invite-btn").addEventListener("click", () => { $("invite-link").value = location.origin + location.pathname; $("invite-dialog").showModal(); });
+  $("copy-link-btn").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("invite-link").value); $("invite-dialog").close(); toast("Room link copied. Good company is on the way."); }
+    catch { $("invite-link").focus(); $("invite-link").select(); toast("Select and copy the room link."); }
+  });
+  document.addEventListener("keydown", event => {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.("input,textarea,select,[contenteditable=true]") || document.querySelector("dialog[open]")) return;
+    const key = event.key.toLowerCase();
+    const actions = {
+      " ": togglePlayback, k: togglePlayback,
+      arrowleft: () => seek(playback.targetTime() - 5), arrowright: () => seek(playback.targetTime() + 5),
+      j: () => seek(playback.targetTime() - 10), l: () => seek(playback.targetTime() + 10),
+      n: () => { if (!nextButton.disabled) nextButton.click(); },
+      f: () => $("fullscreen-btn").click(), t: () => $("theater-btn").click(),
+      p: () => $("playlist-btn").click(), m: () => $("mute-btn").click(),
+      "?": () => $("help-btn").click(),
+    };
+    if (actions[key]) { event.preventDefault(); actions[key](); }
   });
 
   window.onYouTubeIframeAPIReady = () => {
     const player = new window.YT.Player("yt-player", {
       height: "100%", width: "100%",
-      playerVars: { controls: 1, rel: 0, playsinline: 1, origin: location.origin },
+      playerVars: { controls: 0, disablekb: 1, rel: 0, playsinline: 1, origin: location.origin },
       events: {
         onReady() { playback.ready(player); },
         onStateChange(event) { playback.stateChanged(event.data); },
@@ -214,7 +330,7 @@ export function bootRoom(roomName) {
     });
   };
 
-  const sampleTimer = setInterval(() => playback.tick(), 250);
+  const sampleTimer = setInterval(() => { playback.tick(); updateProgress(); }, 250);
   const syncTimer = setInterval(() => {
     if (joined && performance.now() - lastMessage > 20000) socket?.close();
     else if (joined) requestState();

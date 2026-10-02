@@ -1,223 +1,86 @@
 ---
-// Home page — room join / create UI
+import Icon from '../components/Icon.astro';
+import AuthDialog from '../components/AuthDialog.astro';
+import '../styles/app.css';
+import '../styles/home.css';
+import { verifiedUser, displayName } from '../lib/auth';
+import { ownedRooms } from '../lib/rooms';
+const user = await verifiedUser(Astro);
+const name = user ? displayName(user) : null;
+const configured = !!Astro.locals.runtime.env.SUPABASE_URL && !!Astro.locals.runtime.env.SUPABASE_PUBLISHABLE_KEY;
+const rooms = user ? await ownedRooms(Astro.locals.runtime.env, user.id) : [];
+Astro.response.headers.set('Cache-Control', 'private, no-store');
 ---
-
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PartyPlayback — Watch Together</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <style>
-    :root {
-      --bg: #0d0d0f;
-      --bg-surface: #18181b;
-      --border: #3f3f46;
-      --text: #fafafa;
-      --text-muted: #a1a1aa;
-      --accent: #6d28d9;
-      --accent-light: #8b5cf6;
-      --radius: 10px;
-      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html, body {
-      min-height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      display: flex;
-      flex-direction: column;
-    }
-
-    main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem 1rem;
-    }
-
-    .logo {
-      font-size: 2.5rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      margin-bottom: 0.5rem;
-      background: linear-gradient(135deg, var(--accent-light), #ec4899);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .tagline {
-      color: var(--text-muted);
-      font-size: 1rem;
-      margin-bottom: 2.5rem;
-    }
-
-    .card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 2rem;
-      width: 100%;
-      max-width: 420px;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .card h2 {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .input-row {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    input[type="text"] {
-      flex: 1;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      padding: 0.625rem 0.875rem;
-      font-size: 0.95rem;
-      font-family: var(--font);
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    input[type="text"]:focus { border-color: var(--accent-light); }
-    input[type="text"]::placeholder { color: var(--text-muted); }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 0.625rem 1.25rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: var(--font);
-      white-space: nowrap;
-      transition: background 0.15s;
-    }
-
-    .btn-primary:hover { background: var(--accent-light); }
-
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      color: var(--text-muted);
-      font-size: 0.8rem;
-    }
-
-    .divider::before, .divider::after {
-      content: "";
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
-
-    .quick-rooms {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-    }
-
-    .quick-btn {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      border-radius: 6px;
-      padding: 0.35rem 0.75rem;
-      font-size: 0.825rem;
-      cursor: pointer;
-      font-family: var(--font);
-      transition: border-color 0.15s, color 0.15s;
-    }
-
-    .quick-btn:hover {
-      border-color: var(--accent-light);
-      color: var(--accent-light);
-    }
-
-    footer {
-      text-align: center;
-      padding: 1.5rem;
-      color: var(--text-muted);
-      font-size: 0.8rem;
-    }
-
-    footer a { color: var(--text-muted); text-decoration: none; }
-    footer a:hover { color: var(--text); }
-  </style>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="description" content="One room. Your people. Watch YouTube together in sync, from anywhere. Start a guest room in seconds."/>
+  <meta name="theme-color" content="#090a0c"/>
+  <title>PartyPlayback — A little closer.</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
 </head>
-<body>
-  <main>
-    <div class="logo">PartyPlayback</div>
-    <p class="tagline">Watch YouTube together, in sync.</p>
-
-    <div class="card">
-      <h2>Join or create a room</h2>
-      <form id="room-form">
-        <div class="input-row">
-          <input
-            type="text"
-            id="room-input"
-            placeholder="Room name..."
-            autocomplete="off"
-            spellcheck="false"
-            maxlength="64"
-          />
-          <button class="btn-primary" type="submit">Join &rarr;</button>
+<body class="home-page" data-signed-in={String(!!user)}>
+  <div class="home-ambient" aria-hidden="true"></div>
+  <header class="site-nav">
+    <a class="brand" href="/" aria-label="PartyPlayback home"><span class="brand-mark"><Icon name="play" size={17}/></span>partyplayback</a>
+    <nav class="nav-actions" aria-label="Main navigation">
+      <button class="text-button" type="button" data-join-room>Join a room</button>
+      {user ? <><span class="signed-avatar" title={name}>{name?.slice(0,1)}</span><button class="text-button" type="button" data-sign-out>Sign out</button></> : <button class="pill-button" type="button" data-sign-in>Sign in<Icon name="arrow" size={16}/></button>}
+    </nav>
+  </header>
+  <main class="home-main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="eyebrow reveal"><span class="status-dot"></span>A LITTLE CLOSER, FROM ANYWHERE</div>
+        <h1 id="hero-title" class="reveal delay-1">Press play.<br/><span>Feel closer.</span></h1>
+        <p class="hero-description reveal delay-2">The video is just the beginning.<br/>Bring your people. Make a night of it.</p>
+        <div class="hero-actions reveal delay-3">
+          <button class="primary-button hero-cta" type="button" data-create-room="guest"><Icon name="play" size={22}/>Start a room<Icon name="arrow" size={19}/></button>
+          <button class="text-button" type="button" data-join-room>I've got an invite<Icon name="chevron" size={16}/></button>
         </div>
-      </form>
-
-      <div class="divider">or jump in</div>
-
-      <div class="quick-rooms">
-        <button class="quick-btn" data-room="general">general</button>
-        <button class="quick-btn" data-room="music">music</button>
-        <button class="quick-btn" data-room="movies">movies</button>
-        <button class="quick-btn" data-room="gaming">gaming</button>
+        <div class="hero-note reveal delay-3">No downloads. No account needed. Just good company.</div>
       </div>
-    </div>
+      <div class="hero-art reveal delay-2" aria-hidden="true">
+        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+        <div class="orb"><div class="orb-light"></div><div class="orb-disc"></div></div>
+        <div class="art-caption"><span class="art-signal"><i></i><i></i><i></i><i></i></span>SAME MOMENT. DIFFERENT PLACES.</div>
+        <span class="floating-play"><Icon name="play" size={33}/></span>
+        <span class="art-coordinate top">01 / TOGETHER</span><span class="art-coordinate bottom">THERE'S A PLACE FOR YOU HERE.</span>
+      </div>
+    </section>
+    <section id="room-types" class="room-types reveal delay-3" aria-label="Find your kind of room">
+      <button class="room-type guest-type" type="button" data-create-room="guest">
+        <span class="type-symbol"><Icon name="spark" size={24}/></span>
+        <span class="type-copy"><span class="eyebrow">COME AS YOU ARE</span><strong>A room. Right now.</strong><span>Make a link. Send it around. Everyone's in.</span></span>
+        <span class="type-arrow"><Icon name="arrow" size={23}/></span>
+      </button>
+      <button class="room-type member-type" type="button" data-create-room="member">
+        <span class="type-symbol"><Icon name="people" size={24}/></span>
+        <span class="type-copy"><span class="eyebrow">MAKE IT YOURS</span><strong>Your usual spot.</strong><span>Saved rooms. Familiar faces. Sign in to join.</span></span>
+        <span class="type-arrow"><Icon name="arrow" size={23}/></span>
+      </button>
+    </section>
+    {user && <section class="saved-rooms"><div class="saved-heading"><span class="eyebrow">YOUR ROOMS</span><button class="text-button" type="button" data-create-room="member">New room<Icon name="plus" size={15}/></button></div>{rooms.length ? <div class="saved-grid">{rooms.map(room => <a class="saved-room" href={'/room/'+room.slug}><span><strong>{room.title}</strong><span class="muted">Member room</span></span><Icon name="arrow"/></a>)}</div> : <p class="muted">Your next favorite place is one click away.</p>}</section>}
+    <div class="home-bottom"><p>One room. Your people.<br/><span>That's all you need.</span></p><span>Built for the moments<br/>between the videos.</span></div>
   </main>
-
-  <footer>
-    PartyPlayback &nbsp;&middot;&nbsp; <a href="/blog">Blog</a>
-  </footer>
-
-  <script>
-    const form = document.getElementById('room-form');
-    const input = document.getElementById('room-input');
-
-    function goToRoom(name) {
-      const slug = name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-      if (slug) window.location.href = '/room/' + slug;
-    }
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      goToRoom(input.value);
-    });
-
-    document.querySelectorAll('.quick-btn').forEach(btn => {
-      btn.addEventListener('click', () => goToRoom(btn.dataset.room));
-    });
-  </script>
+  <footer class="page-footer"><span>© {new Date().getFullYear()} PartyPlayback</span><span>YouTube, with company.</span></footer>
+  <AuthDialog configured={configured}/>
+  <dialog id="create-dialog" class="dialog" aria-labelledby="create-heading">
+    <button class="dialog-close" type="button" data-close-dialog aria-label="Close room creation"><Icon name="close" size={17}/></button>
+    <span class="eyebrow">THE NIGHT STARTS HERE</span><h2 id="create-heading">Set the scene.</h2><p>A name, a link, and your favorite people.</p>
+    <form id="create-form">
+      <label for="room-title">Room name</label><input id="room-title" name="title" placeholder="Friday night" maxlength="64" autocomplete="off"/>
+      <div class="segmented" role="group" aria-label="Room access"><label><input type="radio" name="mode" value="guest" checked/><span>Guest room</span></label><label><input type="radio" name="mode" value="member"/><span>Member room</span></label></div>
+      <p id="room-mode-note" class="mode-note">Anyone with the link can join. No sign-in needed.</p>
+      <button class="primary-button wide" type="submit">Create room<Icon name="arrow" size={19}/></button><div id="create-message" class="form-message" role="status"></div>
+    </form>
+  </dialog>
+  <dialog id="join-dialog" class="dialog" aria-labelledby="join-heading">
+    <button class="dialog-close" type="button" data-close-dialog aria-label="Close join room"><Icon name="close" size={17}/></button>
+    <span class="eyebrow">YOUR PEOPLE ARE WAITING</span><h2 id="join-heading">You're invited.</h2><p>Paste your room link or enter its room code.</p>
+    <form id="join-form"><label for="room-code">Room link or code</label><input id="room-code" name="room" placeholder="Paste your invite here" required autocomplete="off"/><button class="primary-button wide" type="submit">Join the room<Icon name="arrow" size={19}/></button><div id="join-message" class="form-message" role="status"></div></form>
+  </dialog>
+  <script>import { bootHome } from '../scripts/home-client.js'; bootHome();</script>
 </body>
 </html>

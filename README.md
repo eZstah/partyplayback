@@ -5,7 +5,7 @@ a video queue, playback position, and play/pause controls.
 
 ## Run locally
 
-Use Node.js 22 or newer.
+Use Node.js 22.18 or newer (the regression suite uses native TypeScript loading).
 
 ```sh
 npm ci
@@ -13,7 +13,7 @@ npm run preview
 ```
 
 Open the address printed by Wrangler (normally http://localhost:8787) in two
-browser tabs. Choose the same room name in both tabs and add a YouTube video.
+browser tabs. Start a guest room, share its link, and add a YouTube video.
 Use `preview` for room testing: it builds the Astro app and runs its Cloudflare
 Worker and Durable Object locally. `npm run dev` starts the same complete room
 runtime. For Astro-only page development, use `npm run astro -- dev`; that mode
@@ -24,9 +24,11 @@ then restart it after code changes.
 
 - Share the room URL with the other viewers.
 - Paste a YouTube watch, short, live, embed, or youtu.be video link.
-- Play, pause, and seek with the YouTube player. The buttons below the player also
-  control playback for the room; Next moves to the next queued video.
-- If your browser blocks autoplay, click **Enable playback**. This enables your
+- Use the large Play/Pause button, the timeline to seek, and Next to skip.
+- Space or K: play/pause. Left/right: seek 5 seconds. J/L: seek 10 seconds.
+  N: next. F: fullscreen. T: theater. P: playlist. M: local mute. ?: shortcuts.
+  Shortcuts stay inactive in inputs and dialogs. Esc closes dialogs/fullscreen.
+- If your browser blocks autoplay, click **Join playback**. This enables your
   own player without pausing or seeking everyone else.
 - Removing an upcoming video preserves the current position. Removing the
   current video loads its replacement; emptying the queue stops playback.
@@ -87,8 +89,41 @@ Deployment requires Cloudflare authentication. `wrangler.json` declares the
 `scripts/post-build.mjs` adds the RoomDO export to the generated Astro worker;
 always build through the npm scripts.
 
-Room names are shared spaces: anyone who knows a room URL can join and control
-it. There are no accounts or private-room permissions yet.
+Guest rooms are shared spaces: anyone with the link can join and control them.
+Member rooms are saved to their creator's account and require every viewer to
+sign in. They are not invite-only; any signed-in user with the link can join.
+
+## Connect Supabase sign-in
+
+Guest playback needs no authentication settings. Google, Discord and email magic
+links are prepared with Supabase Auth; they need your project and provider setup.
+No Supabase database tables or service-role key are needed. Room storage and the
+account's saved-room catalog stay in Cloudflare Durable Objects.
+
+1. Create a Supabase project. Copy `.dev.vars.example` to `.dev.vars` and set
+   `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` from its API settings. For a
+   deployed Worker, set these variables in Cloudflare and rebuild/redeploy.
+2. In Supabase Auth URL configuration, set your production Site URL and allow
+   `http://127.0.0.1:8787/auth/callback**`, `http://localhost:8787/auth/callback**`
+   and your production `https://YOUR_DOMAIN/auth/callback**` redirect URLs.
+   Keep the production allowlist limited to domains you own.
+3. Enable [Google](https://supabase.com/docs/guides/auth/social-login/auth-google)
+   and [Discord](https://supabase.com/docs/guides/auth/social-login/auth-discord)
+   in Supabase. Create each provider's OAuth app and configure its credentials
+   in Supabase, using the Supabase callback URL shown in the provider settings.
+4. Enable email authentication and magic links. Keep the confirmation email
+   template's `{{ .ConfirmationURL }}` link and configure production SMTP.
+   Open the magic link in the same browser that requested it (PKCE).
+5. Restart preview. Test each provider, sign-out, creating a member room, its
+   saved home-page entry, and joining its link in a signed-out browser. Complete
+   sign-in from that invite and confirm it returns to the original room.
+
+Sessions use server-managed HttpOnly cookies and verified `getUser()` identities.
+Authentication and account responses disable caching. Mutation endpoints check
+the request origin; the WebSocket proxy strips any client-supplied identity
+headers before supplying the verified identity. OAuth callbacks constrain the
+return path to this site. Missing configuration shows a guest-friendly message.
+Actual OAuth and email delivery require a configured project to validate.
 
 ## How sync works
 
@@ -106,4 +141,7 @@ requests periodic snapshots to correct drift, and reconnects after connection
 loss. Remote player events settle against the desired room state instead of
 being suppressed for a fixed number of milliseconds.
 
-The inherited blog pages and existing visual styling are still present.
+The home and room pages use a shared borderless theme, responsive layouts,
+native accessible dialogs, local fonts and reduced-motion support. Decorative
+home-page motion uses CSS and pointer parallax; playlist additions use the Web
+Animations API without replacing unchanged rows on every sync.

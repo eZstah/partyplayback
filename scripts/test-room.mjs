@@ -44,6 +44,19 @@ async function connect(room = slug) {
 }
 
 try {
+  const post = (path, body, origin = base) => fetch(base + path, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  assert.equal((await post('/api/rooms', { mode: 'guest' }, 'https://unrelated.example')).status, 403);
+  assert.equal((await post('/api/rooms', { mode: 'member' })).status, 401);
+  assert.equal((await post('/auth/signin', { provider: 'google' }, 'https://unrelated.example')).status, 403);
+  const guestResponse = await post('/api/rooms', { mode: 'guest', title: 'Integration night' });
+  assert.equal(guestResponse.status, 201);
+  const guestRoom = await guestResponse.json();
+  assert.ok(guestRoom.url.startsWith('/room/g-'));
+  assert.ok((await (await fetch(base + guestRoom.url)).text()).includes('Integration night'));
+  assert.deepEqual(await (await fetch(base + '/api/rooms')).json(), { rooms: [] });
+  const callback = await fetch(base + '/auth/callback?next=https://unrelated.example', { redirect: 'manual' });
+  assert.equal(callback.status, 303);
+  assert.equal(callback.headers.get('Location'), '/?signin=1&auth_error=1');
   const page = await fetch(base + "/room/" + slug);
   assert.equal(page.status, 200);
   assert.ok((await page.text()).includes("Room playback controls"));
@@ -109,7 +122,7 @@ try {
   assert.equal(state.currentIndex, -1);
   assert.equal(state.isPlaying, false);
 
-  console.log("PASS: real Cloudflare worker, two-way controls, seeking, queue edits, duplicate endings, late join, reconnect, room isolation, and request validation");
+  console.log("PASS: guest creation, member-room auth guard, origin checks, safe callback, real Cloudflare sockets, two-way controls, seeking, queue edits, duplicate endings, late join, reconnect, and isolation");
 } finally {
   await Promise.all(peers.map(peer => peer.close()));
 }
