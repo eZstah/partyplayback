@@ -17,9 +17,13 @@ export const POST: APIRoute = async context => {
   const user = body.mode === "member" ? await verifiedUser(context) : null;
   if (body.mode === "member" && !user) return privateJson({ message: "Sign in to create your own member room.", signIn: true }, 401);
   const env = context.locals.runtime.env;
+  const roomId = crypto.randomUUID().replaceAll("-", "");
+  const moods = ["Cosmic", "Cozy", "Happy", "Dreamy", "Bouncy", "Sunny", "Lucky", "Mellow"];
+  const snacks = ["Popcorn", "Peaches", "Waffles", "Cookies", "Noodles", "Cherries", "Pancakes", "Mochi"];
+  const guestTitle = moods[parseInt(roomId.slice(0, 2), 16) % moods.length] + " " + snacks[parseInt(roomId.slice(2, 4), 16) % snacks.length];
   const details: RoomDetails = {
-    slug: (body.mode === "member" ? "m-" : "g-") + crypto.randomUUID().replaceAll("-", ""),
-    title: (typeof body.title === "string" ? body.title.trim().slice(0, 64) : "") || "Good company",
+    slug: (body.mode === "member" ? "m-" : "g-") + roomId,
+    title: body.mode === "guest" ? guestTitle : (typeof body.title === "string" ? body.title.trim().slice(0, 64) : "") || "Good company",
     mode: body.mode, createdAt: Date.now(), ...(user ? { ownerId: user.id } : {}),
   };
   if (user) {

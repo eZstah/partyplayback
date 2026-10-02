@@ -5,42 +5,45 @@ export function bootHome() {
   const joinDialog = document.getElementById("join-dialog");
   const createForm = document.getElementById("create-form");
   const createMessage = document.getElementById("create-message");
+  const savedForm = document.getElementById("saved-room-form");
+  const savedDialog = document.getElementById("saved-room-dialog");
+  const savedMessage = document.getElementById("saved-room-message");
   const signedIn = document.body.dataset.signedIn === "true";
-  let busy = false;
-  function updateMode() {
-    const member = createForm.elements.mode.value === "member";
-    document.getElementById("room-mode-note").textContent = member ? "Kept in your account. Everyone signs in to join." : "No account needed. Anyone with your link can join.";
-    createForm.querySelector("button[type=submit] span").textContent = member && !signedIn ? "Sign in to create room" : "Create room";
+  function openSavedRoom() {
+    if (!signedIn) { auth.open("/?create=member"); return; }
+    if (!savedDialog.open) savedDialog.showModal();
+    savedForm.elements.title.focus();
   }
   document.querySelectorAll("[data-create-room]").forEach(button => button.addEventListener("click", () => {
-    createForm.elements.mode.value = button.dataset.createRoom;
-    updateMode();
-    createForm.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-    document.getElementById("room-title").focus({ preventScroll: true });
+    openSavedRoom();
   }));
   document.querySelectorAll("[data-join-room]").forEach(button => button.addEventListener("click", () => joinDialog.showModal()));
-  createForm.addEventListener("change", updateMode);
-  createForm.addEventListener("submit", async event => {
+  function bindCreation(form, mode, message) {
+    let busy = false;
+    form.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy) return;
-    const mode = createForm.elements.mode.value;
+    const title = mode === "member" ? form.elements.title.value : undefined;
     if (mode === "member" && !signedIn) {
-      try { sessionStorage.setItem("pp_room_draft", createForm.elements.title.value); } catch {}
-      auth.open("/?create=member");
+      try { sessionStorage.setItem("pp_room_draft", title); } catch {}
+      savedDialog.close(); auth.open("/?create=member");
       return;
     }
     busy = true;
-    const submit = createForm.querySelector("button[type=submit]");
-    submit.disabled = true; submit.querySelector("span").textContent = "Making room…"; createMessage.textContent = "";
+    const submit = form.querySelector("button[type=submit]");
+    submit.disabled = true; submit.querySelector("span").textContent = "Making room…"; message.textContent = "";
     try {
-      const response = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, title: createForm.elements.title.value }) });
+      const response = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, title }) });
       const data = await response.json();
       if (response.ok) location.assign(data.url);
-      else if (data.signIn) { try { sessionStorage.setItem("pp_room_draft", createForm.elements.title.value); } catch {} auth.open("/?create=member"); }
-      else createMessage.textContent = data.message || "Couldn't create your room. Try again.";
-    } catch { createMessage.textContent = "Couldn't connect. Please try again."; }
-    finally { busy = false; submit.disabled = false; updateMode(); }
-  });
+      else if (data.signIn) { try { sessionStorage.setItem("pp_room_draft", title || ""); } catch {} savedDialog.close(); auth.open("/?create=member"); }
+      else message.textContent = data.message || "Couldn't create your room. Try again.";
+    } catch { message.textContent = "Couldn't connect. Please try again."; }
+    finally { busy = false; submit.disabled = false; submit.querySelector("span").textContent = mode === "member" ? "Create saved room" : "Create room"; }
+    });
+  }
+  bindCreation(createForm, "guest", createMessage);
+  bindCreation(savedForm, "member", savedMessage);
   document.getElementById("join-form").addEventListener("submit", event => {
     event.preventDefault();
     let value = document.getElementById("room-code").value.trim();
@@ -52,8 +55,8 @@ export function bootHome() {
     } catch { document.getElementById("join-message").textContent = "That invite doesn't look right. Paste a room link or room code."; }
   });
   if (new URLSearchParams(location.search).get("create") === "member") {
-    try { createForm.elements.title.value = sessionStorage.getItem("pp_room_draft") || ""; sessionStorage.removeItem("pp_room_draft"); } catch {}
-    createForm.elements.mode.value = "member"; updateMode(); createForm.scrollIntoView({ block: "center" });
+    try { savedForm.elements.title.value = sessionStorage.getItem("pp_room_draft") || ""; sessionStorage.removeItem("pp_room_draft"); } catch {}
+    openSavedRoom();
     history.replaceState({}, "", "/");
   }
   const art = document.querySelector(".mascot-cast");

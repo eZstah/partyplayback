@@ -48,11 +48,12 @@ try {
   assert.equal((await post('/api/rooms', { mode: 'guest' }, 'https://unrelated.example')).status, 403);
   assert.equal((await post('/api/rooms', { mode: 'member' })).status, 401);
   assert.equal((await post('/auth/signin', { provider: 'google' }, 'https://unrelated.example')).status, 403);
-  const guestResponse = await post('/api/rooms', { mode: 'guest', title: 'Integration night' });
+  const guestResponse = await post('/api/rooms', { mode: 'guest' });
   assert.equal(guestResponse.status, 201);
   const guestRoom = await guestResponse.json();
   assert.ok(guestRoom.url.startsWith('/room/g-'));
-  assert.ok((await (await fetch(base + guestRoom.url)).text()).includes('Integration night'));
+  assert.match(guestRoom.room.title, /^(Cosmic|Cozy|Happy|Dreamy|Bouncy|Sunny|Lucky|Mellow) (Popcorn|Peaches|Waffles|Cookies|Noodles|Cherries|Pancakes|Mochi)$/);
+  assert.ok((await (await fetch(base + guestRoom.url)).text()).includes(guestRoom.room.title));
   assert.deepEqual(await (await fetch(base + '/api/rooms')).json(), { rooms: [] });
   const callback = await fetch(base + '/auth/callback?next=https://unrelated.example', { redirect: 'manual' });
   assert.equal(callback.status, 303);
