@@ -13,12 +13,15 @@ const { name, street, postalCodeAndCity, country, email } = IMPRESSUM;
   <main class="text-page">
     <p><a href="/">← youple.tv</a></p>
     <h1>Impressum</h1>
-    <h2>Angaben gemäß § 5 DDG</h2>
+    <h2>Angaben gemäß § 5 Digitale-Dienste-Gesetz (DDG)</h2>
     <p>{name}<br/>{street}<br/>{postalCodeAndCity}{country && <><br/>{country}</>}</p>
+    <p>youple.tv wird als privates, nicht kommerzielles Angebot betrieben.</p>
     <h2>Kontakt</h2>
     <p>E-Mail: <a href={`mailto:${email}`}>{email}</a></p>
-    <h2>Verantwortlich für den Inhalt</h2>
-    <p>{name}, Anschrift wie oben</p>
+    <h2>Redaktionell verantwortlich</h2>
+    <p>Verantwortlich für Inhalte gemäß § 18 Abs. 2 Medienstaatsvertrag (MStV): {name}, Anschrift wie oben</p>
+    <h2>Rechtsverstöße melden</h2>
+    <p>Videos in Räumen werden von YouTube eingebettet und von den Nutzern ausgewählt. Hinweise auf rechtswidrige Inhalte bitte mit der genauen URL an <a href={`mailto:${email}`}>{email}</a>; wir prüfen sie und entfernen Inhalte erforderlichenfalls.</p>
   </main>
   <SiteFooter/>
   <style>

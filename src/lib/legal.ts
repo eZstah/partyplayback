@@ -1,10 +1,10 @@
 // Operator details for the Impressum. The page and its footer link stay
 // hidden until name and address are filled in, so no placeholder ever goes live.
 export const IMPRESSUM = {
-  name: "",
-  street: "",
-  postalCodeAndCity: "",
-  country: "",
+  name: "Konstantin Bobylov",
+  street: "Bernhardstr. 7",
+  postalCodeAndCity: "09212 Limbach-Oberfrohna",
+  country: "Deutschland",
   email: "xiseah@googlemail.com",
 };
 
