@@ -1,5 +1,7 @@
 // Plain JS: exported from the worker by scripts/post-build.mjs.
 export class RoomDO {
+  static GUEST_ROOM_TTL = 30 * 24 * 60 * 60 * 1000;
+
   constructor(ctx, env) {
     this.ctx = ctx;
     this.env = env;
@@ -25,6 +27,7 @@ export class RoomDO {
         if (this.details) return new Response("Room exists", { status: 409 });
         this.details = await request.json();
         await this.ctx.storage.put("details", this.details);
+        await this._keepAlive();
         return Response.json({ ok: true });
       }
       if (url.pathname === "/catalog") {
@@ -44,6 +47,7 @@ export class RoomDO {
     if (this.details?.mode === "member" && !userId) return new Response("Sign in to join", { status: 401 });
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
+    await this._keepAlive();
     if (userId) server.serializeAttachment({ joined: false, userId, verifiedName: decodeURIComponent(request.headers.get("X-Party-Name") || "Member") });
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -191,6 +195,23 @@ export class RoomDO {
       await this.ctx.storage.put("room", this.state);
     }
     this._broadcast({ type: "users", userCount: this._members().length });
+    await this._keepAlive();
+  }
+
+  // Unsaved rooms are cleared once nobody has opened them for a while.
+  // Saved (member) rooms and account catalogs never schedule an alarm.
+  async _keepAlive() {
+    if (this.details?.mode === "member") return;
+    await this.ctx.storage.setAlarm(Date.now() + RoomDO.GUEST_ROOM_TTL);
+  }
+
+  async alarm() {
+    await this.ready;
+    if (this.details?.mode === "member") return;
+    if (this.ctx.getWebSockets().length) return this._keepAlive();
+    await this.ctx.storage.deleteAll();
+    this.details = null;
+    this.state = { queue: [], currentIndex: -1, isPlaying: false, currentTime: 0, updatedAt: Date.now(), playbackId: null, revision: 0 };
   }
 
   _extractVideoId(value) {
