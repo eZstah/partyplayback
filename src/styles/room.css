@@ -944,3 +944,16 @@
 .playback-overlay[data-state=muted] .overlay-pause,.playback-overlay[data-state=unmuted] .overlay-pause,.playback-overlay[data-state=muted] .overlay-caption,.playback-overlay[data-state=unmuted] .overlay-caption { display: none; }
 .playback-overlay[data-state=muted] .overlay-muted,.playback-overlay[data-state=unmuted] .overlay-unmuted { display: block; width: 52%; }
 .playback-overlay[data-state=muted] .overlay-disc,.playback-overlay[data-state=unmuted] .overlay-disc { animation: overlay-pop .35s var(--ease) both; }
+
+/* Fullscreen controls fade without resizing the video. */
+.fullscreen-wake { display: none; }
+.room-shell:fullscreen { display: block; position: relative; background: #000; }
+.room-shell:fullscreen .room-nav { position: absolute; inset: 0 0 auto; z-index: 6; background: linear-gradient(#101115eb,#1011159c 70%,transparent); }
+.room-shell:fullscreen .player-bottom { position: absolute; inset: auto 0 0; z-index: 6; background: linear-gradient(transparent,#101115cf 30%,#101115f2); }
+.room-shell:fullscreen .room-nav,.room-shell:fullscreen .player-bottom { opacity: 1; visibility: visible; transition: opacity .25s ease,transform .25s ease,visibility .25s; }
+.room-shell:fullscreen[data-controls-hidden=true] { cursor: none; }
+.room-shell:fullscreen[data-controls-hidden=true] .room-nav,.room-shell:fullscreen[data-controls-hidden=true] .player-bottom { opacity: 0; visibility: hidden; pointer-events: none; }
+.room-shell:fullscreen[data-controls-hidden=true] .room-nav { transform: translateY(-8px); }
+.room-shell:fullscreen[data-controls-hidden=true] .player-bottom { transform: translateY(8px); }
+.room-shell:fullscreen[data-controls-hidden=true] .fullscreen-wake { display: block; position: absolute; inset: 0; z-index: 4; }
+@media(prefers-reduced-motion:reduce) { .room-shell:fullscreen .room-nav,.room-shell:fullscreen .player-bottom { transition: none; } }

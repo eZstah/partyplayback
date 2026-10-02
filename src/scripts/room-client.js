@@ -4,6 +4,7 @@ import { bootRoomMascots } from "./room-mascots.js";
 import { copyText, takeCreatedRoomNotice } from "./invite-copy.js";
 import { pastedVideo, youtubeUrl } from "./room-paste.js";
 import { bindVolumeControl } from "./volume-control.js";
+import { bindFullscreenControls } from "./fullscreen-controls.js";
 
 export function bootRoom(roomName, arrival = Promise.resolve()) {
   const auth = bootAuth();
@@ -53,6 +54,13 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     },
   });
 
+  const fullscreenControls = bindFullscreenControls({ shell: $("room-shell"), document });
+  function updateFullscreenControls() {
+    const canHide = !!(joined && room?.isPlaying && room.queue[room.currentIndex] &&
+      playback.player?.getPlayerState() === 1 && !playback.blocked && !playback.pending &&
+      playback.failedId !== room.playbackId && !document.querySelector("dialog[open]"));
+    fullscreenControls.update(canHide, room?.playbackId);
+  }
   function controls() {
     const hasVideo = !!room?.queue[room.currentIndex];
     playButton.disabled = !joined || !hasVideo;
@@ -86,6 +94,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
     $("play-icon").hidden = playing;
     $("pause-icon").hidden = !playing;
+    updateFullscreenControls();
   }
 
   // Like a desktop player: pausing leaves a big pause sign up, resuming flashes play,
@@ -515,7 +524,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     });
   };
 
-  const sampleTimer = setInterval(() => { playback.tick(); updateProgress(); updateMuteControl(); }, 250);
+  const sampleTimer = setInterval(() => { playback.tick(); updateProgress(); updateMuteControl(); updateFullscreenControls(); }, 250);
   const syncTimer = setInterval(() => {
     if (joined && performance.now() - lastMessage > 20000) socket?.close();
     else if (joined) requestState();
@@ -525,6 +534,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   });
   window.addEventListener("pagehide", () => {
     stopping = true;
+    fullscreenControls.destroy();
     clearInterval(sampleTimer);
     clearInterval(syncTimer);
     clearTimeout(reconnectTimer);
