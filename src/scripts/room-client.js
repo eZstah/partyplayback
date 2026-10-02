@@ -255,6 +255,13 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   }
 
   function setCount(value) { $("uc-label").textContent = value + " watching"; }
+  function setPeopleOpen(open) {
+    document.body.classList.toggle("people-open", open);
+    count.setAttribute("aria-expanded", String(open));
+    try { localStorage.setItem("youple-people", String(open)); } catch {}
+  }
+  setPeopleOpen(document.body.classList.contains("people-open"));
+  count.addEventListener("click", () => setPeopleOpen(!document.body.classList.contains("people-open")));
 
   function render() {
     setCount(room.userCount);

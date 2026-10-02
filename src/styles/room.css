@@ -995,7 +995,11 @@
 @media(prefers-reduced-motion:reduce) { .playback-overlay,.playback-overlay .overlay-disc { animation: none!important; transition: none; } }
 
 /* Who's here: faces in the header, names at the top of the sidebar. */
-.facepile { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+.facepile { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px 0 6px; margin: 0 -12px 0 -6px; border-radius: 22px; background: transparent; color: inherit; white-space: nowrap; transition: background .2s ease,color .2s ease; }
+.facepile:hover,.facepile[aria-expanded=true] { background: #c3afff0b; color: #e0d4ff; }
+/* The header avatars stand in for the Watching list on wide screens; clicking them opens it.
+   Below 851px the header avatars hide, so the list always shows there. */
+@media(min-width:851px) { .room-page:not(.people-open) .room-people { display: none; } }
 .facepile-faces { display: inline-flex; }
 .facepile-face,.person-face { position: relative; display: grid; place-items: center; flex: none; overflow: hidden; border-radius: 50%; background: var(--face,#c3afff); color: #1a1726; font-weight: 700; }
 .facepile-face img,.person-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
