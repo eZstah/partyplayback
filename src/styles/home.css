@@ -78,47 +78,6 @@
   color: #d9b0c877;
   transform: rotate(15deg);
 }
-.home-page .site-nav {
-  max-width: 1280px;
-  padding: 28px 42px;
-}
-.home-page .brand {
-  font-size: 25px;
-  letter-spacing: -.055em;
-  gap: 8px;
-}
-.brand-tv {
-  color: var(--accent);
-  margin-left: -8px;
-}
-.brand-face {
-  background: var(--accent);
-  width: 38px;
-  height: 35px;
-  border-radius: 14px 14px 17px 17px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  transform: rotate(-8deg);
-  margin-right: 3px;
-}
-.brand-face i {
-  width: 4px;
-  height: 8px;
-  background: #272136;
-  border-radius: 50%;
-  animation: eye-blink 7s infinite;
-}
-.home-page .nav-actions {
-  gap: 24px;
-}
-.home-page .nav-actions button {
-  font-size: 17px;
-}
-.home-page .pill-button {
-  padding: 15px 24px;
-}
 .home-main {
   max-width: 1180px;
   padding: 0 36px;
@@ -126,7 +85,7 @@
 }
 .hangout {
   position: relative;
-  padding: 32px 0 72px;
+  padding: 72px 0 72px;
   isolation: isolate;
   min-height: 550px;
 }
@@ -213,15 +172,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: 16px;
   margin: 14px 4px 0;
 }
-.launcher-footer .join-launcher {
+.launcher-footer .join-launcher,.account-launcher {
   width: auto;
   padding: 8px 0;
   text-align: left;
   font-size: 17px;
+  min-height: 44px;
+  background: transparent;
+  color: #61536b;
+  border-radius: 10px;
+  white-space: nowrap;
+  transition: color .2s ease;
 }
+.join-entry,.launcher-account { display: flex; align-items: center; gap: 16px; }
+.launcher-account { gap: 8px; }
+.join-launcher:hover,.account-launcher:hover { color: #30223f; }
+.room-launcher .signed-avatar { background: #e4dceb; color: #61536b; width: 32px; height: 32px; font-size: 15px; }
 .sync-presence {
   display: inline-flex;
   align-items: center;
@@ -784,14 +753,11 @@
   }
 }
 @media(max-width:900px) {
-  .home-page .site-nav {
-    padding: 24px 28px;
-  }
   .home-main {
     padding: 0 26px;
   }
   .hangout {
-    padding-top: 24px;
+    padding-top: 48px;
     padding-bottom: 35px;
     min-height: 0;
   }
@@ -870,31 +836,14 @@
   }
 }
 @media(max-width:600px) {
-  .home-page .site-nav {
-    padding: 20px;
-    gap: 12px;
-  }
-  .home-page .brand {
-    font-size: 23px;
-  }
-  .home-page .nav-actions {
-    gap: 12px;
-  }
-  .home-page .nav-actions button {
-    font-size: 16px;
-  }
-  .home-page .nav-actions [data-join-room] {
-    display: none;
-  }
-  .home-page .pill-button {
-    padding: 13px 20px;
-    white-space: nowrap;
-  }
+  .join-entry { flex-direction: column; align-items: flex-start; gap: 0; }
+  .launcher-footer { align-items: flex-start; }
+  .launcher-footer .sync-presence { margin-top: 2px; }
   .home-main {
     padding: 0 18px;
   }
   .hangout {
-    padding: 25px 0 22px;
+    padding: 36px 0 22px;
   }
   .hangout-heading h1 {
     font-size: 72px;
@@ -1041,11 +990,8 @@
 }
 /* Keep room creation in reach on shorter desktop windows. */
 @media(min-width:901px) and (max-height:850px) {
-  .home-page .site-nav {
-    padding-block: 20px;
-  }
   .hangout {
-    padding-top: 10px;
+    padding-top: 60px;
   }
   .hangout-heading h1 {
     font-size: 84px;
