@@ -188,6 +188,15 @@ const roomName = slug;
 
     #nowplay b { color: var(--text); font-weight: 500; }
 
+    #playback-controls { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    #playback-controls button {
+      background: var(--bg-surface); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.4rem 0.8rem; cursor: pointer; font: inherit;
+    }
+    #playback-controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #enable-btn { border-color: var(--accent-light) !important; }
+    .qi-rm:focus-visible { opacity: 1; }
+
     /* ---- Queue sidebar ---- */
     #sidebar {
       width: var(--sidebar);
@@ -354,10 +363,11 @@ const roomName = slug;
       #player-area { overflow-y: visible; }
       #sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 55vh; }
       #uname { max-width: 60px; }
+      .qi-rm { opacity: 1; }
     }
   </style>
 </head>
-<body>
+<body data-room={roomName}>
 
   <header id="hdr">
     <div id="hdr-left">
@@ -384,6 +394,11 @@ const roomName = slug;
         </div>
       </div>
       <div id="nowplay">Nothing playing</div>
+      <div id="playback-controls" aria-label="Room playback controls">
+        <button id="play-btn" type="button" disabled>Play</button>
+        <button id="next-btn" type="button" disabled>Next</button>
+        <button id="enable-btn" type="button" hidden>Enable playback</button>
+      </div>
     </section>
 
     <aside id="sidebar">
@@ -398,321 +413,9 @@ const roomName = slug;
 
   <div id="toast"></div>
 
-  <script define:vars={{ roomName }}>
-    // ============================================================
-    // PartyPlayback — Room Client
-    // roomName is injected server-side via define:vars
-    // ============================================================
-
-    const DESYNC = 1.5; // seconds — ignore drifts smaller than this
-
-    // State
-    let ws = null;
-    let player = null;
-    let playerReady = false;
-    let isSyncing = false;
-    let syncTimer = null;
-    let pendingState = null; // {videoId, targetTime, shouldPlay} — queued before player ready
-    let lastVideoId = null;
-    let queue = [];
-    let currentIndex = -1;
-    let isPlaying = false;
-    let reconnTimer = null;
-    let reconnDelay = 1000;
-
-    // DOM
-    const $conn    = document.getElementById('conn');
-    const $uc      = document.getElementById('uc');
-    const $uname   = document.getElementById('uname');
-    const $qlist   = document.getElementById('q-list');
-    const $form    = document.getElementById('add-form');
-    const $urlin   = document.getElementById('url-in');
-    const $addbtn  = document.getElementById('add-btn');
-    const $nowplay = document.getElementById('nowplay');
-    const $ph      = document.getElementById('placeholder');
-    const $toast   = document.getElementById('toast');
-
-    // ---- Username ----
-    function getUser() {
-      let u = localStorage.getItem('pp_user');
-      if (!u) { u = 'Guest' + (Math.random() * 9000 + 1000 | 0); localStorage.setItem('pp_user', u); }
-      return u;
-    }
-    function setUser(u) { localStorage.setItem('pp_user', u); $uname.textContent = u; }
-    function getSid() {
-      let s = sessionStorage.getItem('pp_sid');
-      if (!s) { s = crypto.randomUUID(); sessionStorage.setItem('pp_sid', s); }
-      return s;
-    }
-
-    $uname.textContent = getUser();
-    $uname.addEventListener('click', () => {
-      const n = prompt('Display name:', getUser());
-      if (n && n.trim()) {
-        setUser(n.trim().slice(0, 32));
-        send({ type: 'join', username: getUser(), sessionId: getSid() });
-      }
-    });
-
-    // ---- Toast ----
-    let toastT = null;
-    function toast(msg, ms = 3500) {
-      $toast.textContent = msg;
-      $toast.classList.add('show');
-      clearTimeout(toastT);
-      toastT = setTimeout(() => $toast.classList.remove('show'), ms);
-    }
-
-    // ---- WebSocket ----
-    function connect() {
-      if (ws && ws.readyState < 2) return; // OPEN or CONNECTING
-      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(proto + '//' + location.host + '/api/ws/' + roomName);
-      setConn('connecting');
-
-      ws.addEventListener('open', () => {
-        setConn('connected');
-        reconnDelay = 1000;
-        send({ type: 'join', username: getUser(), sessionId: getSid() });
-      });
-
-      ws.addEventListener('message', (e) => {
-        let d; try { d = JSON.parse(e.data); } catch { return; }
-        onMsg(d);
-      });
-
-      ws.addEventListener('close', () => { setConn('disconnected'); schedReconn(); });
-      ws.addEventListener('error', () => setConn('disconnected'));
-    }
-
-    function schedReconn() {
-      clearTimeout(reconnTimer);
-      reconnTimer = setTimeout(() => { reconnDelay = Math.min(reconnDelay * 2, 30000); connect(); }, reconnDelay);
-    }
-
-    function send(obj) {
-      if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
-    }
-
-    function setConn(s) {
-      $conn.className = s;
-      $conn.textContent = s === 'connected' ? 'Live' : s === 'connecting' ? 'Connecting' : 'Reconnecting…';
-    }
-
-    // ---- Message handler ----
-    function onMsg(d) {
-      switch (d.type) {
-        case 'state':
-          queue = d.queue || [];
-          currentIndex = d.currentIndex ?? -1;
-          isPlaying = d.isPlaying ?? false;
-          renderQ();
-          renderNow();
-          applyState(d.currentTime || 0, d.isPlaying);
-          if (d.userCount != null) setUC(d.userCount);
-          break;
-
-        case 'queue':
-          queue = d.queue || [];
-          currentIndex = d.currentIndex ?? -1;
-          if (typeof d.isPlaying === 'boolean') isPlaying = d.isPlaying;
-          renderQ();
-          renderNow();
-          applyState(d.currentTime || 0, d.isPlaying ?? isPlaying);
-          break;
-
-        case 'play':
-          isPlaying = true;
-          remote(() => {
-            if (playerReady && Math.abs(player.getCurrentTime() - d.currentTime) > DESYNC)
-              player.seekTo(d.currentTime, true);
-            player.playVideo();
-          });
-          break;
-
-        case 'pause':
-          isPlaying = false;
-          remote(() => {
-            if (playerReady && Math.abs(player.getCurrentTime() - d.currentTime) > DESYNC)
-              player.seekTo(d.currentTime, true);
-            player.pauseVideo();
-          });
-          break;
-
-        case 'seek':
-          remote(() => player.seekTo(d.currentTime, true));
-          break;
-
-        case 'users':
-          setUC(d.userCount);
-          break;
-
-        case 'ended':
-          isPlaying = false;
-          renderNow();
-          break;
-      }
-    }
-
-    // Load/sync the player to a given state (called on 'state' and 'queue' messages)
-    function applyState(targetTime, shouldPlay) {
-      if (currentIndex < 0 || currentIndex >= queue.length) {
-        showPH(true);
-        return;
-      }
-      const videoId = queue[currentIndex].videoId;
-
-      if (!playerReady) {
-        pendingState = { videoId, targetTime, shouldPlay };
-        return;
-      }
-
-      showPH(false);
-
-      if (lastVideoId !== videoId) {
-        lastVideoId = videoId;
-        remote(() => {
-          if (shouldPlay) {
-            player.loadVideoById({ videoId, startSeconds: targetTime });
-          } else {
-            // cueVideoById loads without auto-playing (avoids the loadVideoById auto-play quirk)
-            player.cueVideoById({ videoId, startSeconds: targetTime });
-          }
-        });
-      } else {
-        // Same video — just sync time/play state
-        remote(() => {
-          if (Math.abs(player.getCurrentTime() - targetTime) > DESYNC)
-            player.seekTo(targetTime, true);
-          if (shouldPlay) player.playVideo();
-          else player.pauseVideo();
-        });
-      }
-    }
-
-    // Wrap player commands with isSyncing to suppress echoed events
-    function remote(fn) {
-      if (!playerReady) return;
-      isSyncing = true;
-      clearTimeout(syncTimer);
-      fn();
-      // 800ms covers seekTo → BUFFERING → PLAYING event chain on slow connections
-      syncTimer = setTimeout(() => { isSyncing = false; }, 800);
-    }
-
-    function showPH(yes) { $ph.style.display = yes ? 'flex' : 'none'; }
-    function setUC(n) { $uc.textContent = n + ' viewer' + (n !== 1 ? 's' : ''); }
-
-    // ---- YouTube IFrame API ----
-    // Called by the YT script when it's loaded and ready
-    window.onYouTubeIframeAPIReady = function () {
-      player = new YT.Player('yt-player', {
-        height: '100%',
-        width: '100%',
-        playerVars: { controls: 1, modestbranding: 1, rel: 0, enablejsapi: 1 },
-        events: {
-          onReady() {
-            playerReady = true;
-            if (pendingState) {
-              const ps = pendingState;
-              pendingState = null;
-              showPH(false);
-              applyState(ps.targetTime, ps.shouldPlay);
-            }
-          },
-          onStateChange(evt) {
-            if (isSyncing) return; // Suppress events triggered by remote commands
-            if (evt.data === YT.PlayerState.PLAYING) {
-              send({ type: 'play', currentTime: player.getCurrentTime() });
-            } else if (evt.data === YT.PlayerState.PAUSED) {
-              send({ type: 'pause', currentTime: player.getCurrentTime() });
-            } else if (evt.data === YT.PlayerState.ENDED) {
-              send({ type: 'next' });
-            }
-          },
-          onError() {
-            toast('Video unavailable or embedding not allowed — skipping');
-            send({ type: 'next' });
-          },
-        },
-      });
-    };
-
-    // ---- Queue rendering ----
-    function renderQ() {
-      $qlist.innerHTML = '';
-      queue.forEach((item, i) => {
-        const li = document.createElement('li');
-        li.className = 'qi' + (i === currentIndex ? ' now' : '');
-
-        const img = document.createElement('img');
-        img.className = 'qi-thumb';
-        img.src = 'https://img.youtube.com/vi/' + item.videoId + '/mqdefault.jpg';
-        img.alt = '';
-        img.loading = 'lazy';
-
-        const info = document.createElement('div');
-        info.className = 'qi-info';
-        const t = document.createElement('div');
-        t.className = 'qi-title';
-        t.textContent = item.title;
-        const s = document.createElement('div');
-        s.className = 'qi-sub';
-        s.textContent = i === currentIndex ? 'Now playing' : '#' + (i + 1);
-        info.append(t, s);
-
-        const rm = document.createElement('button');
-        rm.className = 'qi-rm';
-        rm.title = 'Remove';
-        rm.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-        rm.addEventListener('click', () => send({ type: 'remove', index: i }));
-
-        li.append(img, info, rm);
-        $qlist.appendChild(li);
-      });
-    }
-
-    function renderNow() {
-      if (currentIndex >= 0 && currentIndex < queue.length) {
-        $nowplay.innerHTML = 'Now playing: <b>' + esc(queue[currentIndex].title) + '</b>';
-      } else {
-        $nowplay.textContent = 'Nothing playing';
-      }
-    }
-
-    function esc(s) {
-      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    // ---- Add form ----
-    $form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const url = $urlin.value.trim();
-      if (!url) return;
-      if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
-        toast('Please paste a YouTube URL');
-        return;
-      }
-      $addbtn.disabled = true;
-      $addbtn.textContent = 'Loading…';
-      let title = url;
-      try {
-        const r = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(url) + '&format=json');
-        if (r.ok) title = (await r.json()).title || url;
-      } catch {}
-      send({ type: 'add', url, title });
-      $urlin.value = '';
-      $addbtn.disabled = false;
-      $addbtn.textContent = 'Add to Queue';
-    });
-
-    // ---- Boot ----
-    connect();
-
-    // Load YouTube IFrame API asynchronously
-    const yt = document.createElement('script');
-    yt.src = 'https://www.youtube.com/iframe_api';
-    document.head.appendChild(yt);
+  <script>
+    import { bootRoom } from "../../scripts/room-client.js";
+    bootRoom(document.body.dataset.room);
   </script>
 </body>
 </html>

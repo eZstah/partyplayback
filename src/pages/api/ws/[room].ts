@@ -7,8 +7,13 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
     return new Response("Invalid room name", { status: 400 });
   }
 
-  if (request.headers.get("Upgrade") !== "websocket") {
+  if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
     return new Response("Expected WebSocket upgrade", { status: 426 });
+  }
+
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== new URL(request.url).origin) {
+    return new Response("Invalid origin", { status: 403 });
   }
 
   const env = locals.runtime.env;
