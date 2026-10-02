@@ -147,6 +147,12 @@
   filter: blur(6px);
   border-radius: 50%;
 }
+.mascot-outfit {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
 .mascot-glasses {
   position: absolute;
   inset: -5% 0 auto;
@@ -156,43 +162,43 @@
 }
 .mascot-scarf {
   position: absolute;
-  left: 3%;
-  bottom: 0;
-  width: 94%;
-  height: 32%;
-  transform: rotate(-5deg);
+  left: 0;
+  top: 58%;
+  width: 100%;
+  height: 42%;
 }
 .mascot-headphones {
   position: absolute;
-  width: 118%;
-  height: 70%;
-  top: -7%;
-  left: -9%;
+  width: 112%;
+  height: 68%;
+  top: -6%;
+  left: -6%;
   overflow: visible;
 }
 .mascot-flower {
   position: absolute;
-  width: 22%;
-  height: 22%;
-  bottom: 8%;
-  left: 22%;
-  transform: rotate(15deg);
+  width: 21%;
+  height: 21%;
+  top: -7%;
+  left: 15%;
+  transform: rotate(-20deg);
+  z-index: 1;
 }
 .mascot-beanie {
   position: absolute;
-  width: 102%;
-  height: 42%;
-  top: -12%;
-  left: -1%;
-  transform: rotate(-10deg);
+  width: 106%;
+  height: 46%;
+  top: -15%;
+  left: -3%;
+  transform: rotate(-4deg);
   overflow: visible;
 }
 .mascot-vest {
   position: absolute;
-  width: 90%;
-  height: 34%;
-  bottom: -1%;
-  left: 5%;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 42%;
 }
 @keyframes friend-bob {
   0%,100% {
@@ -221,4 +227,75 @@
     scale: 1 .1;
   }
 }
-@media(prefers-reduced-motion: reduce) { .mascot,.mascot-arm,.mascot-eye { animation: none!important; } .mascot-eye i { transition: none; } }
+.mascot-rig {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 88%;
+}
+.mascot-mouth-o {
+  position: absolute;
+  left: calc(50% - 7px);
+  top: 44%;
+  width: 14px;
+  height: 16px;
+  border-radius: 50%;
+  background: #352c41;
+  opacity: 0;
+  scale: .3;
+  transition: opacity .18s ease,scale .25s var(--ease);
+}
+.mascot.purple .mascot-mouth-o {
+  width: 9px;
+  height: 10px;
+  left: calc(50% - 4.5px);
+  top: 30%;
+}
+.mascot-mouth,.cheek,.mascot-eye i {
+  transition: transform .6s var(--ease),opacity .2s ease,scale .25s var(--ease),background .3s ease;
+}
+/* Moods are set from script for a moment at a time. */
+.mascot.is-surprised .mascot-mouth,.mascot.is-sleepy .mascot-mouth { opacity: 0; }
+.mascot.is-surprised .mascot-mouth-o { opacity: 1; scale: 1; }
+.mascot.is-surprised .mascot-eye i { scale: .7; }
+.mascot.is-eager .mascot-eye i { scale: 1.18; }
+.mascot.is-eager .mascot-mouth { transform: scale(1.15); }
+.mascot.is-happy .cheek,.mascot.is-dizzy .cheek { background: #ee8eb0a8; scale: 1.15; }
+.mascot.is-happy .mascot-mouth { transform: scale(1.2,1.3); }
+.mascot.is-happy .mascot-eye,.mascot.is-sleepy .mascot-eye {
+  background: transparent;
+  overflow: visible;
+  animation: none;
+}
+.mascot.is-happy .mascot-eye i,.mascot.is-sleepy .mascot-eye i { opacity: 0; }
+.mascot.is-happy .mascot-eye::after,.mascot.is-sleepy .mascot-eye::after {
+  content: "";
+  position: absolute;
+  inset: 30% -4% 34%;
+  border: 3.5px solid #352c41;
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0/100% 100% 0 0;
+}
+.mascot.is-sleepy .mascot-eye::after {
+  inset: 40% -4% 26%;
+  border: 3px solid #352c41;
+  border-top: 0;
+  border-radius: 0 0 50% 50%/0 0 100% 100%;
+}
+.mascot.is-sleepy .mascot-mouth-o { opacity: .75; scale: .55; }
+.mascot.is-dizzy .mascot-eye { animation: none; }
+.mascot.is-dizzy .mascot-eye i {
+  transform-origin: 50% 105%;
+  animation: eye-dizzy .45s linear infinite;
+}
+.mascot.is-dizzy .mascot-eye + .mascot-eye i { animation-direction: reverse; }
+.mascot-fx {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  line-height: 1;
+  font-weight: 800;
+  will-change: transform,opacity;
+}
+.mascot-fx svg { display: block; width: 100%; overflow: visible; }
+@keyframes eye-dizzy { to { rotate: 360deg; } }
+@media(prefers-reduced-motion: reduce) { .mascot,.mascot-arm,.mascot-eye,.mascot.is-dizzy .mascot-eye i { animation: none!important; } .mascot-eye i { transition: none; } }

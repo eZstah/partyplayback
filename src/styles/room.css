@@ -805,6 +805,9 @@
 .room-page[data-playback=playing] .room-doodle { animation: room-note-lift 1.2s var(--ease) both; }
 .room-page[data-playback=paused] .room-pal .mascot { animation: room-friend-pause .9s var(--ease) both; --look-x: -2px; --look-y: 1px; }
 .room-page[data-playback=paused] .room-pal .mascot-mouth { transform: scaleX(.8); }
+/* The headphone friend nods along for as long as something plays. */
+.room-page[data-playback=playing] .playlist-pal .mascot-rig { animation: pal-nod 1.5s ease-in-out 1.1s infinite; }
+@keyframes pal-nod { 0%,100% { transform: rotate(0); } 50% { transform: rotate(4deg) translateY(-2%); } }
 @keyframes room-friend-enjoy { 0%,100% { transform: rotate(0); } 35% { transform: rotate(-5deg); } 65% { transform: rotate(4deg); } }
 @keyframes room-friend-pause { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-7px); } }
 @keyframes room-note-lift { 0% { translate: 0 0; opacity: .2; } 45% { translate: 0 -8px; opacity: .3; } 100% { translate: 0 -3px; opacity: .12; } }
@@ -812,7 +815,7 @@
 .room-page.theater .playlist-column,.room-shell:fullscreen .playlist-column { display: none; }
 @media(max-width:1100px) { .player-pal { left: -48px; width: 90px; height: 114px; } }
 @media(max-width:850px) { .player-pal { display: none; } .playlist-column { margin-top: 36px; } .playlist-pal { width: 88px; height: 108px; right: 24px; top: -49px; transform: rotate(8deg); --duck-x: 0px; --duck-y: 58px; } .room-page[data-playback=playing] .playlist-pal { transform: translateY(3px) rotate(4deg); } .room-note { right: 6%; top: 92%; } .room-sound,.room-orbit { display: none; } }
-@media(prefers-reduced-motion:reduce) { .room-pal,.room-glow,.room-pal .mascot-eye i,.room-pal .pal-peek { transition: none; } .room-pal.is-shy .pal-peek { transform: none; } .room-page .room-pal .mascot,.room-page .room-doodle { animation: none; } }
+@media(prefers-reduced-motion:reduce) { .room-pal,.room-glow,.room-pal .mascot-eye i,.room-pal .pal-peek { transition: none; } .room-pal.is-shy .pal-peek { transform: none; } .room-page .room-pal .mascot,.room-page .room-pal .mascot-rig,.room-page .room-doodle { animation: none; } }
 
 /* Key hints follow the actual player width, including theater/fullscreen. */
 .stage { container: playback / inline-size; }
