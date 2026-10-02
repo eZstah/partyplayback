@@ -143,35 +143,38 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     const signature = JSON.stringify(members);
     if (signature === peopleSignature) return;
     peopleSignature = signature;
+    // You already see yourself in the name chip, so "watching" lists everyone else.
+    const others = members.filter(person => !person.you);
     const list = $("people-list");
-    list.replaceChildren(...members.map(person => {
+    list.replaceChildren(...others.map(person => {
       const li = document.createElement("li");
-      li.className = "person" + (person.you ? " is-you" : "");
+      li.className = "person";
       const label = document.createElement("span");
       label.className = "person-name";
       label.textContent = person.name;
       li.append(avatar(person, "person-face"), label);
-      if (person.you) {
-        const you = document.createElement("span");
-        you.className = "person-you";
-        you.textContent = "you";
-        li.append(you);
-      }
       return li;
     }));
-    $("people-count").textContent = String(members.length).padStart(2, "0");
+    if (!others.length) {
+      const alone = document.createElement("li");
+      alone.className = "people-alone";
+      alone.textContent = "Just you so far. Invite friends to watch together.";
+      list.append(alone);
+    }
+    $("people-count").textContent = String(others.length).padStart(2, "0");
+    $("uc-label").textContent = others.length ? others.length + " watching" : "Just you";
     const me = members.find(person => person.you);
     $("uname-face").replaceChildren(...(me ? [avatar(me, "person-face")] : []));
     const faces = document.querySelector(".facepile-faces");
-    const shown = members.length > 4 ? members.slice(0, 3) : members;
+    const shown = others.length > 4 ? others.slice(0, 3) : others;
     faces.replaceChildren(...shown.map(person => avatar(person, "facepile-face")));
-    if (shown.length < members.length) {
+    if (shown.length < others.length) {
       const more = document.createElement("span");
       more.className = "facepile-face facepile-more";
-      more.textContent = "+" + (members.length - shown.length);
+      more.textContent = "+" + (others.length - shown.length);
       faces.append(more);
     }
-    count.title = members.map(person => person.name + (person.you ? " (you)" : "")).join(", ");
+    count.title = others.length ? others.map(person => person.name).join(", ") : "No one else is here yet";
   }
 
   function setConnection(state) {
@@ -233,7 +236,6 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
         }
         ensurePlayer();
       } else if (data.type === "users") {
-        setCount(data.userCount);
         renderPeople(data.members);
         pals.observe({ users: data.userCount });
       } else if (data.type === "error") {
@@ -256,7 +258,6 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     current.addEventListener("error", () => current.close());
   }
 
-  function setCount(value) { $("uc-label").textContent = value + " watching"; }
   function setPeopleOpen(open) {
     document.body.classList.toggle("people-open", open);
     count.setAttribute("aria-expanded", String(open));
@@ -266,7 +267,6 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   count.addEventListener("click", () => setPeopleOpen(!document.body.classList.contains("people-open")));
 
   function render() {
-    setCount(room.userCount);
     renderPeople(room.members);
     pals.observe({ users: room.userCount, queue: room.queue.length, current: room.queue[room.currentIndex]?.id ?? null });
     const signature = JSON.stringify([room.queue, room.currentIndex]);
