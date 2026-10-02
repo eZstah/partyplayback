@@ -462,20 +462,24 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     const duration = playback.player?.getDuration?.() || 604800;
     playback.command("seek", Math.max(0, Math.min(time, duration)));
   }
+  function setTheater(active) {
+    document.body.classList.toggle("theater", active);
+    $("theater-btn").setAttribute("aria-pressed", String(active));
+    try { localStorage.setItem("youple-theater", String(active)); } catch {}
+  }
+  $("theater-btn").setAttribute("aria-pressed", String(document.body.classList.contains("theater")));
   progress.addEventListener("input", () => { scrubbing = true; updateProgress(); });
   progress.addEventListener("change", () => { seek(Number(progress.value)); scrubbing = false; });
   progress.addEventListener("blur", () => { scrubbing = false; });
   $("first-video-btn").addEventListener("click", async () => {
     if (document.fullscreenElement) await document.exitFullscreen();
-    document.body.classList.remove("theater");
-    $("theater-btn").setAttribute("aria-pressed", "false");
+    setTheater(false);
     urlInput.focus();
     urlInput.scrollIntoView({ block: "center", behavior: reducedMotion.matches ? "instant" : "smooth" });
   });
   $("theater-btn").addEventListener("click", async () => {
     if (document.fullscreenElement) await document.exitFullscreen();
-    const active = document.body.classList.toggle("theater");
-    $("theater-btn").setAttribute("aria-pressed", String(active));
+    setTheater(!document.body.classList.contains("theater"));
     if (!reducedMotion.matches) $("stage").animate([{ opacity: .65 }, { opacity: 1 }], { duration: 400 });
   });
   $("fullscreen-btn").hidden = !document.fullscreenEnabled || !$("room-shell").requestFullscreen;
