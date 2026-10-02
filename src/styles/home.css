@@ -872,3 +872,47 @@
 .home-page .page-footer a {
   color: inherit;
 }
+.member-hello {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -4px 0 18px;
+  color: #322b41;
+}
+.member-hello>span:last-child { display: grid; gap: 2px; min-width: 0; }
+.member-hello strong { font-size: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-hello span span { font-size: 15px; color: #756779; }
+.member-hello:hover span span { color: #30223f; }
+.room-launcher .member-hello .signed-avatar { width: 44px; height: 44px; font-size: 19px; border-radius: 15px; }
+.member-rooms { margin-top: 22px; padding-top: 18px; border-top: 1px solid #322b4114; }
+.member-rooms-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.member-rooms h2 { font-size: 17px; margin: 0; color: #61536b; }
+.member-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: transparent;
+  color: #6d4fb3;
+  font-size: 16px;
+  font-weight: 700;
+}
+.member-add:hover { background: #e9e1f5; }
+.member-rooms ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 236px; overflow-y: auto; }
+.member-rooms li a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 16px;
+  background: #ebe4d8;
+  color: #6d4fb3;
+  transition: background .2s ease;
+}
+.member-rooms li a:hover { background: #e3d9ea; }
+.member-rooms li strong { flex: 1; min-width: 0; color: #322b41; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-rooms li span { color: #756779; font-size: 15px; }
+.member-rooms p { margin: 0; color: #756779; font-size: 16px; line-height: 1.5; }

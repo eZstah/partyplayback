@@ -28,13 +28,20 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
   <main class="home-main">
     <section class="hangout" aria-labelledby="hero-title">
       <div class="hangout-heading reveal"><h1 id="hero-title"><Wordmark variant="hero"/></h1><p>Watch YouTube videos together in sync.</p></div>
-      <div class="room-launcher reveal delay-1">
+      {user ? <div class="room-launcher member-launcher reveal delay-1">
+        <a class="member-hello" href="/profile"><span class="signed-avatar">{avatar ? <img src={avatar} alt="" referrerpolicy="no-referrer"/> : name?.slice(0,1)}</span><span><strong>Hey, {name}</strong><span>Your profile</span></span></a>
         <form id="create-form"><button class="primary-button wide create-room-button" type="submit"><span>Create room</span></button><div id="create-message" class="form-message" role="status"></div></form>
-        <div class="launcher-footer"><span class="sync-presence"><i aria-hidden="true"></i><span id="sync-count">{illustrativeSyncCount()}</span> in sync</span><div class="launcher-account">{user ? <><a class="signed-avatar" href="/profile" title="Your profile" aria-label={`Your profile, ${name}`}>{avatar ? <img src={avatar} alt="" referrerpolicy="no-referrer"/> : name?.slice(0,1)}</a><button class="account-launcher" type="button" data-sign-out>Sign out</button></> : <button class="account-launcher" type="button" data-sign-in>Sign in</button>}</div></div>
-      </div>
+        <section class="member-rooms" aria-labelledby="saved-title">
+          <div class="member-rooms-head"><h2 id="saved-title">Your rooms</h2><button class="member-add" type="button" data-create-room="member"><Icon name="plus" size={18}/>Save a room</button></div>
+          {rooms.length ? <ul>{rooms.map(room => <li><a href={'/room/'+room.slug}><Icon name="people" size={20}/><strong>{room.title}</strong><span>Open</span></a></li>)}</ul> : <p>Saved rooms keep the same link, so your group can come back anytime.</p>}
+        </section>
+        <div class="launcher-footer"><span class="sync-presence"><i aria-hidden="true"></i><span id="sync-count">{illustrativeSyncCount()}</span> in sync</span></div>
+      </div> : <div class="room-launcher reveal delay-1">
+        <form id="create-form"><button class="primary-button wide create-room-button" type="submit"><span>Create room</span></button><div id="create-message" class="form-message" role="status"></div></form>
+        <div class="launcher-footer"><span class="sync-presence"><i aria-hidden="true"></i><span id="sync-count">{illustrativeSyncCount()}</span> in sync</span><div class="launcher-account"><button class="account-launcher" type="button" data-sign-in>Sign in</button></div></div>
+      </div>}
       <div class="mascot-cast" aria-hidden="true"><div class="cast-member cast-mint"><span class="speech-bubble">Got a good video?</span><Mascot kind="mint"/><span class="cast-floor"></span></div><div class="cast-member cast-pink"><span class="speech-bubble">I brought snacks.</span><Mascot kind="pink"/><span class="cast-floor"></span></div><div class="cast-member cast-purple"><span class="speech-bubble">6-7</span><Mascot kind="purple"/></div><span class="floating-popcorn"><svg width="65" height="75" viewBox="0 0 65 75" fill="none"><path d="m9 31 7 39h33l7-39H9Z" fill="#F7EBCA"/><path d="m21 32 3 38h7l-1-38m9 0-2 38h7l4-38" fill="#EC8FA3"/><path d="M7 33c-7-10 2-19 10-13-2-16 17-19 21-8 12-7 22 5 14 14 12-2 14 9 6 13H9Z" fill="#FFF5D8"/></svg></span><MusicFlourishes/></div>
     </section>
-    {user && <section class="saved-rooms" aria-labelledby="saved-title"><div class="saved-heading"><h2 id="saved-title">Your rooms</h2><button class="soft-button" type="button" data-create-room="member"><Icon name="plus" size={20}/>New saved room</button></div>{rooms.length ? <div class="saved-grid">{rooms.map(room => <a class="saved-room" href={'/room/'+room.slug}><Icon name="people" size={25}/><span><strong>{room.title}</strong><span>Open room</span></span></a>)}</div> : <p class="muted">Create a saved room and it will be waiting here next time.</p>}</section>}
     <section class="how-it-works reveal delay-2" aria-labelledby="how-title"><h2 id="how-title">Less “3, 2, 1, play!”<br/>More actually watching.</h2><div class="how-grid"><article><span class="step-symbol step-lilac"><Icon name="plus" size={28}/></span><h3>Make a room</h3><p>One click. No account needed.</p></article><article><span class="step-symbol step-pink"><Icon name="link" size={28}/></span><h3>Send the link</h3><p>Invite link copied. Paste it in your group chat.</p></article><article><span class="step-symbol step-mint"><Icon name="play" size={28}/></span><h3>Watch together</h3><p>Paste a YouTube link. Play, pause and skip in sync.</p></article></div></section>
     <section class="faq-list" aria-label="Frequently asked questions">
       <div class="faq-column">
