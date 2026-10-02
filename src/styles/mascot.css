@@ -169,28 +169,28 @@
 }
 .mascot-headphones {
   position: absolute;
-  width: 112%;
-  height: 68%;
+  width: 110%;
+  height: 66%;
   top: -6%;
-  left: -6%;
+  left: -5%;
   overflow: visible;
 }
 .mascot-flower {
   position: absolute;
-  width: 21%;
-  height: 21%;
-  top: -7%;
-  left: 15%;
-  transform: rotate(-20deg);
+  width: 20%;
+  height: 20%;
+  top: -8%;
+  left: 13%;
+  transform: rotate(-24deg);
   z-index: 1;
 }
 .mascot-beanie {
   position: absolute;
-  width: 106%;
+  width: 104%;
   height: 46%;
-  top: -15%;
-  left: -3%;
-  transform: rotate(-4deg);
+  top: -16%;
+  left: -2%;
+  transform: rotate(-3deg);
   overflow: visible;
 }
 .mascot-vest {
