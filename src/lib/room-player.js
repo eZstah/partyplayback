@@ -29,6 +29,18 @@ export class RoomPlayer {
     this.apply();
   }
 
+  // A new embed must load the latest room timeline, not inherit the old load.
+  detach() {
+    this.player = null;
+    this.loadedId = null;
+    this.pending = null;
+    this.sample = null;
+    this.blocked = false;
+    this.failedId = null;
+    this.localPending = false;
+    this.onBlocked(false);
+  }
+
   receive(room, transitSeconds = 0) {
     if (this.room && room.revision < this.room.revision) return;
     const changed = !this.room || room.playbackId !== this.room.playbackId;

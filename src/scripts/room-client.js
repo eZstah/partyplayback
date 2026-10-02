@@ -22,6 +22,8 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const requests = new Map();
   let pastedAddition = null;
+  let youtubePlayer = null, youtubeControls = false;
+  const youtubeButton = $("youtube-controls-btn");
 
   function getStored(storage, key, fallback) {
     try {
@@ -57,13 +59,14 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
 
   const fullscreenControls = bindFullscreenControls({ shell: $("room-shell"), document });
   function updateFullscreenControls() {
-    const canHide = !!(joined && room?.isPlaying && room.queue[room.currentIndex] &&
+    const canHide = !!(!youtubeControls && joined && room?.isPlaying && room.queue[room.currentIndex] &&
       playback.player?.getPlayerState() === 1 && !playback.blocked && !playback.pending &&
       playback.failedId !== room.playbackId && !document.querySelector("dialog[open]"));
     fullscreenControls.update(canHide, room?.playbackId);
   }
   function controls() {
     const hasVideo = !!room?.queue[room.currentIndex];
+    youtubeButton.disabled = !hasVideo || !playback.player;
     playButton.disabled = !joined || !hasVideo;
     nextButton.disabled = !joined || !hasVideo || (room.currentIndex + 1 >= room.queue.length && !room.autoClear);
     addButton.disabled = !joined || adding || readingClipboard;
@@ -551,21 +554,47 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     if (actions[key]) { event.preventDefault(); actions[key](); }
   });
 
-  window.onYouTubeIframeAPIReady = () => {
+  function createPlayer() {
     const player = new window.YT.Player("yt-player", {
       height: "100%", width: "100%",
-      playerVars: { controls: 0, disablekb: 1, rel: 0, playsinline: 1, origin: location.origin },
+      playerVars: { controls: youtubeControls ? 1 : 0, disablekb: 1, rel: 0, playsinline: 1, fs: 0, origin: location.origin },
       events: {
-        onReady() { sound.ready(player); playback.ready(player); updateMuteControl(); },
-        onStateChange(event) { playback.stateChanged(event.data); },
-        onAutoplayBlocked() { playback.autoplayBlocked(); },
+        onReady() {
+          if (stopping || player !== youtubePlayer) return;
+          sound.ready(player); playback.ready(player); updateMuteControl(); controls();
+        },
+        onStateChange(event) { if (player === youtubePlayer) playback.stateChanged(event.data); },
+        onAutoplayBlocked() { if (player === youtubePlayer) playback.autoplayBlocked(); },
         onError() {
+          if (player !== youtubePlayer) return;
           playback.failed();
           toast("Video unavailable or embedding blocked. Try another video or use Next.");
         },
       },
     });
-  };
+    youtubePlayer = player;
+  }
+  window.onYouTubeIframeAPIReady = createPlayer;
+  youtubeButton.addEventListener("click", () => {
+    if (youtubeButton.disabled || !youtubePlayer) return;
+    youtubeControls = !youtubeControls;
+    $("room-shell").dataset.youtubeControls = String(youtubeControls);
+    youtubeButton.setAttribute("aria-pressed", String(youtubeControls));
+    youtubeButton.title = youtubeControls ? "Hide YouTube controls" : "Show subtitles and quality controls";
+    const previous = youtubePlayer;
+    youtubePlayer = null;
+    playback.detach();
+    controls();
+    previous.destroy();
+    // YouTube restores its original mount when destroyed.
+    if (!$("yt-player")) {
+      const mount = document.createElement("div");
+      mount.id = "yt-player";
+      $("player-wrap").prepend(mount);
+    }
+    createPlayer();
+    toast(youtubeControls ? "Use YouTube’s CC or settings for subtitles and quality." : "YouTube controls hidden.");
+  });
 
   const sampleTimer = setInterval(() => { playback.tick(); updateProgress(); updateMuteControl(); updateFullscreenControls(); }, 250);
   const syncTimer = setInterval(() => {

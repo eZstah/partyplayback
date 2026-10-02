@@ -1010,4 +1010,20 @@
 .room-shell:fullscreen[data-controls-hidden=true] .room-nav { transform: translateY(-8px); }
 .room-shell:fullscreen[data-controls-hidden=true] .player-bottom { transform: translateY(8px); }
 .room-shell:fullscreen[data-controls-hidden=true] .fullscreen-wake { display: block; position: absolute; inset: 0; z-index: 4; }
+/* Leave YouTube's caption/settings menus clear of our fullscreen overlays. */
+.room-shell[data-youtube-controls=true] .playback-overlay { display: none; }
+.room-shell:fullscreen[data-youtube-controls=true] { display: grid; grid-template-rows: auto minmax(0,1fr); }
+.room-shell:fullscreen[data-youtube-controls=true] .room-nav { position: static; background: #101115; }
+.room-shell:fullscreen[data-youtube-controls=true] .player-bottom { position: static; background: #101115; }
+@container playback (max-width:310px) {
+  .control-bar { gap: 4px; }
+  .view-controls { gap: 2px; }
+  .player-view-controls { gap: 0; }
+  .volume-control .sound-control { min-width: 44px; width: 44px; }
+  .volume-control .volume-slider { width: 44px; }
+  #mute-label { display: none; }
+}
+@media(max-width:600px) {
+  .room-shell[data-youtube-controls=true] #player-wrap { min-height: 240px; }
+}
 @media(prefers-reduced-motion:reduce) { .room-shell:fullscreen .room-nav,.room-shell:fullscreen .player-bottom { transition: none; } }
