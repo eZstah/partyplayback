@@ -949,6 +949,8 @@
 .fullscreen-wake { display: none; }
 .room-shell:fullscreen { display: block; position: relative; background: #000; }
 .room-shell:fullscreen .room-nav { position: absolute; inset: 0 0 auto; z-index: 6; background: linear-gradient(#101115eb,#1011159c 70%,transparent); }
+.room-shell:fullscreen .room-nav :is(.name-button,.header-invite,.icon-button) { background: transparent; box-shadow: none; }
+.room-shell:fullscreen .room-nav :is(.name-button,.header-invite,.icon-button):not([data-copied=true]):hover { color: #e0d4ff; }
 .room-shell:fullscreen .player-bottom { position: absolute; inset: auto 0 0; z-index: 6; background: linear-gradient(transparent,#101115cf 30%,#101115f2); }
 .room-shell:fullscreen .room-nav,.room-shell:fullscreen .player-bottom { opacity: 1; visibility: visible; transition: opacity .25s ease,transform .25s ease,visibility .25s; }
 .room-shell:fullscreen[data-controls-hidden=true] { cursor: none; }
