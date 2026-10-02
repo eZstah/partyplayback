@@ -1,8 +1,10 @@
 import { RoomPlayer } from "../lib/room-player.js";
 import { bootAuth } from "./auth-client.js";
+import { bootRoomMascots } from "./room-mascots.js";
 
 export function bootRoom(roomName, arrival = Promise.resolve()) {
   const auth = bootAuth();
+  bootRoomMascots();
   const $ = id => document.getElementById(id);
   const conn = $("conn"), count = $("uc"), username = $("uname");
   const queueList = $("q-list"), urlInput = $("url-in"), addButton = $("add-btn");
