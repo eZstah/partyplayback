@@ -569,6 +569,16 @@
   min-height: 46px;
   padding: 12px 18px;
 }
+.header-shortcuts {
+  flex: none;
+  min-width: 44px;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 14px;
+}
+.header-shortcuts:hover { background: #262832; color: var(--accent); }
 .player-view-controls {
   display: flex;
   align-items: center;
@@ -871,19 +881,17 @@
 .play-control { padding-inline: 18px; }
 .control-key { display: none; align-items: center; justify-content: center; flex: none; min-width: 26px; min-height: 26px; padding: 3px 7px; border-radius: 7px; background: #ffffff0a; color: var(--muted); font: 400 14px/1.2 Atkinson,Arial,sans-serif; }
 .play-control .control-key { background: #30204612; color: #392c57; }
-.sound-control,.view-controls .shortcuts-control { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 12px; border-radius: 14px; background: transparent; color: var(--muted); font-size: 16px; white-space: nowrap; }
+.sound-control { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 12px; border-radius: 14px; background: transparent; color: var(--muted); font-size: 16px; white-space: nowrap; }
 .sound-control>span { display: inline-flex; align-items: center; }
 .sound-control { min-width: 108px; }
 .sound-control:hover { color: var(--ink); background: #262832; }
 .sound-control[data-muted=true] { color: var(--accent); background: #c3afff09; }
-.help-label { display: none; }
-@container playback (min-width:850px) { .help-label { display: inline; } }
 @container playback (min-width:950px) { .control-key { display: inline-flex; } }
-@media(max-width:520px) { .control-bar { gap: 8px; } .play-control { padding-inline: 0; } .view-controls { gap: 6px; } .sound-control { min-width: 92px; min-height: 46px; padding-inline: 6px; gap: 6px; } .view-controls .shortcuts-control { padding: 0; width: 40px; } .help-label { display: none; } }
+@media(max-width:520px) { .control-bar { gap: 8px; } .play-control { padding-inline: 0; } .view-controls { gap: 6px; } .sound-control { min-width: 92px; min-height: 46px; padding-inline: 6px; gap: 6px; } }
 
 /* Phones keep the header and playback focused on touch controls. */
 @media(max-width:600px), (max-width:900px) and (pointer:coarse) {
-  #theater-btn,.view-controls .shortcuts-control,.control-key { display: none; }
+  #theater-btn,.header-shortcuts,.control-key { display: none; }
 }
 @media(max-width:600px) {
   .room-nav { grid-template-columns: minmax(0,1fr) auto; padding: 10px 14px 4px; gap: 0 12px; }
