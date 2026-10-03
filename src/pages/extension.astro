@@ -1,0 +1,50 @@
+---
+import SiteFooter from '../components/SiteFooter.astro';
+import '../styles/app.css';
+import { CHROME_STORE_URL, extensionListed } from '../lib/extension';
+const listed = extensionListed();
+---
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content="The youple.tv Chrome extension sends YouTube videos to your watch party room without copying links."/><meta name="theme-color" content="#181622"/><title>Chrome extension — youple.tv</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/><link rel="canonical" href="https://youple.tv/extension"/></head>
+<body>
+  <main class="text-page">
+    <p><a href="/">← youple.tv</a></p>
+    <h1>Send videos to your room from YouTube</h1>
+    <p>The youple.tv extension for Chrome adds videos to your room's playlist straight from YouTube. No more copying and pasting links.</p>
+    {listed
+      ? <p class="cta"><a class="primary-button" href={CHROME_STORE_URL} target="_blank" rel="noopener">Add to Chrome, it's free</a></p>
+      : <p class="cta"><span class="soon">Coming soon to the Chrome Web Store</span></p>}
+
+    <h2>How it works</h2>
+    <ul>
+      <li><strong>Click the cat</strong> in Chrome's toolbar on any YouTube video, pick a room and press Send.</li>
+      <li><strong>Hover a thumbnail</strong> on YouTube and click the cat in its corner.</li>
+      <li><strong>On Shorts</strong>, tap the youple button under Share.</li>
+      <li>If the room is open, the video joins the playlist right away. If not, the room opens in a background tab with the video added.</li>
+    </ul>
+    <figure><img src="/extension/popup.png" width="320" height="376" alt="The extension's popup showing a video and a list of rooms with a Send to Movie night button"/></figure>
+    <figure><img src="/extension/thumbnails.png" width="1180" height="320" alt="YouTube thumbnails with a Send to Movie night button on the one under the mouse"/></figure>
+
+    <h2>Your rooms</h2>
+    <p>Rooms show up in the extension once you've opened them. If you're signed in on youple.tv, your saved rooms are there too.</p>
+
+    <h2>Privacy</h2>
+    <p>The extension keeps the names and links of your rooms in your browser and sends a video's link to youple.tv only when you click one of its buttons. It doesn't track what you watch. Details are on the <a href="/privacy#extension">privacy page</a>.</p>
+  </main>
+  <SiteFooter/>
+  <style>
+    .text-page { max-width: 680px; margin: 0 auto; padding: 48px 16px 24px; line-height: 1.6; }
+    .text-page h1 { font-size: 40px; margin: 24px 0 12px; line-height: 1.15; }
+    .text-page h2 { font-size: 20px; margin: 32px 0 8px; }
+    .text-page p, .text-page li { color: var(--muted); }
+    .text-page li strong { color: var(--ink); }
+    .text-page a:not(.primary-button) { color: var(--accent); }
+    .cta { margin: 24px 0 8px; }
+    .cta .primary-button { text-decoration: none; }
+    .soon { display: inline-block; padding: 10px 18px; border-radius: 999px; background: var(--raised); color: var(--ink); font-weight: 700; }
+    figure { margin: 24px 0; }
+    figure img { display: block; max-width: 100%; height: auto; border-radius: 16px; }
+  </style>
+</body>
+</html>

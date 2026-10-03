@@ -12,6 +12,7 @@ import '../styles/home.css';
 import { verifiedUser, displayName, avatarUrl } from '../lib/auth';
 import { accountRooms } from '../lib/rooms';
 import { illustrativeSyncCount } from '../lib/activity.js';
+import { extensionListed } from '../lib/extension';
 // Supabase falls back to the Site URL when a redirect URL isn't allowlisted.
 const code = Astro.url.searchParams.get('code');
 if (code) return Astro.redirect('/auth/callback?code=' + encodeURIComponent(code), 303);
@@ -53,7 +54,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
       <details class="home-faq"><summary>How do my friends join?</summary><p>Your invite link is copied when you create a room. Send it to your friends, or tap Invite friends to copy it again.</p></details>
       </div>
       <div class="faq-column">
-      <details class="home-faq"><summary>How do I add a video?</summary><p>Paste a YouTube link into the playlist. On desktop, Ctrl+V or Cmd+V also adds it without clicking the input.</p></details>
+      <details class="home-faq"><summary>How do I add a video?</summary><p>Paste a YouTube link into the playlist. On desktop, Ctrl+V or Cmd+V also adds it without clicking the input.{extensionListed() && <> Or send videos straight from YouTube with our <a href="/extension">Chrome extension</a>.</>}</p></details>
       <details class="home-faq"><summary>Can we watch on phones?</summary><p>Yes. Open the room link in your browser. If playback needs a tap, choose Join playback.</p></details>
       <details class="home-faq"><summary>Why won’t a video play?</summary><p>Some YouTube videos can’t play outside YouTube. Try another video.</p></details>
       </div>
