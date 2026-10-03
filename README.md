@@ -165,58 +165,49 @@ requests periodic snapshots to correct drift, and reconnects after connection
 loss. Remote player events settle against the desired room state instead of
 being suppressed for a fixed number of milliseconds.
 
-## The cat simulation
+## The cats
 
-Miso is the caretaker, Mochi the instigator, and Pixel the critic. Their energy,
-trust, boredom and tension drive a shared director: music invites performances,
-long talking videos can send Pixel out of the room, and a snack dispute can lead
-to a chase which Miso breaks up. Petting earns trust; a trusting Miso stops fleeing
-the cursor. Stories have cooldowns and consequences rather than independent
-random animation timers.
+Four cats live on youple.tv: Miso (cream, the caretaker), Mochi (ginger tabby, the
+instigator), Pixel (lavender, the critic) and Bean (tuxedo kitten, the apprentice).
+Each has its own body shape, gait, voice and personality traits, and its own mind:
+drives (sleepy, playful, lonely, curious, hungry) rise and fall with what it does
+and the time of day, and a weighted choice picks what it wants next. Nothing runs
+on a script.
 
-Open **Cat studio** on either page. Choose viewing energy, offer a toy mouse,
-share popcorn, start a squabble, trigger a screen-edge close-up, or let Mochi
-knock things over. Miso repairs the visual damage automatically. Escape cancels
-all choreography and brings everyone home. Cats can be petted with Enter/Space
-or dragged with pointer input; touch preserves vertical scrolling.
+What they do: wander, explore on top of page elements, loaf, groom, stretch and
+yawn, nap (turning around before lying down), cuddle up to friends, visit and boop
+noses, chase and play-fight, hiss at someone they don't like, get the zoomies,
+stalk and pounce on a still cursor, hunt butterflies, race for treats, follow each
+other around, and come to the front to look at you. In a room they sit with their
+backs to you to watch the video, dance to music titles and turn around when it
+pauses.
 
-**Wallpaper** gives the scene the viewport, a layered illustrated environment,
-and near/far character staging. In a room the synchronized video stays visible.
-The URL's `?wallpaper=1` parameter opens this view directly. This is a web wallpaper
-view; it does not install or configure an OS wallpaper application. Controls fade
-when idle and remain available through pointer or keyboard focus.
+Viewers can stroke a cat with the cursor to pet it, click to boop, drag to pick it
+up, double-click empty space to drop a treat, or turn on the laser pointer from
+the **Cats** panel. The panel shows what each cat is doing, how it feels, how much
+it likes you and who its friends are, plus a short diary. Trust, friendships and
+the diary are kept in `localStorage`, so the cats remember returning visitors and
+notice long absences. **Aquarium** (`?wallpaper=1`) gives them the whole screen with
+a deep floor to walk around on.
 
-Video context comes from the current title and playback state. It does **not**
-listen to YouTube audio, detect beats, inspect video frames or claim semantic
-understanding. Unknown titles remain unknown. The Video mood selector overrides
-the hint. Cat interactions are local to each viewer; the existing room timeline
-continues to synchronize video playback.
+Video context comes from the current title and playback state only. It does not
+listen to audio or inspect frames. Cat interactions are local to each viewer.
 
 ### Architecture
 
-- `CatUniverse.astro` renders the fixed stage, vector environment and controls.
-- `cat-director.js` is DOM-independent personality, motivation, title classification
-  and a cancellable story clock. Time advances only with the live scene.
-- `cat-simulator.js` maps room events and viewer input into coordinated stories,
-  owns prop/effect cleanup, camera scale/rotation, and actor destinations.
-- `mascot-scene.js` runs one frame loop for articulated SVG actors, spring motion,
-  gaze and props. `mascot-motion.js` provides the pure motion primitives, priority
-  arbitration and constrained travel. World mode supports deliberate excursions
-  beyond the viewport; ordinary movement is clamped to its bounds.
-- `mascot-moves.js` holds normalized pose clips. Add a clip with a mood, duration
-  and pose frames; ordinary gestures finish at `REST`. Add story beats through
-  `StoryClock`, never free-running choreography timers.
-- Home/room adapters preserve the existing `observe`, `linkError`, and
-  `inviteCopied` integration points. Room snapshots also supply the video title.
+- `cats/cast.js`: looks, traits and voice lines for each cat.
+- `cats/mind.js`: DOM-free drives, moods, trust, friendships and the weighted
+  choice of what to do next. Tested in `test/cats.test.js`.
+- `cats/body.js`: a small 3D rig (spheres, sticks, a lagging tail chain and face
+  decals mapped onto the head) drawn to canvas through a tilted camera, so a cat
+  can turn all the way round. Pose targets ease, gait drives the legs.
+- `cats/world.js`: one full-screen canvas with `pointer-events: none`, behaviours
+  as generator functions, page elements as shelves, interactions, the panel and
+  persistence. Exposes `observe`, `linkError` and `inviteCopied` for the pages.
 
-The simulation does not mutate queues, trigger controls, remove page elements or
-change playback. Interface mischief uses temporary Web Animations and removable
-scratch marks. Cancellation, calm mode, resize, hidden tabs, dialogs and teardown
-clear pending stories and restore visual effects. Reduced motion keeps static cats
-and expressions. Calm preference is shared across tabs. Browser page-cache returns
-resume from a resting scene rather than replaying a backlog.
+Cats never take clicks from the page: the canvas ignores pointer events, cat
+interactions are ignored over links, buttons, inputs and the player, cats avoid
+resting over text and controls, and they fade while crossing a control. Reduced
+motion rules out zoomies, chases and pounces; **Calm cats** puts everyone to sleep.
+Add `?catdebug` to expose `window.youpleCats` for local testing.
 
-Tests cover motion independence, collision sweeps, action arbitration, title
-classification, role/need differences, story consequences, watch-mode limits,
-cooldowns and interruption. Browser validation covers wallpaper mode, cinematic
-entrances, coordinated stories, responsive controls and playback integration.
