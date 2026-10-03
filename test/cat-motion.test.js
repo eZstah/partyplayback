@@ -76,6 +76,42 @@ test('straight walking carries the body over a planted stance instead of skating
   }
 });
 
+test('seated breathing does not swap a planted foreleg across the white chest', () => {
+  // These views straddle the old painter-order crossing. Record actual canvas
+  // paint order, not just paw positions: those stayed still during the bug.
+  for (const degrees of [23, 24, 87, 90, 93, 156, 157]) {
+    const body = bean(), ctx = checkedCanvas(), L = body.L;
+    body.yaw = degrees * Math.PI / 180;
+    body.reset({ sit: 1, tailWrap: 1, tailWag: .025 });
+    Object.assign(body.pose, body.goal); advance(body, 4);
+    let path = null, order = [];
+    ctx.beginPath = () => { path = {}; };
+    ctx.moveTo = (x, y) => { path.from = [x, y]; };
+    ctx.lineTo = (x, y) => { path.to = [x, y]; };
+    ctx.ellipse = (x, y, rx, ry) => { path.ellipse = [rx, ry]; };
+    ctx.fill = () => {
+      if (ctx.fillStyle === L.belly && path.ellipse?.[0] === L.bodyR * .62 && path.ellipse[1] === L.bodyR * .95) order.push('bib');
+    };
+    ctx.stroke = () => {
+      if (ctx.strokeStyle !== L.fur || ctx.lineWidth !== L.legW || !path.from || !path.to) return;
+      const leg = body.paws.findIndex(paw => {
+        const point = body.screen(paw.w);
+        return Math.hypot(path.to[0] - point[0], path.to[1] - point[1]) < 1e-7;
+      });
+      if (leg !== -1) order.push(`foreleg-${leg}`);
+    };
+    let baseline = null;
+    const ribs = [];
+    for (let i = 0; i < 480; i++) {
+      order = []; body.update(1 / 60); body.draw(ctx); ribs.push(body.skeleton().C[1]);
+      baseline ??= [...order];
+      assert.equal(order.length, 3, 'both forelegs and the chest were painted');
+      assert.deepEqual(order, baseline, `${degrees}°: the breath changed which part covers the bib at frame ${i}`);
+    }
+    assert.ok(spread(ribs) > .75, 'stability must preserve visible breathing');
+  }
+});
+
 test('turning and braking transfer weight, then settle without lingering oscillation', () => {
   const body = bean(), ctx = checkedCanvas();
   body.yaw = 0; body.goTo(500, 0, 100); advance(body, 1, ctx);
@@ -87,6 +123,33 @@ test('turning and braking transfer weight, then settle without lingering oscilla
   assert.ok(body.speed < .001);
   assert.ok(Math.abs(body.motion.forward) < .001 && Math.abs(body.motion.side) < .001);
   assert.ok(Math.abs(body.motion.headBob) < .001, 'walking bob settles while breathing remains');
+});
+
+test('walking rises out of rest before translating and restores alternating steps', () => {
+  for (const pose of [{ sit: 1 }, { loaf: 1 }, { curl: 1 }, { sit: .85, overEdge: 1, tailHang: 1 }]) {
+    const body = bean(), ctx = checkedCanvas();
+    body.yaw = 0; body.reset(pose); Object.assign(body.pose, body.goal);
+    if (pose.curl) { body.face = 'sleep'; body.set({ eyes: 0 }); }
+    advance(body, 2, ctx);
+    const x = body.x;
+    body.goTo(x + 250, 0, 65);
+    body.update(1 / 60); body.draw(ctx);
+    assert.equal(body.x, x, 'unfold the resting pose before moving along the ground');
+    for (const key of ['sit', 'loaf', 'curl', 'overEdge', 'tailHang']) assert.equal(body.goal[key], 0, `${key} releases for walking`);
+    assert.notEqual(body.face, 'sleep', 'walking wakes the sleeping expression');
+    advance(body, 1, ctx);
+    const lifts = [[], []];
+    for (let i = 0; i < 120; i++) {
+      body.update(1 / 60); body.draw(ctx);
+      body.paws.forEach((paw, index) => lifts[index].push(paw.w[1]));
+    }
+    assert.ok(body.x > x + 90, 'the rise proceeds into real travel');
+    for (const values of lifts) assert.ok(spread(values) > 3, 'both front paws take visible steps');
+    assert.ok(lifts[0].some((value, i) => value > 3 && lifts[1][i] < .1), 'one paw supports while the other swings');
+    advance(body, 5, ctx); assert.equal(body.move, null);
+    body.reset({ sit: 1 }); advance(body, 3, ctx);
+    assert.ok(body.pose.sit > .99, 'rest remains available after arrival');
+  }
 });
 
 test('an offered paw lifts softly while the supporting paw stays grounded, then returns', () => {

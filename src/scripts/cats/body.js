@@ -39,11 +39,15 @@ export const visibility = n => dot(n, VIEW);
 export const project2 = v => [v[0], -v[1] * CT + v[2] * ST];
 
 export const REST = {
-  sit: 0, loaf: 0, curl: 0, crouch: 0, stretch: 0, rear: 0, dangle: 0, leap: 0,
+  sit: 0, loaf: 0, curl: 0, crouch: 0, stretch: 0, rear: 0, dangle: 0, hang: 0, leap: 0, recoil: 0,
   headYaw: 0, headPitch: 0, headRoll: 0, earsBack: 0, tailUp: .45, tailCurl: .35, tailWag: .12, tailPuff: 0, tailWrap: 0,
   eyes: 1, pupil: .7, mouth: 0, groom: 0, pawsUp: 0, swat: 0, offerPaw: 0, knead: 0, bob: 0, wiggle: 0, tailHang: 0, overEdge: 0,
 };
-const RATES = { sit: 4, loaf: 3.2, curl: 2.8, stretch: 4, headYaw: 7, headPitch: 6, headRoll: 5, eyes: 12, mouth: 12, swat: 18, offerPaw: 4.5, earsBack: 9, pupil: 6, tailPuff: 5 };
+const RATES = { sit: 4, loaf: 3.2, curl: 2.8, stretch: 4, hang: 9, headYaw: 7, headPitch: 6, headRoll: 5, eyes: 12, mouth: 12, swat: 18, offerPaw: 4.5, earsBack: 9, pupil: 6, tailPuff: 5 };
+// A walking command owns the supporting limbs. Keep the action's expression,
+// crouch and tail character, but release poses that pin or hide stepping paws.
+const WALK_RELEASE = ['sit', 'loaf', 'curl', 'stretch', 'rear', 'dangle', 'hang', 'overEdge',
+  'tailHang', 'tailWrap', 'groom', 'pawsUp', 'swat', 'offerPaw', 'knead', 'wiggle', 'recoil'];
 const LEGS = [
   { front: true, side: 1, walk: .25, trot: 0, gallop: 0 }, { front: true, side: -1, walk: .75, trot: .5, gallop: .1 },
   { front: false, side: 1, walk: 0, trot: .5, gallop: .55 }, { front: false, side: -1, walk: .5, trot: 0, gallop: .65 },
@@ -62,11 +66,19 @@ export class CatBody {
     // Set by the world: an external gait speed (climbing), and whether to draw a floor shadow.
     this.drive = null; this.noShadow = false; this.headLift = look.headR * 2.6; this.paws = [];
     this.blinkCycle = null;
+    this.flight = { type: null, progress: 0, roll: 0, tuck: 0, reach: 0, velocityY: 0 };
+    this.landing = 0; this.landingTarget = 0; this.hangPaws = null;
     this.motion = { breathPhase: this.time, breathRate: 1.8, breath: 0, headBreath: 0, walk: 0, bob: 0, headBob: 0, forward: 0, side: 0, headForward: 0 };
   }
   set(goal) { Object.assign(this.goal, goal); return this; }
   reset(extra = {}) { this.goal = { ...REST, ...extra }; return this; }
-  goTo(x, z, speed) { this.move = { x, z, speed }; this.turnTo = null; }
+  goTo(x, z, speed) {
+    if (Math.hypot(x - this.x, z - this.z) >= 2.5) {
+      for (const key of WALK_RELEASE) this.goal[key] = 0;
+      if (this.face === 'sleep') { this.face = 'open'; this.goal.eyes = .9; }
+    }
+    this.move = { x, z, speed }; this.turnTo = null;
+  }
   stop() { this.move = null; }
   get arrived() { return !this.move && !this.jump; }
   get airborne() { return !!this.jump; }
@@ -78,9 +90,23 @@ export class CatBody {
     if (!this.blinkCycle?.slow) this.blinkCycle = { t: 0, duration: clamp(duration, .4, 3), from: this.blink, slow: true };
     return this;
   }
-  leap(x1, gy1, z1, arc = 60, dur = null) {
+  leap(x1, gy1, z1, arc = 60, dur = null, options = {}) {
+    const type = ['fall', 'throw'].includes(options.type) ? options.type : 'jump';
+    // Releasing or interrupting a raised jump starts at its visible position.
+    if (type !== 'jump' && this.h) { this.gy -= this.h * this.k * CT; this.h = 0; }
     const dist = Math.hypot(x1 - this.x, gy1 - this.gy);
-    this.jump = { x0: this.x, gy0: this.gy, z0: this.z, x1, gy1, z1, arc, t: 0, dur: dur ?? clamp(.32 + dist / 900, .35, .85) };
+    const velocityY = Number.isFinite(options.velocityY) ? options.velocityY : 0;
+    const gravity = Number.isFinite(options.gravity) && options.gravity >= 0 ? options.gravity : 1500;
+    const discriminant = velocityY ** 2 + 2 * gravity * (gy1 - this.gy);
+    const ballisticTime = gravity > 0 && discriminant >= 0 ? (-velocityY + Math.sqrt(discriminant)) / gravity
+      : gravity === 0 && velocityY !== 0 ? (gy1 - this.gy) / velocityY : 0;
+    const duration = Math.max(.08, dur ?? (type !== 'jump' && ballisticTime > 0 ? ballisticTime : clamp(.32 + dist / 900, .35, .85)));
+    const spin = Number.isFinite(options.spin) ? clamp(Math.round(options.spin), -3, 3) : 0;
+    this.jump = { x0: this.x, gy0: this.gy, z0: this.z, x1, gy1, z1, arc, t: 0, dur: duration,
+      type, spin, velocityY, accelerationY: 2 * (gy1 - this.gy - velocityY * duration) / duration ** 2,
+      landing: options.landing !== false };
+    this.flight = { type, progress: 0, roll: 0, tuck: 0, reach: 0, velocityY };
+    this.landingTarget = 0;
     this.move = null; this.turnTo = Math.abs(x1 - this.x) > 4 ? (x1 > this.x ? 0 : Math.PI) : this.turnTo;
   }
 
@@ -91,22 +117,47 @@ export class CatBody {
     // Locomotion: turn toward the goal first, move along the facing direction.
     const prevYaw = this.yaw, prevX = this.x, prevZ = this.z, prevSpeed = this.speed;
     if (this.jump) {
-      const j = this.jump; j.t += dt; const s = clamp(j.t / j.dur, 0, 1);
-      this.x = lerp(j.x0, j.x1, s); this.gy = lerp(j.gy0, j.gy1, s); this.z = lerp(j.z0, j.z1, s);
-      this.h = j.arc * 4 * s * (1 - s); const vy = j.arc * 4 * (1 - 2 * s) / j.dur;
-      p.leap = ease(p.leap, s < .9 ? 1 : 0, 14, dt); this.pitch = clamp(vy * .0028, -.55, .55);
+      const j = this.jump; j.t += dt; if (j.t > j.dur - 1e-9) j.t = j.dur;
+      const s = clamp(j.t / j.dur, 0, 1);
+      this.x = lerp(j.x0, j.x1, s); this.z = lerp(j.z0, j.z1, s);
+      if (j.type === 'jump') {
+        this.gy = lerp(j.gy0, j.gy1, s); this.h = j.arc * 4 * s * (1 - s);
+        this.flight.velocityY = (j.gy1 - j.gy0 - j.arc * 4 * (1 - 2 * s) * this.k * CT) / j.dur;
+      } else {
+        const t = Math.min(j.t, j.dur);
+        this.gy = j.gy0 + j.velocityY * t + .5 * j.accelerationY * t * t; this.h = 0;
+        this.flight.velocityY = j.velocityY + j.accelerationY * t;
+      }
+      const f = this.flight;
+      f.progress = s; f.roll = j.spin * TAU * smooth(s / .8);
+      f.tuck = Math.sin(Math.PI * clamp((s - .08) / .65, 0, 1)) ** 2;
+      f.reach = smooth((s - .6) / .3);
+      p.leap = ease(p.leap, s < .88 ? 1 : 0, 14, dt);
+      this.pitch = ease(this.pitch || 0, clamp(-f.velocityY * .00075, -.4, .35) * (1 - f.reach), 12, dt);
       if (this.turnTo !== null) this.yaw += clamp(wrap(this.turnTo - this.yaw), -9 * dt, 9 * dt);
-      if (s >= 1) { this.jump = null; this.h = 0; this.pitch = 0; this.bounce(1.1); }
+      if (s >= 1) {
+        this.x = j.x1; this.gy = j.gy1; this.z = j.z1; this.jump = null; this.h = 0; this.pitch = 0; p.leap = 0;
+        if (j.landing) {
+          this.landingTarget = clamp(Math.abs(f.velocityY) / 950, .2, 1);
+          this.squashVel += this.landingTarget * 4;
+        }
+        f.roll = 0; f.tuck = 0; f.reach = 0;
+      }
     } else {
+      this.flight.roll = 0; this.flight.tuck = 0; this.flight.reach = 0;
       this.pitch = ease(this.pitch || 0, 0, 10, dt); p.leap = ease(p.leap, 0, 10, dt);
       if (this.move) {
         const m = this.move, dx = m.x - this.x, dz = m.z - this.z, dist = Math.hypot(dx, dz);
         if (dist < 2.5) { this.move = null; } else {
           const want = Math.atan2(dz, dx), off = wrap(want - this.yaw), turn = 7 + 4 / (1 + this.speed / 60);
           this.yaw += clamp(off, -turn * dt, turn * dt);
-          const target = m.speed * clamp(dist / 50 + .25, .25, 1) * Math.max(0, Math.cos(off));
+          // Unfold before translating: otherwise the eased sit/loaf pose still
+          // pins the paws while the root accelerates, producing a seated slide.
+          const folded = Math.max(p.sit, p.loaf, p.curl, p.stretch, p.overEdge, p.hang, p.dangle, p.rear);
+          const ready = smooth((.4 - folded) / .4);
+          const target = m.speed * clamp(dist / 50 + .25, .25, 1) * Math.max(0, Math.cos(off)) * ready;
           this.speed = ease(this.speed, target, 5, dt);
-          const step = Math.min(dist, this.speed * dt);
+          const step = Math.min(dist, this.speed * ready * dt);
           this.x += Math.cos(this.yaw) * step; this.z += Math.sin(this.yaw) * step;
         }
       }
@@ -139,6 +190,8 @@ export class CatBody {
     m.breathPhase += m.breathRate * dt;
     m.breath = (Math.sin(m.breathPhase) + Math.sin(m.breathPhase * 2 - .4) * .12) * (.65 + resting * .4);
     m.headBreath = ease(m.headBreath, m.breath * .4, 3, dt);
+    this.landing = ease(this.landing, this.landingTarget, 26, dt);
+    this.landingTarget *= Math.exp(-dt * 6);
     // Squash and stretch spring.
     this.squashVel += (-this.squash * 160 - this.squashVel * 13) * dt; this.squash += this.squashVel * dt;
     // Blinking.
@@ -210,8 +263,12 @@ export class CatBody {
       return v;
     };
     const H = pick('H'), B = pick('B'), C = pick('C'), D = pick('D');
+    // Weight moves back over the supporting paws when declining a hand.
+    H[0] -= p.recoil * R * .15; B[0] -= p.recoil * R * .3;
+    C[0] -= p.recoil * R * .55; D[0] -= p.recoil * R * .85;
+    D[1] += p.recoil * R * .12;
     // Crouch (stalking) lowers everything and pushes the head forward; a butt wiggle before the pounce.
-    const crouch = p.crouch * ll * .62;
+    const crouch = Math.max(p.crouch, this.landing * .95) * ll * .62;
     H[1] -= crouch * .85; B[1] -= crouch; C[1] -= crouch * 1.05; D[1] -= crouch * 1.25; D[0] += p.crouch * 5;
     const wig = Math.sin(this.time * 26) * p.wiggle * 3.2; H[2] += wig;
     // Hips support the weight; breath expands the ribs and lifts the chest.
@@ -223,6 +280,11 @@ export class CatBody {
     D[1] += m.headBob + dance * .7 + m.headBreath;
     C[0] += m.forward * R * .5; B[0] += m.forward * R * .2; D[0] += m.headForward * R * .8;
     H[2] -= m.side * R * .15; C[2] += m.side * R * .45; D[2] += m.side * R * .65;
+    if (this.jump) {
+      const tuck = this.flight.tuck;
+      H[0] += tuck * sp * .35; C[0] -= tuck * sp * .25;
+      D[0] -= tuck * R * .35; D[1] -= tuck * R * .2;
+    }
     return { H, B, C, D };
   }
 
@@ -244,7 +306,7 @@ export class CatBody {
     const outline = L.outline || '#3D2C3E', ow = 2.1 * k;
     const sq = this.squash, sx = 1 + sq * .12, sy = 1 - sq * .16;
     const sk = this.skeleton();
-    const rear = clamp(p.rear, 0, 1), dangle = clamp(p.dangle, 0, 1);
+    const rear = clamp(p.rear, 0, 1), hanging = clamp(p.hang, 0, 1), dangle = clamp(Math.max(p.dangle, hanging * .9), 0, 1);
     let pitch = (this.pitch || 0) + rear * 1.1 + dangle * 1.4, pivot = dangle > rear ? sk.D : sk.H;
     const W = (f, u, s) => { const w = this.toWorld(f, u, s, pitch, pivot); return [w[0] * sx, w[1] * sy, w[2] * sx]; };
     const parts = [];
@@ -260,11 +322,21 @@ export class CatBody {
 
     // Shadow.
     const center = this.screen([B[0], 0, B[2]]);
-    const shadowY = this.shadowY ?? (this.gy + k * B[2] * ST);
-    ctx.save(); ctx.globalAlpha = this.noShadow ? 0 : this.alpha * .26 * clamp(1 - this.h / 160, .25, 1) * (this.shadowY ? .6 : 1);
+    const dropping = this.jump && this.jump.type !== 'jump';
+    const shadowY = this.shadowY ?? ((dropping ? this.jump.gy1 : this.gy) + k * B[2] * ST);
+    const shadowHeight = this.h + (dropping ? Math.max(0, this.jump.gy1 - this.gy) / Math.max(.05, k) : 0);
+    ctx.save(); ctx.globalAlpha = this.noShadow ? 0 : this.alpha * .26 * clamp(1 - shadowHeight / 160, .25, 1) * (this.shadowY ? .6 : 1);
     ctx.fillStyle = '#0b0714'; ctx.beginPath();
-    ctx.ellipse(center[0], shadowY, k * (R * 1.7 + Math.abs(Math.cos(this.yaw)) * L.spine * .9) * clamp(1 - this.h / 300, .4, 1), k * R * .5, 0, 0, TAU); ctx.fill(); ctx.restore();
+    ctx.ellipse(center[0], shadowY, k * (R * 1.7 + Math.abs(Math.cos(this.yaw)) * L.spine * .9) * clamp(1 - shadowHeight / 300, .4, 1), k * R * .5, 0, 0, TAU); ctx.fill(); ctx.restore();
     ctx.save(); ctx.globalAlpha = this.alpha;
+    // Rotate the character after the ground shadow, then apply the same
+    // rotation to its hit areas and interaction anchors below.
+    const roll = this.jump ? this.flight.roll : 0, rollCenter = this.screen(B);
+    const rotateScreen = point => {
+      const dx = point[0] - rollCenter[0], dy = point[1] - rollCenter[1], c = Math.cos(roll), s = Math.sin(roll);
+      return [rollCenter[0] + dx * c - dy * s, rollCenter[1] + dx * s + dy * c];
+    };
+    if (roll) { ctx.translate(...rollCenter); ctx.rotate(roll); ctx.translate(-rollCenter[0], -rollCenter[1]); }
 
     // Legs: shoulder/hip anchors to paws, with gait.
     const legVis = clamp(1 - p.loaf - p.curl + p.overEdge, 0, 1), sitW = clamp(p.sit, 0, 1);
@@ -290,6 +362,11 @@ export class CatBody {
       paw = mixArr(paw, [base[0] + (leg.front ? R * .75 : R * .2), 1.5, s * R * .38], 1 - legVis);
       // Leap: front paws reach forward, hind legs push back.
       if (p.leap > .01) paw = mixArr(paw, leg.front ? [anchor[0] + ll * 1.1, anchor[1] - ll * .5, s * R * .35] : [anchor[0] - ll * 1.2, anchor[1] - ll * .6, s * R * .4], p.leap);
+      if (this.jump) {
+        const f = this.flight;
+        paw = mixArr(paw, [anchor[0] + (leg.front ? -.35 : .8) * ll, anchor[1] - ll * .15, s * R * .36], f.tuck * .95);
+        paw = mixArr(paw, [anchor[0] + (leg.front ? .75 : -.3) * ll, 0, s * R * .54], f.reach);
+      }
       if (rear > .01 && leg.front) paw = mixArr(paw, [anchor[0] + R * .55, anchor[1] - ll * .35 + Math.sin(this.time * 7.8 + s) * p.pawsUp * 5, s * R * .5], rear);
       let wa = W(anchor[0], anchor[1], anchor[2]);
       let wp = (rear > .01 && !leg.front) ? [this.toWorld(paw[0], paw[1], paw[2], 0, pivot)][0] : W(paw[0], paw[1], paw[2]);
@@ -304,11 +381,20 @@ export class CatBody {
         if (p.swat > .01) wp = mix(wp, add(wa, add(this.dirWorld(R * 1.4 + ll * .6, ll * .5, 0, this.yaw), [0, Math.sin(this.time * 30) * 2, 0])), clamp(p.swat, 0, 1));
         // A held, soft invitation has its own channel: no swat vibration.
         if (p.offerPaw > .01) wp = mix(wp, add(wa, this.dirWorld(R * .7, ll * .4, R * .32, this.yaw)), clamp(p.offerPaw, 0, 1));
+        // A refusing paw blocks beside the cheek instead of reaching out low
+        // like the greeting. The other front paw continues supporting him.
+        if (p.recoil > .01) wp = mix(wp, add(wa, this.dirWorld(R * .85, ll * 2.5, R * .65, this.yaw)), clamp(p.recoil, 0, 1));
       }
       if (leg.front && p.pawsUp > .01 && rear < .01) wp = mix(wp, add(wa, this.dirWorld(R * .6, ll * .9, s * 2, this.yaw)), clamp(p.pawsUp, 0, 1) * .8);
       // Jazz paws: when standing up, front paws wave out to the sides.
       if (leg.front && p.pawsUp > .01 && rear > .3) wp = mix(wp, add(wa, add(this.dirWorld(R * .5, -ll * .75 + Math.sin(this.time * 7.8 + s * 1.6) * 5, s * (R * 1.15 + 3), this.yaw), [0, 0, 0])), clamp(p.pawsUp * rear, 0, 1));
-      if (leg.front) this.paws[s > 0 ? 0 : 1] = { w: wp, depth: this.depth(wp), planted: step.planted && p.leap < .01 && rear < .01 && dangle < .01 && p.overEdge < .01 && p.knead < .01 && p.groom < .01 && p.swat < .01 && p.offerPaw < .01 && p.pawsUp < .01 };
+      if (leg.front && hanging > .001) {
+        const point = this.hangPaws?.[s > 0 ? 0 : 1];
+        const held = point ? [(point.x - this.x) / k, (this.gy - point.y) / (k * CT) + wp[2] * ST / CT - this.h, wp[2]]
+          : add(wa, this.dirWorld(ll * .3, ll * 1.5 + R * .5, s * 2, this.yaw));
+        wp = mix(wp, held, hanging);
+      }
+      if (leg.front) this.paws[s > 0 ? 0 : 1] = { w: wp, depth: this.depth(wp), planted: !this.jump && step.planted && p.leap < .01 && rear < .01 && dangle < .01 && p.overEdge < .01 && p.knead < .01 && p.groom < .01 && p.swat < .01 && p.offerPaw < .01 && p.pawsUp < .01 };
       const hidden = legVis < .05 && !(leg.front && (p.groom > .1 || p.swat > .1 || p.offerPaw > .1));
       const isHindSit = !leg.front && sitW > .5;
       parts.push({ depth: this.depth(wp) + (leg.front ? .5 : 0), draw: () => {
@@ -341,7 +427,11 @@ export class CatBody {
       bodyBalls.push({ c: mix(a, b, .5), r: (ra + rb) / 2 * 1.01, fill: L.fur });
     }
     if (sitW > .05) for (const s of [1, -1]) bodyBalls.push({ c: W(sk.H[0] + R * .25, sk.H[1] - R * .2, s * R * .55), r: R * .66 * sitW, fill: L.fur });
-    const bodyDepth = this.depth(B);
+    // Breathing deforms the ribs, not which side of a planted leg they occupy.
+    // Sorting from the breathing belly made a whole foreleg flip over the bib
+    // twice per breath at near-front seated angles. Use its unbreathed anchor
+    // for painter order, while keeping the live geometry, shading and hit areas.
+    const bodyDepth = this.depth(W(sk.B[0], sk.B[1] - this.motion.breath * .14, sk.B[2]));
     parts.push({ depth: bodyDepth, draw: () => {
       drawBalls(this, ctx, bodyBalls, outline, ow);
       bodyDecals(this, ctx, bodyBalls, { H, B, C }, L);
@@ -358,11 +448,11 @@ export class CatBody {
     for (const part of parts) part.draw();
     ctx.restore();
 
-    this.headLift = (this.gy - this.screen(D)[1]) / k; this.headPos = this.screen(D);
-    for (const paw of this.paws) if (paw) paw.s = this.screen(paw.w);
+    this.headPos = rotateScreen(this.screen(D)); this.headLift = (this.gy - this.headPos[1]) / k;
+    for (const paw of this.paws) if (paw) paw.s = rotateScreen(this.screen(paw.w));
     // Hit areas and the anchor for speech bubbles.
-    this.hit = [...bodyBalls, { c: D, r: hr * 1.05 }].map(ball => { const [x, y] = this.screen(ball.c); return { x, y, r: ball.r * k + 4 }; });
-    const headTop = this.screen(add(D, [0, hr * 1.5, 0]));
+    this.hit = [...bodyBalls, { c: D, r: hr * 1.05 }].map(ball => { const [x, y] = rotateScreen(this.screen(ball.c)); return { x, y, r: ball.r * k + 4 }; });
+    const headTop = rotateScreen(this.screen(add(D, [0, hr * 1.5, 0])));
     this.top = { x: headTop[0], y: headTop[1] };
     let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
     for (const c of this.hit) { left = Math.min(left, c.x - c.r); right = Math.max(right, c.x + c.r); top = Math.min(top, c.y - c.r); bottom = Math.max(bottom, c.y + c.r); }

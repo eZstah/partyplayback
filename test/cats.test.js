@@ -43,11 +43,11 @@ test('personality shapes choices: the instigator plays, the critic naps', () => 
   assert.ok(lazy(pixel) > lazy(mochi), JSON.stringify({ mochi, pixel }));
 });
 
-test('playing video draws cats to watch, music makes Mochi dance, a treat beats everything', () => {
+test('playing video draws cats to watch, music stays quiet, and a treat beats everything', () => {
   const watching = count('purple', { playing: true, vibe: 'talk' });
   assert.ok(watching.watch > 150, JSON.stringify(watching));
   const party = count('pink', { playing: true, vibe: 'music' });
-  assert.ok(party.dance > 150, JSON.stringify(party));
+  assert.ok(Object.keys(party).every(type => ['watch', 'sleep', 'sit', 'loaf'].includes(type)), JSON.stringify(party));
   const hungry = count('mint', { treat: true, cursor: true, playing: true });
   assert.equal(hungry.treat, 300);
 });

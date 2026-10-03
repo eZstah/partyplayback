@@ -135,5 +135,6 @@ it afterward, as described in the root README. A successful build is not a
 visual review. Respect any browser-access restriction and state when a review
 could not be performed.
 
-Current publication boundary: **commit and push this checkpoint to main are
-authorized; production deployment is not part of the request.**
+Current publication boundary (2026-10-03): **the user authorized committing all
+accumulated changes, pushing main to GitHub and deploying this checkpoint live.**
+Later increments need their own publication authorization.
