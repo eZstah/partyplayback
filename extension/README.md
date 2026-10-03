@@ -30,6 +30,14 @@ video's link to your room only when you click one of its buttons or the menu.
 
 ## Publishing
 
-Zip the contents of this folder and upload it in the
+Run `npm run pack:extension` from the project root to create
+`dist/youple-extension-<version>.zip`. The package excludes the localhost
+development permissions and this README. Upload that ZIP in the
 [Chrome Web Store developer dashboard](https://chrome.google.com/webstore/devconsole).
 Bump `version` in `manifest.json` for each upload.
+
+The website build also generates this ZIP. Until `CHROME_STORE_URL` is set in
+`src/lib/extension.ts`, `/extension` offers it as a developer preview with
+manual installation and update instructions. The download name and displayed
+version come from the manifest. Once the store URL is set, the page shows the
+store install link instead of the preview section.

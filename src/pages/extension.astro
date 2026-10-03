@@ -2,7 +2,9 @@
 import SiteFooter from '../components/SiteFooter.astro';
 import '../styles/app.css';
 import { CHROME_STORE_URL, extensionListed } from '../lib/extension';
+import { version } from '../../extension/manifest.json';
 const listed = extensionListed();
+const previewFile = `youple-extension-${version}.zip`;
 ---
 <!doctype html>
 <html lang="en">
@@ -15,6 +17,23 @@ const listed = extensionListed();
     {listed
       ? <p class="cta"><a class="primary-button" href={CHROME_STORE_URL} target="_blank" rel="noopener">Add to Chrome, it's free</a></p>
       : <p class="cta"><span class="soon">Coming soon to the Chrome Web Store</span></p>}
+
+    {!listed && <section class="developer-preview" aria-labelledby="preview-heading">
+      <h2 id="preview-heading">Try the developer preview</h2>
+      <p>For testers on desktop Chrome. This build hasn’t been reviewed by Google. Installation and updates are manual.</p>
+      <p class="preview-download"><a href={`/${previewFile}`} download={previewFile}>Download developer preview (.zip)</a> <span>Version {version}</span></p>
+      <details>
+        <summary>Installation and updates</summary>
+        <ol>
+          <li>Download the ZIP and extract it into a folder you’ll keep on your computer.</li>
+          <li>Enter <code>chrome://extensions</code> in Chrome’s address bar and turn on <strong>Developer mode</strong>.</li>
+          <li>Choose <strong>Load unpacked</strong> and select the extracted folder containing <code>manifest.json</code>. Keep that folder after installing.</li>
+          <li>Open a youple.tv room, then open or refresh YouTube. Pin the extension from Chrome’s puzzle-piece menu and click the cat to send a video.</li>
+        </ol>
+        <p><strong>To update:</strong> download the latest ZIP here, replace the files in the same folder, then click <strong>Reload</strong> on the extension at <code>chrome://extensions</code>. Refresh your YouTube and youple.tv tabs.</p>
+        <p>Once the Chrome Web Store version is available, remove the developer preview and install the store version for automatic updates.</p>
+      </details>
+    </section>}
 
     <h2>How it works</h2>
     <ul>
@@ -43,6 +62,18 @@ const listed = extensionListed();
     .cta { margin: 24px 0 8px; }
     .cta .primary-button { text-decoration: none; }
     .soon { display: inline-block; padding: 10px 18px; border-radius: 999px; background: var(--raised); color: var(--ink); font-weight: 700; }
+    .developer-preview { margin: 28px 0 36px; padding: 4px 0 4px 20px; border-left: 2px solid var(--accent); }
+    .developer-preview h2 { margin: 0 0 8px; }
+    .developer-preview p { margin: 0 0 14px; }
+    .preview-download { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+    .preview-download a { font-weight: 700; }
+    .preview-download span { font-size: 14px; }
+    .developer-preview summary { width: fit-content; cursor: pointer; color: var(--ink); }
+    .developer-preview ol { padding-left: 24px; }
+    .developer-preview li + li { margin-top: 10px; }
+    .developer-preview code { font-size: .9em; overflow-wrap: anywhere; }
+    .developer-preview strong { color: var(--ink); }
+    .developer-preview details p:last-child { margin-bottom: 0; }
     figure { margin: 24px 0; }
     figure img { display: block; max-width: 100%; height: auto; border-radius: 16px; }
   </style>
