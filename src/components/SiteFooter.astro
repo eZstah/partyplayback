@@ -1,7 +1,9 @@
 ---
 import { impressumReady } from '../lib/legal';
+import { extensionListed } from '../lib/extension';
 const links = [
   { href: '/about', label: 'About' },
+  ...(extensionListed() ? [{ href: '/extension', label: 'Chrome extension' }] : []),
   { href: '/privacy', label: 'Privacy' },
   ...(impressumReady() ? [{ href: '/impressum', label: 'Impressum' }] : []),
   { href: '/contact', label: 'Contact' },

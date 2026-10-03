@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { youtubeUrl, extensionVideo } from "../src/scripts/room-paste.js";
 import { videoLink } from "../extension/video.js";
+import { readFileSync } from "node:fs";
 
 const id = "M7lc1UVf-VE", canonical = "https://www.youtube.com/watch?v=" + id;
 
@@ -22,4 +23,13 @@ test("the room takes videos only from the extension in its own window", () => {
   assert.equal(extensionVideo({ source: page, origin: "https://youple.tv", data: { ...data, source: "other" } }, page), null);
   assert.equal(extensionVideo({ source: page, origin: "https://youple.tv", data: { ...data, url: "https://evil.test/" } }, page), null);
   assert.equal(extensionVideo({ source: page, origin: "https://youple.tv", data: "add" }, page), null);
+});
+
+test("the store package drops the localhost development matches", async () => {
+  const { storeManifest } = await import("../scripts/pack-extension.mjs");
+  const manifest = JSON.parse(readFileSync(new URL("../extension/manifest.json", import.meta.url), "utf8"));
+  const packed = JSON.stringify(storeManifest(manifest));
+  assert.ok(manifest.host_permissions.some(match => match.startsWith("http://localhost")));
+  assert.ok(!packed.includes("localhost"));
+  assert.ok(packed.includes("https://youple.tv/room/*"));
 });
