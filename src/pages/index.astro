@@ -36,7 +36,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
         <form id="create-form"><button class="primary-button wide create-room-button" type="submit"><span>Create quick room</span></button><div id="create-message" class="form-message" role="status"></div></form>
         <section class="member-rooms" aria-labelledby="saved-title">
           <div class="member-rooms-head"><h2 id="saved-title">Your rooms</h2><button class="member-add" type="button" data-create-room="member">Create permanent room</button></div>
-          {rooms.length ? <ul>{rooms.map(room => <li><a href={'/room/'+room.slug}><Icon name="people" size={20}/><strong>{room.title}</strong><span>{room.joined ? 'Joined' : 'Open'}</span></a></li>)}</ul> : <p>Saved rooms keep the same link, so your group can come back anytime.</p>}
+          {rooms.length ? <ul>{rooms.map(room => <li><a href={'/room/'+room.slug}><Icon name="people" size={20}/><strong>{room.title}</strong><span>{room.joined ? 'Joined' : 'Open'}</span></a></li>)}</ul> : <p>Permanent rooms keep the same link, so your group can come back anytime.</p>}
         </section>
         <div class="launcher-footer"><span class="sync-presence"><i aria-hidden="true"></i><span id="sync-count">{illustrativeSyncCount()}</span> in sync</span></div>
       </div> : <div class="room-launcher reveal delay-1">
@@ -47,19 +47,21 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
     </section>
     {!user && <>
     <section class="how-it-works reveal delay-2" aria-labelledby="how-title"><h2 id="how-title">Less “3, 2, 1, play!”<br/>More actually watching.</h2><div class="how-grid"><article><span class="step-symbol step-lilac"><Icon name="plus" size={28}/></span><h3>Make a room</h3><p>One click. No account needed.</p></article><article><span class="step-symbol step-pink"><Icon name="link" size={28}/></span><h3>Send the link</h3><p>Invite link copied. Paste it in your group chat.</p></article><article><span class="step-symbol step-mint"><Icon name="play" size={28}/></span><h3>Watch together</h3><p>Paste a YouTube link. Play, pause and skip in sync.</p></article></div></section>
+    </>}
     <section class="faq-list" aria-label="Frequently asked questions">
       <div class="faq-column">
+      <details class="home-faq"><summary>Quick room or permanent room?</summary><p>A quick room needs no account and closes after 30 days without visitors. A permanent room needs you to sign in, keeps the same link and stays until you delete it.</p></details>
+      <details class="home-faq"><summary>How do my friends join?</summary><p>Your invite link is copied when you create a room. Send it to your friends, or tap Invite friends to copy it again. Permanent rooms ask friends to sign in too.</p></details>
       <details class="home-faq"><summary>Do we all control the video?</summary><p>Yep. Everyone can add videos, play, pause, seek and skip. Volume stays on your own device.</p></details>
-      <details class="home-faq"><summary>Do I need an account?</summary><p>No. Create a guest room and start watching.</p></details>
-      <details class="home-faq"><summary>How do my friends join?</summary><p>Your invite link is copied when you create a room. Send it to your friends, or tap Invite friends to copy it again.</p></details>
+      <details class="home-faq"><summary>Can I remove someone from my room?</summary><p>Yes, if you made the room. Open Watching and tap × next to their name. They stay out until you let them back in. You can delete a permanent room from the same panel or your profile.</p></details>
       </div>
       <div class="faq-column">
       <details class="home-faq"><summary>How do I add a video?</summary><p>Paste a YouTube link into the playlist. On desktop, Ctrl+V or Cmd+V also adds it without clicking the input.{extensionListed() && <> Or send videos straight from YouTube with our <a href="/extension">Chrome extension</a>.</>}</p></details>
       <details class="home-faq"><summary>Can we watch on phones?</summary><p>Yes. Open the room link in your browser. If playback needs a tap, choose Join playback.</p></details>
       <details class="home-faq"><summary>Why won’t a video play?</summary><p>Some YouTube videos can’t play outside YouTube. Try another video.</p></details>
+      <details class="home-faq"><summary>Is it free?</summary><p>Yes, with no ads or tracking of our own. Videos play in YouTube’s player, so YouTube’s ads can still appear there.</p></details>
       </div>
     </section>
-    </>}
   </main>
   <SiteFooter/>
   <CatUniverse/>
