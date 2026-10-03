@@ -23,8 +23,19 @@ test("crop rounds inward, sends fewer pixels, and caps output without upscaling"
   assert.ok(p.x >= rect.x * 1920 && p.y >= rect.y * 1080);
   assert.ok(p.x + p.width <= (rect.x + rect.width) * 1920);
   assert.ok(p.y + p.height <= (rect.y + rect.height) * 1080);
-  assert.ok(p.outputWidth <= p.width && p.outputHeight <= 720);
+  assert.ok(p.outputWidth <= p.width && p.outputHeight <= p.height);
   assert.equal(p.outputWidth % 2, 0);
   assert.equal(p.outputHeight % 2, 0);
-  assert.ok(p.outputWidth * p.outputHeight < 1280 * 720 / 2);
+  assert.ok(p.outputWidth * p.outputHeight < 1920 * 1080 / 2);
+});
+
+test("portrait crop keeps available detail and supports 1080 by 1920 output", () => {
+  const hd = cropPixels(centeredCrop(1920, 1080), 1920, 1080);
+  assert.equal(hd.outputHeight, 972, "a 1080p source must not be reduced to 720p before sending");
+  const uhd = cropPixels(centeredCrop(3840, 2160), 3840, 2160);
+  assert.ok(uhd.outputWidth >= 1078 && uhd.outputWidth <= 1080);
+  assert.equal(uhd.outputHeight, 1920);
+  const wide = cropPixels({ x: 0, y: 0, width: 1, height: 1 }, 3840, 2160);
+  assert.equal(wide.outputWidth, 1920);
+  assert.equal(wide.outputHeight, 1080);
 });

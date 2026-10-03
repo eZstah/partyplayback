@@ -63,13 +63,22 @@ browsers are told before capture that only whole-tab sharing is available.
 
 Cropping uses a frame-driven worker with transferable processor/generator streams,
 not a canvas animation loop that pauses when the room tab is in the background.
-Only cropped pixels (at most 1280 × 720, no upscaling) and the original tab audio
+Only cropped pixels (up to 1920 × 1080 landscape or 1080 × 1920 portrait, without
+upscaling) and the original tab audio
 are attached to WebRTC. The full source is still captured locally and cropping
 adds device processing; fewer encoded pixels do not guarantee a fixed bandwidth
 saving. No extension or media server is required. Source dimension changes stop
 the share rather than silently moving the crop. Layout changes within the same
 size, overlays, and other content inside the selected area remain visible; stop
 and share again to reframe. Crop failures never fall back to sending the full tab.
+
+The browser is asked for source detail up to 3840 × 2160 at 30 fps so cropping a
+vertical video does not start from a reduced 720p tab. Sender settings prefer
+preserving resolution, with a 6 Mbps video ceiling per viewer; congestion control
+still determines the actual bitrate. Whole-tab output is also bounded to Full HD
+in either orientation. Higher detail can increase the sharer's upload and device
+load; four viewers can use up to about 24 Mbps of video upload plus audio/overhead.
+It remains direct peer-to-peer, with no platform media traffic or paid relay.
 
 One person shares with up to four viewers. The main player shows the shared tab;
 YouTube pauses and the playlist remains editable. After **Stop sharing**, the
