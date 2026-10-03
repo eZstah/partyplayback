@@ -1,3 +1,7 @@
+.room-shell:focus {
+  /* Receives focus for playback shortcuts; individual controls keep their rings. */
+  outline: none;
+}
 .room-nav {
   padding: 14px 42px;
   display: grid;
