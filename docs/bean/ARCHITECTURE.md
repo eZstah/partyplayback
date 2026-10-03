@@ -223,8 +223,12 @@ which turns marked furniture into the same surfaces:
   further back in the room.
 - `data-perch="shelf"`: a platform to jump onto and rest on.
 - `data-toy`: something to knock about.
-- In a room the real player (`#stage`) also counts as a solid, so it becomes
-  the biggest block to climb.
+- The TV (`.tv`) is a solid. In a room, the real player sits exactly on its
+  screen: `cat-habitat.css` shares the TV's size variables (`--tv-left`,
+  `--tv-lift`, `--tv-w`, `--tv-h` and the bezel) with the room page's
+  `.watch-column`, so moving or resizing the TV moves the player with it. The
+  controls shrink to an icon strip that shows on hover, and the fullscreen
+  button takes the player full screen with the normal fullscreen layout.
 
 The room has depth. Furniture stands against the back at 87vh (`--floor: 13vh`),
 which is the aquarium floor's `zBehind` line in `floor()`. Bean walks in front
@@ -237,6 +241,22 @@ that keeps proportions at any window size). Keep platforms within reach of
 each other: a jump covers about 430 px across and 330 px up at 1440×900. Use
 `?catdebug&wallpaper=1` and `youpleCats.measure()` to see what Bean perceives,
 and `youpleCats.play('Bean', 'explore')` or `'hide'` to try it.
+
+The room's mood is set by `src/scripts/habitat-scene.js`. It writes
+`data-daypart` (night, dawn, day, dusk, from the visitor's clock) and
+`data-weather` (clear, clouds, rain, changing every 6 to 14 minutes) on
+`.cat-habitat`. The CSS reads them: the window's sky, sun, moon, stars, city
+lights, clouds and rain, the lamp glow, and a light beam from the window by
+day. Add a new state by adding it to the lists there and styling it; nothing
+else needs to know. `?scene=night,rain` pins a state for screenshots.
+Animations only run in Aquarium and stop under reduced motion.
+
+While a video plays, `quietPlayback()` keeps Bean resting where he is. In
+Aquarium it also lets him move now and then: after settling once, each new
+rest has a 45% chance to start with a calm trip to a spot from `cozySpot()`.
+Furniture marked `data-nap` is where he sleeps and `data-view` (plus the rug in
+front of the TV) is where he watches. Trips only go to spots he can reach
+without leaving the screen, and landings make no dust while a video plays.
 
 ## Where to add an improvement
 

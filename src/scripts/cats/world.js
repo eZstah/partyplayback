@@ -196,7 +196,7 @@ export function bootCats({ seed } = {}) {
     for (const el of document.querySelectorAll(TOYS)) if (visible(el)) { const r = rectOf(el); if (onScreen(r) && r.top > 40) W.toys.push({ el, rect: r }); }
   }
 
-  // Aquarium: the habitat's furniture, plus the room's player, which floats in the scene.
+  // Aquarium: the habitat's furniture. In a room the player sits on the TV's screen, so the TV is its block.
   function measureHabitat() {
     const shown = el => !el.checkVisibility || el.checkVisibility({ visibilityProperty: true });
     const ledges = [];
@@ -207,8 +207,6 @@ export function bootCats({ seed } = {}) {
       if (solid) W.solids.push(l);
       ledges.push(l);
     }
-    const stage = room && document.getElementById('stage');
-    if (stage) { const l = refresh(boxLedge(stage, true)); if (onScreen(l.rect) && l.rect.width > 120) { W.solids.push(l); ledges.push(l); } }
     W.ledges = ledges.filter(l => l.right - l.left > 34 && l.top > 40 && l.top < W.h - 70);
     for (const el of document.querySelectorAll(HABITAT_TOYS)) { const r = rectOf(el); if (onScreen(r) && shown(el)) W.toys.push({ el, rect: r }); }
   }
@@ -664,7 +662,7 @@ export function bootCats({ seed } = {}) {
     }
   }
   function stageCenter() {
-    const el = document.getElementById('stage') || document.getElementById('player-wrap');
+    const el = (W.aquarium && document.querySelector('.cat-habitat .tv-screen')) || document.getElementById('stage') || document.getElementById('player-wrap');
     if (!el) return null; const r = el.getBoundingClientRect();
     return r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2, rect: r } : null;
   }
@@ -1465,7 +1463,7 @@ export function bootCats({ seed } = {}) {
     W.particles.push({ glyph, x, y, color, size, rise, life, age: 0, vx: vx || (random() - .5) * 12 });
     if (W.particles.length > 80) W.particles.shift();
   }
-  function puff(x, y, n = 3) { for (let i = 0; i < n; i++) W.particles.push({ glyph: 'dust', x: x + (random() - .5) * 30, y: y - 4, color: '#d6c8e6', size: 6 + random() * 6, rise: 8, life: .6, age: 0, vx: (random() - .5) * 60 }); }
+  function puff(x, y, n = 3) { if (W.playing) return; for (let i = 0; i < n; i++) W.particles.push({ glyph: 'dust', x: x + (random() - .5) * 30, y: y - 4, color: '#d6c8e6', size: 6 + random() * 6, rise: 8, life: .6, age: 0, vx: (random() - .5) * 60 }); }
   function puffGlass(x, y) { for (let i = 0; i < 2; i++) particle('tap', x + (random() - .5) * 30, y - 20, { color: '#f1eaf7', size: 12, rise: 24, life: .8 }); }
   function log(text) {
     const at = new Date(); journal.push({ t: at.getTime(), text }); if (journal.length > 30) journal.shift();
@@ -2098,8 +2096,23 @@ export function bootCats({ seed } = {}) {
   }
 
   // ---------- context from the page ----------
+  // Aquarium during a video: somewhere cozy to settle that he can reach without
+  // leaving the room. Furniture marked data-nap is for sleeping and data-view
+  // faces the TV, as does the rug in front of it.
+  function cozySpot(cat, type) {
+    measure();
+    const b = cat.body, here = surfaceOf(cat); if (!here) return null;
+    const key = type === 'sleep' ? 'nap' : 'view';
+    const spots = W.ledges.filter(l => l.el.dataset?.[key] !== undefined && !sameLedge(l, here))
+      .map(l => ({ surface: l, x: safeLanding(l, lerp(l.left, l.right, .3 + random() * .4)), z: 0 })).filter(s => s.x !== null);
+    const tv = stageCenter();
+    if (key === 'view' && tv) spots.push({ surface: FLOOR, x: clamp(tv.x + (random() - .5) * 160 * S(), 60, W.w - 60), z: -20 + random() * 30 });
+    const reachable = spots.filter(s => (s.surface === FLOOR && here === FLOOR) || route(here, b.x, s.surface)?.length);
+    return reachable.length ? pick(reachable) : null;
+  }
   function* quietPlayback(cat) {
     const b = cat.body;
+    let settled = false;
     try {
       // Stay gone instead of restarting the old leave/peek/return cycle.
       if (cat.at.kind === 'away') {
@@ -2113,7 +2126,21 @@ export function bootCats({ seed } = {}) {
       while (W.playing) {
         const choice = cat.mind.choose({ ...context(cat), treat: false, laser: false });
         const type = ['sleep', 'watch', 'sit', 'loaf'].includes(choice.type) ? choice.type : 'watch';
-        cat.mind.begin(type); cat.phase = type === 'sleep' ? 'sleeping through the video' : 'watching quietly';
+        cat.mind.begin(type);
+        // In his own room Bean lives around the TV: now and then, after settling
+        // where the video found him, he wanders somewhere cozy first.
+        if (W.aquarium && !W.calm && settled && random() < .45) {
+          const spot = cozySpot(cat, type);
+          if (spot) {
+            cat.phase = 'finding a cozy spot'; b.reset({ tailUp: .5 }); b.look = null; b.face = 'open';
+            if (type !== 'sleep' && random() < .3) yield* A.stretch(cat);
+            yield* travel(cat, spot, walkSpeed(cat) * .8);
+            if (!W.playing) break;
+            if (type !== 'sleep' && random() < .35) yield* A.groom(cat);
+          }
+        }
+        settled = true;
+        cat.phase = type === 'sleep' ? 'sleeping through the video' : 'watching quietly';
         // Settle where he already is. No trip to a new perch, circling, or
         // periodic repositioning just because another rest interval began.
         b.reset(type === 'sleep' ? { curl: 1, eyes: 0, tailWrap: 1, tailWag: .02 }

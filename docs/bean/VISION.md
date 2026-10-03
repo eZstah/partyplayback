@@ -39,6 +39,11 @@ motion. While a video is playing, Bean should watch, sleep or remain offscreen,
 with no unsolicited roaming, butterflies or decorative events. Music and action
 titles do not override this. Explicit viewer play remains available; idle and
 wallpaper sessions without playback can support more theatrical antics.
+In Aquarium, his own room, the video plays on the room's TV and Bean lives
+around it like a lofi cat (Konstantin, 2026-10-03): now and then he quietly
+moves to a cozy spot, such as the sofa, the rug in front of the TV or the window
+sill, grooms, and settles again. Still no speech, butterflies, antics or
+acrobatics while it plays.
 
 ## Baseline we can build on
 

@@ -182,6 +182,33 @@ test('a big leap sizes up the jump, winds up and lands on furniture', t => {
   } finally { world.destroy(); }
 });
 
+test('in Aquarium Bean lives around the room while a video plays, quietly and on screen', t => {
+  const fixture = habitat(t, { visits: 3 });
+  fixture.perch('sofa', 'solid', 300, 640, 380, 140).dataset.view = '';
+  fixture.perch('box', 'solid', 760, 700, 140, 150).dataset.nap = '';
+  fixture.perch('console', 'shelf', 950, 690, 400, 90).dataset.view = '';
+  location.search = '?catdebug';
+  const world = bootCats({ seed: 11 }), bean = world.cats[0];
+  try {
+    world.aquarium(true); fixture.advance(500);
+    bean.at = { kind: 'floor' }; bean.body.x = 200; bean.body.z = 0;
+    document.body.dataset.playback = 'playing'; world.observe({ title: 'lofi beats', users: 1 });
+    const places = new Set();
+    for (let i = 0; i < 24000; i++) {
+      fixture.advance(50);
+      assert.ok(['sleep', 'watch', 'sit', 'loaf'].includes(bean.mind.activity), bean.mind.activity);
+      assert.notEqual(bean.at.kind, 'away', 'he stays in the room');
+      assert.equal(world.world.particles.length, 0, 'no dust or sparkles over the video');
+      assert.equal(bean.bubble, null, 'and no speech');
+      if (bean.at.kind === 'ledge') places.add(bean.at.ledge.el.id);
+    }
+    assert.ok(places.size >= 1, 'over twenty minutes he settles somewhere cozy at least once');
+    world.aquarium(false); fixture.advance(500);
+    const { x } = bean.body;
+    for (let i = 0; i < 4000; i++) { fixture.advance(50); assert.equal(bean.body.x, x, 'outside Aquarium playback stays still'); }
+  } finally { world.destroy(); }
+});
+
 test('phones use the static fallback without starting a second cat world', t => {
   const fixture = habitat(t, {}, true);
   assert.deepEqual(bootCats().cats, []);
