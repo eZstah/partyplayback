@@ -10,21 +10,25 @@ let roomName = "", resetTimer;
 
 const style = document.createElement("style");
 style.textContent = `
-  .youple-send { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px 0 6px; margin-left: 8px;
-    border: 0; border-radius: 18px; background: #c3afff; color: #181622; font: 500 14px/36px Roboto, Arial, sans-serif;
+  .youple-send { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px 0 8px; margin-left: 8px;
+    border: 0; border-radius: 18px; background: rgba(0,0,0,.05); color: #0f0f0f; font: 500 14px/36px Roboto, Arial, sans-serif;
     cursor: pointer; white-space: nowrap; flex: none; max-width: 260px; }
-  .youple-send:hover { background: #d4c6ff; }
-  .youple-send:disabled { cursor: default; opacity: .8; }
-  .youple-send img { width: 24px; height: 24px; border-radius: 6px; }
+  html[dark] .youple-send { background: rgba(255,255,255,.1); color: #f1f1f1; }
+  .youple-send:hover { background: rgba(0,0,0,.1); }
+  html[dark] .youple-send:hover { background: rgba(255,255,255,.2); }
+  .youple-send:disabled { cursor: default; }
+  .youple-send img { width: 22px; height: 22px; border-radius: 6px; }
   .youple-send span { overflow: hidden; text-overflow: ellipsis; }
-  .youple-thumb { position: fixed; max-width: 220px; white-space: nowrap; z-index: 2147483001; display: inline-flex; align-items: center; gap: 4px; height: 28px;
-    padding: 0 10px 0 3px; border: 0; border-radius: 14px; background: #c3afff; color: #181622; cursor: pointer;
-    font: 500 13px/28px Roboto, Arial, sans-serif; box-shadow: 0 2px 10px rgba(0,0,0,.45); }
-  .youple-thumb:hover { background: #d4c6ff; }
+  .youple-thumb { position: fixed; z-index: 2147483001; display: inline-flex; align-items: center; height: 32px; min-width: 32px;
+    padding: 0 4px; gap: 6px; border: 0; border-radius: 8px; background: rgba(0,0,0,.72); color: #fff; cursor: pointer;
+    font: 500 12px/32px Roboto, Arial, sans-serif; white-space: nowrap; max-width: 220px; }
   .youple-thumb[hidden] { display: none; }
-  .youple-thumb span { overflow: hidden; text-overflow: ellipsis; }
-  .youple-thumb img { width: 22px; height: 22px; border-radius: 6px; }
-  .youple-send.is-floating { position: fixed; right: 20px; bottom: 20px; z-index: 2147483000; margin: 0; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+  .youple-thumb img { width: 24px; height: 24px; border-radius: 6px; flex: none; }
+  .youple-thumb span { display: none; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; }
+  .youple-thumb:hover span, .youple-thumb.is-busy span { display: inline; }
+  .youple-thumb:hover { background: rgba(0,0,0,.88); }
+  .youple-send.is-floating, html[dark] .youple-send.is-floating { position: fixed; right: 20px; bottom: 20px; z-index: 2147483000; margin: 0;
+    background: #272727; color: #f1f1f1; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
 `;
 document.documentElement.append(style);
 
@@ -63,52 +67,60 @@ button.addEventListener("click", async () => {
   resetTimer = setTimeout(idle, 3000);
 });
 
-// One shared thumbnail button, moved to whichever video thumbnail the mouse is over.
+// One shared thumbnail button in the top-left corner of whichever video thumbnail is under the
+// mouse. It looks through every layer at the pointer, so YouTube's hover preview can't hide it.
 const thumb = document.createElement("button");
 thumb.type = "button";
 thumb.className = "youple-thumb";
 thumb.hidden = true;
 thumb.innerHTML = `<img alt="" src="${chrome.runtime.getURL("icons/32.png")}"><span></span>`;
 const thumbLabel = thumb.querySelector("span");
-let thumbLink = null, thumbBusy = false, thumbTimer;
+let thumbLink = null, thumbBusy = false, pointer = null, pending = false;
 
-function videoAnchor(target) {
-  const link = target?.closest?.("a[href]");
-  if (!link || !/^\/(watch\?|shorts\/|live\/)/.test(link.getAttribute("href").replace(/^https:\/\/www\.youtube\.com/, ""))) return null;
-  const box = link.getBoundingClientRect();
-  return box.width >= 120 && box.height >= 68 ? link : null; // a thumbnail or preview, not a title
+function videoLinkAt(x, y) {
+  for (const element of document.elementsFromPoint(x, y)) {
+    if (thumb.contains(element)) continue;
+    const link = element.closest?.("a[href]");
+    if (!link || !/^\/(watch\?|shorts\/|live\/)/.test(link.getAttribute("href").replace(/^https:\/\/www\.youtube\.com/, ""))) continue;
+    const box = link.getBoundingClientRect();
+    if (box.width >= 120 && box.height >= 68) return link; // a thumbnail or preview, not a title
+  }
+  return null;
 }
-function showThumb(link) {
-  clearTimeout(thumbTimer);
-  if (thumbBusy || (link === thumbLink && !thumb.hidden)) return;
+function inside(box, x, y) { return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom; }
+function thumbText() {
+  thumbLabel.textContent = roomName ? "Send to " + roomName : "Open a youple room first";
+  thumb.setAttribute("aria-label", thumbLabel.textContent);
+}
+function track() {
+  pending = false;
+  if (thumbBusy || !pointer) return;
+  const over = inside(thumb.getBoundingClientRect(), pointer.x, pointer.y) && !thumb.hidden;
+  const link = over ? thumbLink : videoLinkAt(pointer.x, pointer.y);
+  if (!link?.isConnected) { thumb.hidden = true; thumbLink = null; return; }
+  if (link !== thumbLink) thumbText();
   thumbLink = link;
   const box = link.getBoundingClientRect();
   thumb.style.left = box.left + 8 + "px";
   thumb.style.top = box.top + 8 + "px";
-  thumbLabel.textContent = roomName ? "Send to " + roomName : "Send to youple";
-  thumb.title = roomName ? "Add to the playlist in " + roomName : "Open a youple.tv room first, then send videos to it";
   if (!thumb.isConnected) document.body.append(thumb);
   thumb.hidden = false;
 }
-function hideThumb(now) {
-  if (thumbBusy) return;
-  clearTimeout(thumbTimer);
-  thumbTimer = setTimeout(() => { thumb.hidden = true; thumbLink = null; }, now ? 0 : 150);
-}
-document.addEventListener("mouseover", event => {
-  if (thumb.contains(event.target)) { clearTimeout(thumbTimer); return; }
-  const link = videoAnchor(event.target);
-  if (link) showThumb(link); else hideThumb();
-}, true);
-document.addEventListener("scroll", () => hideThumb(true), true);
+function schedule() { if (!pending) { pending = true; requestAnimationFrame(track); } }
+document.addEventListener("pointermove", event => { pointer = { x: event.clientX, y: event.clientY }; schedule(); }, { passive: true });
+document.addEventListener("scroll", schedule, { capture: true, passive: true });
+document.documentElement.addEventListener("pointerleave", () => { pointer = null; if (!thumbBusy) thumb.hidden = true; });
+// Keep YouTube from treating our click as a click on the video.
+for (const type of ["pointerdown", "mousedown", "mouseup"]) thumb.addEventListener(type, event => event.stopPropagation());
 thumb.addEventListener("click", async event => {
   event.preventDefault();
   event.stopPropagation();
   if (!thumbLink || thumbBusy) return;
   thumbBusy = true;
+  thumb.classList.add("is-busy");
   thumbLabel.textContent = "Sending…";
   thumbLabel.textContent = await sendVideo(thumbLink.href);
-  setTimeout(() => { thumbBusy = false; hideThumb(true); }, 1800);
+  setTimeout(() => { thumbBusy = false; thumb.classList.remove("is-busy"); thumbText(); schedule(); }, 1800);
 });
 
 chrome.storage.local.get("lastRoom").then(({ lastRoom }) => { roomName = lastRoom?.name || ""; idle(); });
