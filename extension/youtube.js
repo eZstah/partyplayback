@@ -1,5 +1,5 @@
 // Adds a "Send to <room>" button to YouTube video pages, next to the channel's Subscribe button,
-// and a small one on any video thumbnail under the mouse.
+// a round one in the Like/Share column on Shorts, and a small one on any video thumbnail under the mouse.
 const VIDEO_PAGE = /^\/(watch|shorts\/|live\/)/;
 const button = document.createElement("button");
 button.type = "button";
@@ -7,6 +7,12 @@ button.className = "youple-send";
 button.innerHTML = `<img alt="" src="${chrome.runtime.getURL("icons/32.png")}"><span></span>`;
 const label = button.querySelector("span");
 let roomName = "", resetTimer;
+const short = document.createElement("button");
+short.type = "button";
+short.className = "youple-short";
+short.innerHTML = `<span class="youple-short-icon"><img alt="" src="${chrome.runtime.getURL("icons/32.png")}"></span><span class="youple-short-label">youple</span>`;
+const shortLabel = short.querySelector(".youple-short-label");
+let shortTimer;
 
 const style = document.createElement("style");
 style.textContent = `
@@ -27,6 +33,14 @@ style.textContent = `
   .youple-thumb span { display: none; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; }
   .youple-thumb:hover span, .youple-thumb.is-busy span { display: inline; }
   .youple-thumb:hover { background: rgba(0,0,0,.88); }
+  .youple-short { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0 0 16px; padding: 0; border: 0;
+    background: none; color: #0f0f0f; font: 500 14px/20px Roboto, Arial, sans-serif; cursor: pointer; }
+  html[dark] .youple-short { color: #f1f1f1; }
+  .youple-short-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: rgba(0,0,0,.05); }
+  html[dark] .youple-short-icon { background: rgba(255,255,255,.1); }
+  .youple-short:hover .youple-short-icon { background: rgba(0,0,0,.1); }
+  html[dark] .youple-short:hover .youple-short-icon { background: rgba(255,255,255,.2); }
+  .youple-short img { width: 26px; height: 26px; border-radius: 7px; }
   .youple-send.is-floating, html[dark] .youple-send.is-floating { position: fixed; right: 20px; bottom: 20px; z-index: 2147483000; margin: 0;
     background: #272727; color: #f1f1f1; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
 `;
@@ -36,10 +50,27 @@ function idle() {
   button.disabled = false;
   label.textContent = roomName ? "Send to " + roomName : "Send to youple";
   button.title = roomName ? "Add this video to the playlist in " + roomName : "Open a youple.tv room first, then send videos to it";
+  short.title = roomName ? "Send to " + roomName : button.title;
+  short.setAttribute("aria-label", short.title);
+}
+
+// The Like/Share column of the Short that's playing, in the layouts known so far.
+function shortsActions() {
+  const reel = document.querySelector("ytd-reel-video-renderer[is-active]");
+  return reel?.querySelector("reel-action-bar-view-model, #actions") || null;
 }
 
 function place() {
-  if (!VIDEO_PAGE.test(location.pathname)) { button.remove(); return; }
+  if (!VIDEO_PAGE.test(location.pathname)) { button.remove(); short.remove(); return; }
+  const actions = location.pathname.startsWith("/shorts/") ? shortsActions() : null;
+  if (actions) {
+    button.remove();
+    // Above the last item, which is the sound or channel thumbnail.
+    const before = actions.lastElementChild === short ? short.previousElementSibling : actions.lastElementChild;
+    if (short.parentElement !== actions || short.nextElementSibling !== before) actions.insertBefore(short, before);
+    return;
+  }
+  short.remove();
   // YouTube keeps the hidden watch page around while Shorts play.
   const spot = location.pathname === "/watch" ? document.querySelector("ytd-watch-metadata #owner") : null;
   if (spot) {
@@ -65,6 +96,17 @@ button.addEventListener("click", async () => {
   label.textContent = "Sending…";
   label.textContent = await sendVideo(location.href);
   resetTimer = setTimeout(idle, 3000);
+});
+
+short.addEventListener("click", async event => {
+  event.stopPropagation();
+  clearTimeout(shortTimer);
+  short.disabled = true;
+  shortLabel.textContent = "Sending…";
+  const message = await sendVideo(location.href);
+  shortLabel.textContent = message.startsWith("Added") ? "Added ✓" : "Not sent";
+  short.title = message;
+  shortTimer = setTimeout(() => { short.disabled = false; shortLabel.textContent = "youple"; idle(); }, 2500);
 });
 
 // One shared thumbnail button in the top-left corner of whichever video thumbnail is under the
