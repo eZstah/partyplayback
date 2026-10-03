@@ -28,7 +28,7 @@ function habitat(t, saved = {}, phone = false, reduced = false) {
       getBoundingClientRect: () => ({ left: 200, top: 100, right: 1000, bottom: 550, width: 800, height: 450 }),
     };
   };
-  const nodes = new Map(), surfaces = [], perches = [], get = id => { if (!nodes.has(id)) nodes.set(id, { ...node(), id }); return nodes.get(id); };
+  const nodes = new Map(), queries = new Map(), surfaces = [], perches = [], get = id => { if (!nodes.has(id)) nodes.set(id, { ...node(), id }); return nodes.get(id); };
   get('cat-universe').hidden = true;
   get('cat-panel').hidden = true;
   const menu = get('cat-panel'), menuButtons = ['cat-hello-btn', 'cat-treat-btn', 'cat-laser-btn', 'cat-calm-dock'].map(get);
@@ -46,7 +46,7 @@ function habitat(t, saved = {}, phone = false, reduced = false) {
         : sel === '#cat-universe [data-perch]' ? perches : [],
       querySelector: sel => sel === '.create-room-button' ? get('create') : null },
     window: node(), innerWidth: 1440, innerHeight: 900, devicePixelRatio: 1,
-    matchMedia: query => ({ matches: phone && query.includes('760px') || reduced && query.includes('reduced-motion') }),
+    matchMedia: query => { if (!queries.has(query)) queries.set(query, { ...node(), get matches() { return phone && query.includes('760px') || reduced && query.includes('reduced-motion'); } }); return queries.get(query); },
     getComputedStyle: () => ({ fontFamily: 'sans-serif' }),
     localStorage: { getItem: () => memory, setItem: (_, value) => { memory = value; } },
     location: { search: '', href: 'https://example.test/' },
@@ -79,6 +79,8 @@ function habitat(t, saved = {}, phone = false, reduced = false) {
     },
     advance(ms) { clock += ms; const pending = [...frames.values()]; frames.clear(); pending.forEach(fn => fn(clock)); },
     visibility(hidden) { document.hidden = hidden; document.emit('visibilitychange'); },
+    // Resize the window across the phone breakpoint.
+    phone(on) { phone = on; for (const query of queries.values()) query.emit('change'); },
   };
 }
 
@@ -119,6 +121,24 @@ test('returning visitors keep Bean memory without reviving the other cats', t =>
   } finally { world.destroy(); }
   assert.equal(fixture.memory().cats.black.trust, 72);
   assert.equal(fixture.memory().cats.mint.trust, 31, 'dormant memories are preserved');
+});
+
+test('narrowing the window to phone width leaves Aquarium and frees the page', t => {
+  const fixture = habitat(t);
+  const world = bootCats();
+  try {
+    world.aquarium(true);
+    assert.equal(fixture.get('home').inert, true);
+    fixture.phone(true);
+    assert.equal(world.world.aquarium, false, 'the dock is hidden at phone width, so Aquarium ends');
+    assert.equal(fixture.get('home').inert, false);
+    assert.equal(fixture.get('footer').inert, false);
+    assert.equal(fixture.get('cat-aquarium-btn').getAttribute('aria-pressed'), 'false');
+    fixture.phone(false);
+    assert.equal(world.world.aquarium, false, 'widening again keeps the normal page');
+    world.aquarium(true);
+    assert.equal(world.world.aquarium, true, 'Aquarium still opens after widening');
+  } finally { world.destroy(); }
 });
 
 test('a returning visitor finds Bean resting where it was, not walking across the page', t => {
