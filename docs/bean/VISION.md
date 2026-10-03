@@ -57,7 +57,7 @@ The local single-Bean implementation already includes:
 | Viewer play | Petting, booping, carrying, treats, laser, cursor reactions and a calm control. |
 | Context | Playback state, video-title hints and page events such as a copied invite or a new viewer. |
 | Continuity | Browser-local trust, interaction counts, visits, settings and a short diary. |
-| Presentation | One active black cat, a plain logo, a compact right-click/paw menu and separate Aquarium button. Desktop roaming; static black-cat fallback on phones/touch-first screens. |
+| Presentation | One active black cat, a plain logo, a compact right-click/paw menu and separate Aquarium button. Desktop roaming; a still picture of Bean (rendered from his rig, no engine) on phones/touch-first screens. |
 | Verification | Pure mind/rig tests and a minimal DOM fixture for world startup, single-resident behavior, page events and saved memory. |
 
 These are implemented features, not a claim that their animation quality or

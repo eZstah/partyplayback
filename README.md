@@ -268,8 +268,9 @@ furniture, and stays quiet while a video plays. **Full screen** fills the whole
 screen with the room. **Back to site** or **Back to room** leaves it, and so
 does narrowing the window to phone width.
 
-The roaming cat is desktop only. Phones and touch-first screens show one
-static black cat instead.
+The roaming cat is desktop only. Phones and touch-first screens show a still
+picture of Bean instead (no engine), rendered from his rig by
+`scripts/render-bean-mascot.mjs` into `public/bean/`.
 
 Video context comes from the current title and playback state only. It does not
 listen to audio or inspect frames. Cat interactions are local to each viewer.

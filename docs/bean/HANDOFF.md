@@ -31,6 +31,16 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## Phone Bean looks like Bean (Claude)
+
+Konstantin noticed the phone cat did not look like Bean, and asked for Bean's
+looks without his engine on phones. The black page mascot (phones, touch-first
+screens, the 404 page) is now a picture rendered from Bean's rig, sitting and
+facing you: `public/bean/mascot-open.png`, plus `mascot-happy.png` on tap.
+`mascot.css` hides the old SVG artwork for `.mascot.black` and shows the
+picture. Re-render after changing Bean's look with
+`BEAN_RENDER_MODULES=<node_modules with @napi-rs/canvas> node scripts/render-bean-mascot.mjs`.
+
 ## Screensaver, full screen and Hide Bean (Claude)
 
 Konstantin asked to rename Aquarium to Screensaver, to add a full screen button

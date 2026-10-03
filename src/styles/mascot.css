@@ -111,3 +111,12 @@
 .room-pal:not(.corner-pal) .cat-head { transform-origin: 90px 123px; }
 .room-pal .mascot { cursor: pointer; border-radius: 16px; }
 .cat-art { pointer-events: none; }
+
+/* Bean's looks without his engine: where the living cat does not run (phones,
+   touch-first screens, the 404 page) the black mascot is a picture of Bean
+   rendered from his rig by scripts/render-bean-mascot.mjs. */
+.mascot.black .mascot-rig { background: url(/bean/mascot-open.png) 50% 100% / contain no-repeat; }
+.mascot.black .cat-art { visibility: hidden; }
+.mascot.black:active .mascot-rig,
+.mascot.black[data-face=joy] .mascot-rig,
+.mascot.black[data-face=sparkle] .mascot-rig { background-image: url(/bean/mascot-happy.png); }
