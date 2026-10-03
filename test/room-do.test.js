@@ -689,3 +689,122 @@ test("SponsorBlock lookups send only a hash prefix and keep skip segments for th
     globalThis.fetch = original;
   }
 });
+
+async function memberRoom() {
+  const env = {};
+  const { room, ctx, saved, sockets } = await setup(env);
+  sockets.length = 0;
+  await room.fetch(new Request("https://room.internal/initialize", { method: "POST", body: JSON.stringify({ slug: "m-test", mode: "member", ownerId: "owner" }) }));
+  const forgotten = [];
+  env.ROOM = { idFromName: name => name, get: name => ({ fetch: async (url, init) => { forgotten.push([name, init.method, JSON.parse(init.body).slug]); return Response.json([]); } }) };
+  return { room, ctx, saved, sockets, forgotten };
+}
+
+test("the owner of a saved room can remove someone, who stays out until let back in", async () => {
+  const { room, sockets, forgotten } = await memberRoom();
+  // WebSocketPair isn't available in Node, so sockets are attached directly.
+  const join = async (userId, name) => {
+    const ws = socket();
+    ws.serializeAttachment({ joined: false, userId, verifiedName: name });
+    sockets.push(ws);
+    await room.webSocketMessage(ws, JSON.stringify({ type: "join", sessionId: "s-" + userId }));
+    return ws;
+  };
+  const owner = await join("owner", "Olga");
+  const troll = await join("troll", "Trent");
+  const friend = await join("friend", "Fay");
+  const roster = owner.messages.at(-1);
+  assert.equal(roster.host, true);
+  assert.equal(roster.deletable, true);
+  assert.deepEqual(roster.blocked, []);
+  assert.equal(troll.messages.at(-1).host, false);
+  assert.equal(troll.messages.at(-1).blocked, undefined);
+  assert.deepEqual(friend.messages.at(-1).members.map(person => person.host), [true, false, false]);
+
+  const trollPeer = troll.attachment.peerId;
+  await room.webSocketMessage(friend, JSON.stringify({ type: "remove-person", peerId: trollPeer }));
+  assert.equal(friend.messages.at(-1).type, "error");
+  await room.webSocketMessage(troll, JSON.stringify({ type: "remove-person", peerId: owner.attachment.peerId }));
+  assert.ok(owner.attachment.joined, "nobody can remove the host");
+
+  await room.webSocketMessage(owner, JSON.stringify({ type: "remove-person", peerId: trollPeer }));
+  assert.equal(troll.messages.at(-1).type, "removed");
+  assert.equal(troll.attachment, null);
+  assert.deepEqual(forgotten, [["account:troll", "DELETE", "m-test"]]);
+  const after = owner.messages.at(-1);
+  assert.deepEqual(after.members.map(person => person.name), ["Olga", "Fay"]);
+  assert.deepEqual(after.blocked.map(entry => entry.name), ["Trent"]);
+  assert.ok(!JSON.stringify(after).includes("troll"), "account ids stay on the server");
+
+  const back = await join("troll", "Trent");
+  assert.equal(back.messages.at(-1).type, "removed");
+  assert.equal(back.attachment, null);
+
+  const restored = new RoomDO(room.ctx, room.env);
+  await restored.ready;
+  assert.equal(restored.blocked.length, 1, "removals survive hibernation");
+
+  await room.webSocketMessage(friend, JSON.stringify({ type: "unblock", id: after.blocked[0].id }));
+  assert.equal(room.blocked.length, 1);
+  await room.webSocketMessage(owner, JSON.stringify({ type: "unblock", id: after.blocked[0].id }));
+  assert.equal(room.blocked.length, 0);
+  const again = await join("troll", "Trent");
+  assert.equal(again.attachment.joined, true);
+});
+
+test("the browser that made a quick room hosts it, and a removed guest's browser stays out", async () => {
+  const { room, ctx, sockets } = await setup();
+  await room.fetch(new Request("https://room.internal/initialize", { method: "POST", body: JSON.stringify({ slug: "g-test", mode: "guest", hostKey: "secret-key" }) }));
+  assert.equal((await (await room.fetch(new Request("https://room.internal/info"))).json()).hostKey, undefined, "the key itself is never stored");
+  sockets.length = 0;
+  const join = async (data) => {
+    const ws = socket();
+    sockets.push(ws);
+    await room.webSocketMessage(ws, JSON.stringify({ type: "join", ...data }));
+    return ws;
+  };
+  const host = await join({ username: "Hana", sessionId: "tab-h", browserId: "browser-h", hostKey: "secret-key" });
+  const faker = await join({ username: "Faker", sessionId: "tab-f", browserId: "browser-f", hostKey: "guess" });
+  const guest = await join({ username: "Gus", sessionId: "tab-g1", browserId: "browser-g" });
+  const guestTab = await join({ username: "Gus", sessionId: "tab-g2", browserId: "browser-g" });
+  assert.equal(host.messages.at(-1).host, true);
+  assert.equal(host.messages.at(-1).deletable, false);
+  assert.equal(faker.messages.at(-1).host, false);
+
+  const restored = new RoomDO(ctx, {});
+  await restored.ready;
+  assert.equal(restored._isHost(host.attachment), true, "hosting survives hibernation");
+
+  await room.webSocketMessage(host, JSON.stringify({ type: "remove-person", peerId: guest.attachment.peerId }));
+  assert.equal(guest.messages.at(-1).type, "removed");
+  assert.equal(guestTab.messages.at(-1).type, "removed", "every tab of that browser leaves");
+  const sneaky = await join({ username: "Gus2", sessionId: "tab-g3", browserId: "browser-g" });
+  assert.equal(sneaky.attachment, null);
+  assert.equal(host.attachment.joined, true);
+  assert.equal(faker.attachment.joined, true);
+});
+
+test("deleting a room closes it for everyone and clears it", async () => {
+  const { room, saved, sockets, add } = await setup();
+  await room.fetch(new Request("https://room.internal/initialize", { method: "POST", body: JSON.stringify({ slug: "m-test", mode: "member", ownerId: "owner" }) }));
+  await add();
+  const response = await room.fetch(new Request("https://room.internal/delete", { method: "POST" }));
+  assert.equal(response.status, 200);
+  for (const ws of sockets) {
+    assert.equal(ws.messages.at(-1).type, "closed");
+    assert.equal(ws.attachment, null);
+  }
+  assert.equal(saved.size, 0);
+  assert.equal(await (await room.fetch(new Request("https://room.internal/info"))).json(), null);
+  assert.equal(room.state.queue.length, 0);
+});
+
+test("saved and joined room lists forget a room", async () => {
+  const { room } = await setup();
+  const call = (path, method, body) => room.fetch(new Request("https://room.internal/" + path, { method, body: JSON.stringify(body) }));
+  await call("catalog", "POST", { slug: "m-one" });
+  await call("catalog", "POST", { slug: "m-two" });
+  assert.deepEqual((await (await call("catalog", "DELETE", { slug: "m-one" })).json()).map(item => item.slug), ["m-two"]);
+  await call("joined", "POST", { slug: "m-friend" });
+  assert.deepEqual(await (await call("joined", "DELETE", { slug: "m-friend" })).json(), []);
+});

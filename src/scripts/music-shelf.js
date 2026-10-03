@@ -4,6 +4,8 @@
 // radios: they don't share the room's bounded timeline.
 // checked: the date a video was confirmed to embed and play. Run
 // `node scripts/check-records.mjs` to recheck them all.
+import { saveHostKey } from "./host-key.js";
+
 export const MUSIC_MIXES = [
   { key: 'ambient', label: 'Ambient', detail: 'Slow down', videos: [
     { id: 'fQ35eh6k0RI', title: 'Lofi Girl · deep sleep music with purring sounds — 8 hours of ambient mix', checked: '2026-10-03' },
@@ -173,6 +175,7 @@ export function mountHomeMusicShelf(root) {
         const response = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'guest' }), signal: AbortSignal.timeout(10000) });
         const data = await response.json();
         if (!response.ok || !/^\/room\/[a-zA-Z0-9_-]{1,64}$/.test(data.url)) throw new Error('create');
+        saveHostKey(data.url, data.hostKey);
         location.assign(data.url + '?wallpaper=1&mix=' + encodeURIComponent(button.dataset.musicMix));
       } catch {
         creating = false;

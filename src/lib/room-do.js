@@ -25,6 +25,9 @@ export class RoomDO {
       const saved = await ctx.storage.get("room");
       if (saved) this.state = { ...this.state, ...saved };
       this.details = await ctx.storage.get("details") || null;
+      // People the host removed. Accounts stay out; guests are known only by their tab session.
+      this.blocked = await ctx.storage.get("blocked") || [];
+      this.hostHash = await ctx.storage.get("hostHash") || null;
       // Rooms from before skip alarms existed keep a full TTL from their next wake.
       this.expiresAt = await ctx.storage.get("expiresAt") || Date.now() + RoomDO.GUEST_ROOM_TTL;
     });
@@ -38,16 +41,38 @@ export class RoomDO {
       if (url.pathname === "/info") return Response.json(this.details);
       if (url.pathname === "/initialize" && request.method === "POST") {
         if (this.details) return new Response("Room exists", { status: 409 });
-        this.details = await request.json();
+        const { hostKey, ...details } = await request.json();
+        this.details = details;
         await this.ctx.storage.put("details", this.details);
+        // A quick room's creator proves they are its host with a key only their browser holds.
+        if (typeof hostKey === "string") {
+          this.hostHash = await RoomDO.hash(hostKey);
+          await this.ctx.storage.put("hostHash", this.hostHash);
+        }
         await this._keepAlive();
         return Response.json({ ok: true });
       }
+      if (url.pathname === "/delete" && request.method === "POST") {
+        for (const ws of this.ctx.getWebSockets()) this._hangUp(ws, "closed");
+        await this.ctx.storage.deleteAll();
+        await this.ctx.storage.deleteAlarm();
+        this.alarmAt = undefined;
+        this.details = null;
+        this.blocked = [];
+        this.hostHash = null;
+        this.state = RoomDO.initialState();
+        return Response.json({ ok: true });
+      }
       if (url.pathname === "/catalog") {
-        const rooms = await this.ctx.storage.get("catalog") || [];
+        let rooms = await this.ctx.storage.get("catalog") || [];
         if (request.method === "POST") {
           const room = await request.json();
           if (!rooms.some(item => item.slug === room.slug) && rooms.length < 50) rooms.unshift(room);
+          await this.ctx.storage.put("catalog", rooms);
+        }
+        if (request.method === "DELETE") {
+          const { slug } = await request.json();
+          rooms = rooms.filter(item => item.slug !== slug);
           await this.ctx.storage.put("catalog", rooms);
         }
         return Response.json(rooms);
@@ -58,6 +83,11 @@ export class RoomDO {
         if (request.method === "POST") {
           const room = await request.json();
           rooms = [room, ...rooms.filter(item => item.slug !== room.slug)].slice(0, 20);
+          await this.ctx.storage.put("joined", rooms);
+        }
+        if (request.method === "DELETE") {
+          const { slug } = await request.json();
+          rooms = rooms.filter(item => item.slug !== slug);
           await this.ctx.storage.put("joined", rooms);
         }
         return Response.json(rooms);
@@ -75,6 +105,11 @@ export class RoomDO {
       joined: false, userId, verifiedName: decodeURIComponent(request.headers.get("X-Party-Name") || "Member"),
       avatar: this._avatar(request.headers.get("X-Party-Avatar")),
     });
+    // The socket still opens so the page can say why, instead of reconnecting forever.
+    if (userId && this._isBlocked({ userId })) {
+      this._hangUp(server, "removed");
+      return new Response(null, { status: 101, webSocket: client, headers: { "X-Party-Removed": "1" } });
+    }
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -91,12 +126,18 @@ export class RoomDO {
 
     if (data.type === "join") {
       const identity = ws.deserializeAttachment();
+      const session = identity?.sessionId || (typeof data.sessionId === "string" ? data.sessionId.slice(0, 64) : null);
+      const browserId = identity?.browserId || (typeof data.browserId === "string" ? data.browserId.slice(0, 64) : null);
+      if (this._isBlocked({ userId: identity?.userId, sessionId: session, browserId })) return this._dismiss(ws, "removed");
+      const guestHost = identity?.guestHost || (!!this.hostHash && typeof data.hostKey === "string" && data.hostKey.length <= 128 &&
+        await RoomDO.hash(data.hostKey) === this.hostHash);
       ws.serializeAttachment({
         ...identity,
         joined: true, userId: identity?.userId, verifiedName: identity?.verifiedName, avatar: identity?.avatar || null,
         peerId: identity?.peerId || crypto.randomUUID(),
         username: identity?.verifiedName || (typeof data.username === "string" ? data.username : "Guest").slice(0, 32) || "Guest",
         sessionId: identity?.sessionId || (typeof data.sessionId === "string" ? data.sessionId : crypto.randomUUID()).slice(0, 64),
+        browserId, guestHost,
         joinedAt: identity?.joinedAt || Date.now(),
       });
       this._sendState(ws, data.requestId);
@@ -110,6 +151,8 @@ export class RoomDO {
       return;
     }
     if (typeof data.type === "string" && data.type.startsWith("share-")) return this._shareMessage(ws, data);
+    if (data.type === "remove-person") return this._removePerson(ws, data.peerId);
+    if (data.type === "unblock") return this._unblock(ws, data.id);
     // A shared tab owns the stage. Keep the YouTube timeline paused until it ends,
     // including commands from older clients or viewers in Aquarium.
     if (this._share() && ["play", "pause", "seek", "select", "next", "ended"].includes(data.type)) return this._sendState(ws);
@@ -328,10 +371,9 @@ export class RoomDO {
   }
 
   _snapshot(requestId, ws) {
-    const members = this._people(ws);
     return {
       ...this.state, type: "state", currentTime: this._time(),
-      serverTime: Date.now(), userCount: members.length, members,
+      serverTime: Date.now(), ...this._roster(ws),
       peerId: ws?.deserializeAttachment()?.peerId, share: this._share(),
       ...(typeof requestId === "string" ? { requestId: requestId.slice(0, 64) } : {}),
     };
@@ -349,7 +391,7 @@ export class RoomDO {
       if (person && person.joinedAt <= member.joinedAt) continue;
       people.set(key, {
         joinedAt: member.joinedAt || 0, name: member.username, avatar: member.avatar || null,
-        member: !!member.userId,
+        member: !!member.userId, host: this._isHost(member), peerId: member.peerId,
         you: !!own && (member.userId ? member.userId === own.userId : member.sessionId === own.sessionId),
       });
     }
@@ -368,10 +410,80 @@ export class RoomDO {
   _members() { return this.ctx.getWebSockets().filter(ws => ws.deserializeAttachment()?.joined); }
   _broadcast(data) { for (const ws of this._members()) this._send(ws, typeof data === "function" ? data(ws) : data); }
   _broadcastUsers() {
-    this._broadcast(ws => {
-      const members = this._people(ws);
-      return { type: "users", userCount: members.length, members };
-    });
+    this._broadcast(ws => ({ type: "users", ...this._roster(ws) }));
+  }
+
+  // Who is here, plus the host's own tools: whether you are the host and whom you removed.
+  _roster(ws) {
+    const members = this._people(ws);
+    const host = this._isHost(ws?.deserializeAttachment());
+    return {
+      userCount: members.length, members, host,
+      ...(host ? { blocked: this.blocked.map(({ id, name }) => ({ id, name })), deletable: this.details?.mode === "member" } : {}),
+    };
+  }
+
+  // The account that saved a room hosts it; a quick room is hosted by the browser that made it.
+  _isHost(person) {
+    if (!person) return false;
+    if (this.details?.mode === "member") return !!person.userId && person.userId === this.details.ownerId;
+    return !!person.guestHost;
+  }
+
+  _samePerson(a, b) {
+    return a.userId ? a.userId === b.userId : !b.userId && !!a.sessionId && a.sessionId === b.sessionId;
+  }
+
+  // Accounts stay out for good. Guests are matched by tab and browser, which clearing site data gets around.
+  _isBlocked(person) {
+    return this.blocked.some(entry => person.userId ? entry.userId === person.userId
+      : (!!entry.sessionId && entry.sessionId === person.sessionId) || (!!entry.browserId && entry.browserId === person.browserId));
+  }
+
+  static async hash(value) {
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+    return [...digest].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  // Tells a socket why it is being closed and drops it from the room. Returns who it was.
+  _hangUp(ws, reason) {
+    const leaving = ws.deserializeAttachment();
+    this._send(ws, { type: reason });
+    ws.serializeAttachment(null);
+    try { ws.close(4000, reason === "closed" ? "Room deleted" : "Removed by the host"); } catch {}
+    return leaving;
+  }
+
+  _dismiss(ws, reason) { return this._shareDeparted(this._hangUp(ws, reason)); }
+
+  async _removePerson(ws, peerId) {
+    const me = ws.deserializeAttachment();
+    if (!this._isHost(me)) return this._error(ws, "Only the host can remove people");
+    const target = this._members().map(socket => socket.deserializeAttachment()).find(person => person.peerId === peerId);
+    if (!target || this._samePerson(target, me) || this._isHost(target)) return;
+    const entry = { id: crypto.randomUUID(), name: target.username, at: Date.now(),
+      ...(target.userId ? { userId: target.userId } : { sessionId: target.sessionId, browserId: target.browserId || null }) };
+    this.blocked = [entry, ...this.blocked.filter(item => !this._samePerson(item, entry))].slice(0, 100);
+    await this.ctx.storage.put("blocked", this.blocked);
+    for (const socket of this._members()) {
+      const person = socket.deserializeAttachment();
+      if (!this._isHost(person) && this._isBlocked(person)) await this._dismiss(socket, "removed");
+    }
+    // The room no longer belongs in their list of joined rooms.
+    if (target.userId && this.env.ROOM) {
+      const account = this.env.ROOM.get(this.env.ROOM.idFromName("account:" + target.userId));
+      await account.fetch("https://room.internal/joined", { method: "DELETE", body: JSON.stringify({ slug: this.details?.slug }) }).catch(() => {});
+    }
+    this._broadcastUsers();
+  }
+
+  async _unblock(ws, id) {
+    if (!this._isHost(ws.deserializeAttachment())) return this._error(ws, "Only the host can let people back in");
+    const blocked = this.blocked.filter(entry => entry.id !== id);
+    if (blocked.length === this.blocked.length) return;
+    this.blocked = blocked;
+    await this.ctx.storage.put("blocked", this.blocked);
+    this._broadcastUsers();
   }
 
   async webSocketClose(ws, code, reason) {

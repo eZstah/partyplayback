@@ -42,7 +42,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 
       <section class="profile-section">
         <h2>Your rooms</h2>
-        {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={20}/><span>{room.title}</span><em>{room.joined ? 'Joined' : 'Open'}</em></a></li>)}</ul> : <p class="muted">No rooms yet. Save one from the home page, or join a friend's.</p>}
+        {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={20}/><span>{room.title}</span><em>{room.joined ? 'Joined' : 'Open'}</em></a><button class="room-forget" type="button" data-room={room.slug} data-title={room.title} data-joined={String(room.joined)}>{room.joined ? 'Leave' : 'Delete'}</button></li>)}</ul> : <p class="muted">No rooms yet. Save one from the home page, or join a friend's.</p>}
       </section>
     </div>
     <button id="sign-out" class="sign-out" type="button">Sign out</button>
@@ -72,15 +72,33 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
     .profile-card .form-message { color: #61536b; margin-top: 10px; font-size: 15px; min-height: 0; }
     .profile-card .form-message:empty { display: none; }
     .room-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0,1fr); gap: 6px; }
-    .room-list a { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; border-radius: 16px; background: #ebe4d8; color: #6d55b8; }
+    .room-list li { display: flex; align-items: center; gap: 6px; }
+    .room-list a { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; border-radius: 16px; background: #ebe4d8; color: #6d55b8; }
     .room-list a:hover { background: #e3d9ea; }
     .room-list span { flex: 1; min-width: 0; color: #322b41; font-size: 17px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .room-forget { flex: none; background: transparent; border: 0; cursor: pointer; min-height: 52px; padding: 0 14px; border-radius: 16px; color: #8a4a5c; font: inherit; font-size: 15px; font-weight: 700; }
+    .room-forget:hover, .room-forget:focus-visible { background: #f0dde1; }
     .room-list em { font-style: normal; color: #756779; font-size: 15px; }
     .sign-out { margin-top: 18px; min-height: 44px; padding: 0 18px; border-radius: 100px; background: transparent; color: var(--muted); font-size: 16px; }
     .sign-out:hover { color: var(--ink); background: #ffffff0d; }
     @media(max-width:600px) { .profile { padding-top: 28px; } .profile-wordmark { font-size: 28px; margin-bottom: 22px; } .profile-card { padding: 24px 20px; border-radius: 29px; } }
   </style>
   <script>
+    // Owners delete a saved room for everyone; friends only take it off their own list.
+    for (const button of document.querySelectorAll<HTMLButtonElement>(".room-forget")) {
+      button.addEventListener("click", async () => {
+        const joined = button.dataset.joined === "true";
+        const question = joined ? "Leave " + button.dataset.title + "? It comes off your list, and you can rejoin from its link."
+          : "Delete " + button.dataset.title + "? Everyone in it is sent out and the link stops working.";
+        if (!confirm(question)) return;
+        button.disabled = true;
+        try {
+          const response = await fetch("/api/rooms", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: button.dataset.room }) });
+          if (!response.ok) throw new Error();
+          button.closest("li")!.remove();
+        } catch { button.disabled = false; alert("Couldn't do that. Try again."); }
+      });
+    }
     const form = document.getElementById("name-form") as HTMLFormElement;
     const message = document.getElementById("name-message")!;
     form.addEventListener("submit", async event => {

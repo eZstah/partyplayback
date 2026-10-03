@@ -1006,6 +1006,19 @@
 .person { display: flex; align-items: center; gap: 9px; min-width: 0; max-width: 100%; padding: 5px 13px 5px 5px; border-radius: 100px; background: #21232a; font-size: 15px; }
 .person-face { width: 30px; height: 30px; font-size: 14px; }
 .people-alone { color: var(--muted); font-size: 15px; line-height: 1.45; }
+/* Host tools: remove someone, let them back in, delete the room. */
+.person-host { font-style: normal; font-size: 12px; font-weight: 700; color: var(--accent); }
+.person-remove { display: grid; background: none; place-items: center; width: 24px; height: 24px; margin: 0 -7px 0 -2px; border-radius: 50%; color: var(--muted); font-size: 18px; line-height: 1; }
+.person-remove:hover, .person-remove:focus-visible { background: #3a2a32; color: #f3a0b0; }
+.host-tools { display: grid; gap: 14px; margin-top: 16px; }
+.blocked-people h3 { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--muted); }
+#blocked-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+#blocked-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; font-size: 15px; }
+#blocked-list span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#blocked-list button { flex: none; background: none; padding: 4px 0; color: var(--accent); font-size: 14px; font-weight: 700; }
+.host-delete { justify-self: start; background: none; padding: 4px 0; color: #f3a0b0; font-size: 14px; font-weight: 700; }
+.host-delete:hover, .host-delete:focus-visible { text-decoration: underline; }
+.host-dialog .primary-button { display: grid; place-items: center; margin-top: 8px; text-decoration: none; }
 /* Your own face sits in the name chip, like in the Watching list. */
 .name-button { display: inline-flex; align-items: center; gap: 9px; }
 .name-button:has(.person-face) { padding-left: 7px; }

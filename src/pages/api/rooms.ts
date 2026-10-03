@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { verifiedUser, privateJson, sameOrigin } from "../../lib/auth";
-import { roomStub, ownedRooms, type RoomDetails } from "../../lib/rooms";
+import { roomStub, ownedRooms, roomDetails, deleteRoom, forgetJoin, type RoomDetails } from "../../lib/rooms";
 
 export const GET: APIRoute = async context => {
   const user = await verifiedUser(context);
@@ -30,7 +30,27 @@ export const POST: APIRoute = async context => {
     const rooms = await ownedRooms(env, user.id);
     if (rooms.length >= 50) return privateJson({ message: "You already have 50 member rooms. Reopen one of them below." }, 409);
   }
-  await roomStub(env, details.slug).fetch("https://room.internal/initialize", { method: "POST", body: JSON.stringify(details) });
+  // Only the creator's browser gets this key; it makes them the host of a quick room.
+  const hostKey = body.mode === "guest" ? crypto.randomUUID() + crypto.randomUUID() : undefined;
+  await roomStub(env, details.slug).fetch("https://room.internal/initialize", { method: "POST", body: JSON.stringify({ ...details, hostKey }) });
   if (user) await roomStub(env, "account:" + user.id).fetch("https://room.internal/catalog", { method: "POST", body: JSON.stringify(details) });
-  return privateJson({ url: "/room/" + details.slug, room: { slug: details.slug, title: details.title, mode: details.mode } }, 201);
+  return privateJson({ url: "/room/" + details.slug, room: { slug: details.slug, title: details.title, mode: details.mode }, ...(hostKey ? { hostKey } : {}) }, 201);
+};
+
+// The owner deletes a saved room; anyone else just leaves it.
+export const DELETE: APIRoute = async context => {
+  if (!sameOrigin(context.request)) return privateJson({ message: "Manage your rooms from youple.tv." }, 403);
+  const user = await verifiedUser(context);
+  if (!user) return privateJson({ message: "Sign in to manage your rooms.", signIn: true }, 401);
+  let slug: unknown;
+  try { slug = (await context.request.json() as Record<string, unknown>)?.slug; } catch {}
+  if (typeof slug !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(slug)) return privateJson({ message: "Choose a room." }, 400);
+  const env = context.locals.runtime.env;
+  const details = await roomDetails(env, slug);
+  if (details?.ownerId === user.id) {
+    await deleteRoom(env, slug, user.id);
+    return privateJson({ deleted: true });
+  }
+  await forgetJoin(env, user.id, slug);
+  return privateJson({ left: true });
 };

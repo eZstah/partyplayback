@@ -35,3 +35,14 @@ export async function accountRooms(env: Env, userId: string) {
     ...joined.filter(room => !owned.some(own => own.slug === room.slug)).map(room => ({ ...room, joined: true })),
   ];
 }
+
+// Closes a saved room for everyone inside and takes it off its owner's list.
+export async function deleteRoom(env: Env, slug: string, ownerId: string) {
+  await roomStub(env, slug).fetch("https://room.internal/delete", { method: "POST" });
+  await roomStub(env, "account:" + ownerId).fetch("https://room.internal/catalog", { method: "DELETE", body: JSON.stringify({ slug }) });
+}
+
+// Takes a friend's room off this member's list.
+export async function forgetJoin(env: Env, userId: string, slug: string) {
+  await roomStub(env, "account:" + userId).fetch("https://room.internal/joined", { method: "DELETE", body: JSON.stringify({ slug }) });
+}
