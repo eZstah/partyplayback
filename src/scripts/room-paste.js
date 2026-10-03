@@ -30,3 +30,10 @@ export async function playlistLink(input, clipboard) {
   const url = youtubeUrl(copied);
   return url ? { value: url, fromClipboard: true } : null;
 }
+
+// The youple browser extension (extension/) posts videos into an open room tab.
+export function extensionVideo(event, page) {
+  if (event.source !== page || event.origin !== page.location.origin) return null;
+  const data = event.data;
+  return data?.source === "youple-extension" && data.type === "add" ? youtubeUrl(data.url) : null;
+}

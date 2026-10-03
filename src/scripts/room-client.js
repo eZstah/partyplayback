@@ -3,7 +3,7 @@ import { bootTabSharing } from "./tab-sharing.js";
 import { bootAuth } from "./auth-client.js";
 import { bootRoomMascots } from "./room-mascots.js";
 import { copyText, takeCreatedRoomNotice } from "./invite-copy.js";
-import { pastedVideo, youtubeUrl, playlistLink } from "./room-paste.js";
+import { pastedVideo, youtubeUrl, playlistLink, extensionVideo } from "./room-paste.js";
 import { bindVolumeControl } from "./volume-control.js";
 import { bindFullscreenControls } from "./fullscreen-controls.js";
 import { createMusicSelector, paintMusicShelf, followScene, MUSIC_MIXES } from "./music-shelf.js";
@@ -23,7 +23,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const progress = $("progress");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const requests = new Map();
-  let pastedAddition = null;
+  let pastedAddition = null, incomingVideo = null;
   let youtubePlayer = null, youtubeControls = false;
   const youtubeButton = $("youtube-controls-btn");
   const skipToggle = $("skip-toggle"), skipBoxes = [...document.querySelectorAll("#skip-categories input")];
@@ -259,6 +259,12 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
           toast("Video added to playlist");
         }
         if (firstState) {
+          const arrivalVideo = new URL(location.href);
+          if (arrivalVideo.searchParams.has('add')) {
+            incomingVideo = youtubeUrl(arrivalVideo.searchParams.get('add')) || incomingVideo;
+            arrivalVideo.searchParams.delete('add');
+            history.replaceState(history.state, '', arrivalVideo);
+          }
           performance.mark("youple:room-connected");
           document.dispatchEvent(new Event("youple:room-ready"));
           const arrivalUrl = new URL(location.href);
@@ -270,6 +276,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
           }
         }
         ensurePlayer();
+        addIncomingVideo();
       } else if (typeof data.type === "string" && data.type.startsWith("share-")) {
         void sharing.handle(data).catch(() => toast("The shared tab could not connect. Try Reconnect."));
       } else if (data.type === "skipped" && Array.isArray(data.skips) && data.skips.length) {
@@ -492,6 +499,19 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       return;
     }
     addVideo(link.value, link.fromClipboard);
+  });
+  // Videos sent from the browser extension wait until the room is ready for them.
+  function addIncomingVideo() {
+    if (!incomingVideo || !joined || adding || readingClipboard || pastedAddition) return;
+    const url = incomingVideo;
+    incomingVideo = null;
+    addVideo(url, true);
+  }
+  window.addEventListener("message", event => {
+    const url = extensionVideo(event, window);
+    if (!url) return;
+    incomingVideo = url;
+    addIncomingVideo();
   });
   document.addEventListener("paste", event => {
     const url = pastedVideo(event, !!document.querySelector("dialog[open]"));
