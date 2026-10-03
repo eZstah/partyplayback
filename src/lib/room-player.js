@@ -63,6 +63,12 @@ export class RoomPlayer {
     const p = this.player;
     const r = this.room;
     if (!p || !r) return;
+    if (r.share) {
+      this.pending = null;
+      this.sample = null;
+      p.pauseVideo();
+      return;
+    }
     const item = r.queue[r.currentIndex];
     if (!item) {
       this.loadedId = null;
@@ -96,6 +102,7 @@ export class RoomPlayer {
   }
 
   stateChanged(state) {
+    if (this.room?.share) { if (state === PLAYING) this.player?.pauseVideo(); return; }
     if (!this.player || !this.room || !this.room.queue[this.room.currentIndex]) return;
     if (this.blocked && state === PLAYING) {
       // The viewer may use YouTube's own Play button to satisfy autoplay policy.
@@ -124,6 +131,7 @@ export class RoomPlayer {
   }
 
   tick() {
+    if (this.room?.share) return;
     if (!this.player || !this.room || this.loadedId !== this.room.playbackId) return;
     const state = this.player.getPlayerState();
     const time = this.player.getCurrentTime();
@@ -152,6 +160,7 @@ export class RoomPlayer {
   }
 
   command(type, currentTime = this.player?.getCurrentTime() ?? this.targetTime()) {
+    if (this.room?.share) return false;
     if (!this.room?.queue[this.room.currentIndex]) return false;
     const accepted = this.send({
       type, currentTime, playbackId: this.room.playbackId, revision: this.room.revision,
@@ -170,6 +179,7 @@ export class RoomPlayer {
   }
 
   enablePlayback(forcePlay = false) {
+    if (this.room?.share) return;
     if (!this.player) return;
     this.blocked = false;
     this.onBlocked(false);

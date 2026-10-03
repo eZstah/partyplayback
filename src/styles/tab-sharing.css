@@ -1,0 +1,34 @@
+/* Reuse the room's Atkinson type, lilac accent and quiet dark surfaces. */
+.share-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:0 0 16px; min-height:52px; }
+.share-copy { min-width:0; }
+.share-copy strong { font-size:16px; font-weight:700; }
+.share-copy p { margin:4px 0 0; color:var(--muted); font-size:13px; line-height:1.4; }
+.share-copy #share-audio-note { color:#f5be70; }
+.share-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.share-actions .soft-button { display:inline-flex; align-items:center; gap:8px; white-space:nowrap; padding:11px 15px; }
+.share-stop { color:#f4adc0; }
+.shared-screen { position:relative; width:100%; aspect-ratio:16/9; background:#060709; }
+#shared-video { display:block; width:100%; height:100%; object-fit:contain; }
+.share-message { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px; text-align:center; background:var(--surface); color:var(--muted); }
+.share-message p { max-width:45ch; margin:0; }
+.share-message svg { color:var(--accent); }
+.tab-sharing #player-wrap,.tab-sharing .player-bottom { display:none; }
+.tab-sharing .share-copy strong::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:9px; background:#9ed6b3; }
+.share-dialog > svg { color:var(--accent); margin-bottom:12px; }
+.share-dialog .share-dialog-footnote { font-size:12px; text-align:center; margin-bottom:0; }
+.share-bar [hidden],.shared-screen[hidden],.share-message[hidden],.share-message [hidden] { display:none; }
+body.cat-wallpaper .share-bar,body.cat-wallpaper #shared-screen { display:none; }
+body.cat-wallpaper.tab-sharing #player-wrap { display:block; }
+.room-shell:fullscreen .share-bar { flex-shrink:0; margin:0; padding:10px 20px; }
+.tab-sharing .room-shell:fullscreen { display:grid; grid-template-rows:auto minmax(0,1fr); }
+.tab-sharing .room-shell:fullscreen .room-nav { position:static; background:var(--bg); }
+.room-shell:fullscreen .shared-screen { height:100%; aspect-ratio:auto; }
+.room-shell:fullscreen .watch-column:has(.shared-screen:not([hidden])) { display:flex; flex-direction:column; }
+.room-shell:fullscreen .watch-column:has(.shared-screen:not([hidden])) #stage { flex:1; min-height:0; }
+@media(max-width:700px) {
+  .share-bar { align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
+  .share-copy { flex:1 1 190px; }
+  .share-copy strong { font-size:15px; }
+  .share-copy p { font-size:12px; }
+  .share-actions .soft-button { padding:10px 12px; font-size:13px; }
+}

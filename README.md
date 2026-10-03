@@ -47,6 +47,44 @@ Some YouTube videos cannot be embedded, and browser/network restrictions can
 prevent an individual player from loading. An error in one player does not
 automatically skip the video for everyone; use Next or remove that queue item.
 
+## Sharing a browser tab
+
+In the main room, choose **Share a tab**, then **Choose a tab**. Select a browser
+tab containing TikTok, Instagram Reels, Shorts, or another video and enable
+**Share tab audio** in the browser picker. Start sharing from desktop Chrome or
+Edge over HTTPS (localhost also works). Other browsers may support picture but
+not tab audio; viewers can use any browser with WebRTC playback support.
+
+One person shares with up to four viewers. The main player shows the shared tab;
+YouTube pauses and the playlist remains editable. After **Stop sharing**, the
+playlist stays paused until someone presses Play. Browser Stop sharing, leaving
+the room, and losing the room connection release capture and peer connections.
+Viewers may need **Join shared tab** for autoplay, or **Reconnect** after a network
+failure. The sharer's preview is muted to avoid echo; viewers control their own
+sound with the shared video's controls. Aquarium sharing and remote scrolling
+are outside this first version. Sharing captures the selected surface, including
+any other content shown there; this app does not record it.
+
+Media goes over WebRTC, not the room WebSocket. The existing Durable Object routes
+bounded SDP/ICE messages between the sharer and subscribed viewers only. Per-socket
+server-generated identities and share generations reject spoofed or stale signals.
+Ownership/subscriptions survive hibernation as socket attachments; SDP is not saved.
+
+Sharing is peer-to-peer only, using [Cloudflare STUN](https://developers.cloudflare.com/realtime/turn/faq/)
+to discover network addresses. No TURN relay is configured or provisioned, even
+if old relay secrets exist. Picture and sound travel from the sharer to each
+viewer, so Youple carries no media bandwidth. Normal website and room-signaling
+usage still applies. The sharer's upload bandwidth grows with each viewer;
+the four-viewer limit keeps this a small-room feature.
+
+Some networks cannot connect directly. Those viewers see a connection error and
+can try Reconnect or another network; sharing never falls back to a paid relay.
+
+Manual checks: two browsers, tab picture + sound, autoplay recovery, picker cancel,
+browser Stop sharing, simultaneous sharers, a late viewer, host departure, viewer
+reconnect, and YouTube pause/resume. Also test two separate networks; a localhost
+pass alone does not verify direct NAT traversal.
+
 ## Validation
 
 ```sh

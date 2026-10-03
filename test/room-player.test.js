@@ -30,6 +30,22 @@ function setup() {
   return { sync, player, room, messages, calls, settle, advance };
 }
 
+test("shared tabs suspend YouTube events and controls until returning to the playlist", () => {
+  const { sync, player, room, messages, calls } = setup();
+  sync.receive({ ...room, revision: 2, isPlaying: false, currentTime: 23, share: { id: "share-1" } });
+  assert.equal(calls.at(-1)[0], "pause");
+  sync.stateChanged(1);
+  sync.stateChanged(0);
+  sync.tick();
+  sync.enablePlayback(true);
+  assert.equal(sync.command("play"), false);
+  assert.equal(messages.length, 0);
+  sync.receive({ ...room, revision: 3, isPlaying: false, currentTime: 23, share: null });
+  player.state = 2;
+  sync.tick();
+  assert.equal(sync.command("play"), true);
+});
+
 test("missing YouTube video metadata waits for the load to settle", () => {
   const { sync, player, room, messages } = setup();
   sync.receive({ ...room, playbackId: "load-2", revision: 2 });
