@@ -32,7 +32,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
     <section class="hangout" aria-labelledby="hero-title">
       <div class="hangout-heading reveal"><h1 id="hero-title"><Wordmark variant="hero"/></h1><p>Watch YouTube videos together in sync.</p></div>
       {user ? <div class="room-launcher member-launcher reveal delay-1">
-        <a class="member-hello" href="/profile"><span class="signed-avatar">{avatar ? <img src={avatar} alt="" referrerpolicy="no-referrer"/> : name?.slice(0,1)}</span><span><strong>Hey, {name}</strong><span>Edit profile</span></span></a>
+        <div class="member-top"><a class="member-hello" href="/profile"><span class="signed-avatar">{avatar ? <img src={avatar} alt="" referrerpolicy="no-referrer"/> : name?.slice(0,1)}</span><span><strong>Hey, {name}</strong><span>Edit profile</span></span></a><button class="member-sign-out" type="button" data-sign-out>Sign out</button></div>
         <form id="create-form"><button class="primary-button wide create-room-button" type="submit"><span>Create quick room</span></button><div id="create-message" class="form-message" role="status"></div></form>
         <section class="member-rooms" aria-labelledby="saved-title">
           <div class="member-rooms-head"><h2 id="saved-title">Your rooms</h2><button class="member-add" type="button" data-create-room="member">Create permanent room</button></div>

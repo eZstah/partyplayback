@@ -28,7 +28,6 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
           <h1 id="profile-name">{name}</h1>
           {user.email && <p class="muted">{user.email}</p>}
         </div>
-        <button id="sign-out" class="sign-out" type="button">Sign out</button>
       </section>
 
       <form id="name-form" class="profile-section">
@@ -79,8 +78,6 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
     .room-forget { flex: none; background: transparent; border: 0; cursor: pointer; min-height: 52px; padding: 0 14px; border-radius: 16px; color: #8a4a5c; font: inherit; font-size: 15px; font-weight: 700; }
     .room-forget:hover, .room-forget:focus-visible { background: #f0dde1; }
     .room-list em { font-style: normal; color: #756779; font-size: 15px; }
-    .sign-out { flex: none; align-self: flex-start; margin: -6px -10px 0 auto; min-height: 40px; padding: 0 14px; border-radius: 100px; background: transparent; color: #756779; font-size: 15px; font-weight: 700; }
-    .sign-out:hover, .sign-out:focus-visible { color: #322b41; background: #322b410d; }
     .signed-in-with { margin: 18px 0 0; color: var(--muted); font-size: 15px; }
     @media(max-width:600px) { .profile { padding-top: 28px; } .profile-wordmark { font-size: 28px; margin-bottom: 22px; } .profile-card { padding: 24px 20px; border-radius: 29px; } }
   </style>
@@ -116,9 +113,6 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
         } else message.textContent = data.message || "Please try again.";
       } catch { message.textContent = "Couldn't connect. Please try again."; }
       finally { button.disabled = false; }
-    });
-    document.getElementById("sign-out")!.addEventListener("click", async () => {
-      try { await fetch("/auth/signout", { method: "POST" }); } finally { location.assign("/"); }
     });
   </script>
 </body>
