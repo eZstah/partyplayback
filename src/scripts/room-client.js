@@ -5,6 +5,7 @@ import { bootRoomMascots } from "./room-mascots.js";
 import { copyText, takeCreatedRoomNotice } from "./invite-copy.js";
 import { pastedVideo, youtubeUrl, playlistLink, extensionVideo } from "./room-paste.js";
 import { bindVolumeControl } from "./volume-control.js";
+import { hostKey } from "./host-key.js";
 import { bindFullscreenControls } from "./fullscreen-controls.js";
 import { createMusicSelector, paintMusicShelf, followScene, MUSIC_MIXES } from "./music-shelf.js";
 
@@ -42,6 +43,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   }
   let name = document.body.dataset.userName || getStored(localStorage, "pp_user", "Guest" + Math.floor(Math.random() * 9000 + 1000));
   const sessionId = getStored(sessionStorage, "pp_sid", crypto.randomUUID());
+  const browserId = getStored(localStorage, "pp_browser", crypto.randomUUID());
   usernameLabel.textContent = name;
 
   function toast(message) {
@@ -166,11 +168,68 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     return face;
   }
 
-  function renderPeople(members) {
+  // Asks the host to confirm before removing someone or deleting the room.
+  function confirmHost(heading, text, action, onConfirm) {
+    const dialog = $("host-dialog"), confirm = $("host-confirm");
+    $("host-heading").textContent = heading;
+    $("host-text").textContent = text;
+    confirm.textContent = action;
+    confirm.onclick = () => { dialog.close(); onConfirm(); };
+    dialog.showModal();
+  }
+
+  // The host removed you or deleted the room: stop and say so instead of reconnecting.
+  let deleting = false;
+  function leaveRoom(reason) {
+    if (deleting) return location.assign("/");
+    if (stopping) return;
+    stopping = true;
+    clearTimeout(reconnectTimer);
+    try { playback.player?.pauseVideo(); } catch {}
+    const deleted = reason === "closed";
+    $("gone-heading").textContent = deleted ? "This room was deleted" : "You were removed";
+    $("gone-text").textContent = deleted ? "The host deleted this room, so it's closed for everyone." : "The host removed you from this room.";
+    for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close();
+    $("gone-dialog").showModal();
+  }
+  $("gone-dialog").addEventListener("cancel", event => { event.preventDefault(); location.href = "/"; });
+
+  function renderHostTools(roster) {
+    $("host-tools").hidden = !roster.host;
+    $("delete-room-btn").hidden = !roster.deletable;
+    const blocked = roster.host && Array.isArray(roster.blocked) ? roster.blocked : [];
+    $("blocked-people").hidden = !blocked.length;
+    $("blocked-list").replaceChildren(...blocked.map(entry => {
+      const li = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = entry.name;
+      const undo = document.createElement("button");
+      undo.type = "button";
+      undo.textContent = "Let back in";
+      undo.addEventListener("click", () => send({ type: "unblock", id: entry.id }));
+      li.append(label, undo);
+      return li;
+    }));
+  }
+
+  $("delete-room-btn").addEventListener("click", () => confirmHost(
+    "Delete this room?", "Everyone in it is sent out, the link stops working, and the playlist is gone for good.", "Delete room",
+    async () => {
+      deleting = true;
+      try {
+        const response = await fetch("/api/rooms", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: roomName }) });
+        if (!response.ok) throw new Error();
+        leaveRoom("closed");
+      } catch { deleting = false; toast("Could not delete the room. Try again."); }
+    }));
+
+  function renderPeople(roster) {
+    const members = roster?.members;
     if (!Array.isArray(members)) return;
-    const signature = JSON.stringify(members);
+    const signature = JSON.stringify([members, roster.host, roster.blocked]);
     if (signature === peopleSignature) return;
     peopleSignature = signature;
+    renderHostTools(roster);
     // You already see yourself in the name chip, so "watching" lists everyone else.
     const others = members.filter(person => !person.you);
     const list = $("people-list");
@@ -181,6 +240,25 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       label.className = "person-name";
       label.textContent = person.name;
       li.append(avatar(person, "person-face"), label);
+      if (person.host) {
+        const tag = document.createElement("em");
+        tag.className = "person-host";
+        tag.textContent = "Host";
+        li.append(tag);
+      } else if (roster.host) {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "person-remove";
+        remove.setAttribute("aria-label", "Remove " + person.name);
+        remove.title = "Remove from room";
+        remove.textContent = "×";
+        remove.addEventListener("click", () => confirmHost(
+          "Remove " + person.name + "?", person.member
+            ? "They leave the room now and can't come back unless you let them back in."
+            : "They leave the room now. Guests can come back from a new tab, so for real trouble use a saved room.",
+          "Remove", () => send({ type: "remove-person", peerId: person.peerId })));
+        li.append(remove);
+      }
       return li;
     }));
     if (!others.length) {
@@ -217,7 +295,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     // Bound the map even when the network silently stalls.
     for (const [id, at] of requests) if (performance.now() - at > 20000) requests.delete(id);
     requests.set(requestId, performance.now());
-    socket.send(JSON.stringify({ type, requestId, username: name, sessionId }));
+    socket.send(JSON.stringify({ type, requestId, username: name, sessionId, browserId, ...(type === "join" ? { hostKey: hostKey(roomName) } : {}) }));
   }
 
   function connect() {
@@ -284,8 +362,10 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
         const seconds = Math.round(data.skips.reduce((total, skip) => total + Math.max(0, skip.to - skip.from), 0));
         const names = [...new Set(data.skips.map(skip => SKIPPED[skip.category] || "segment"))].join(" and ");
         toast("Skipped " + names + (seconds ? " · " + seconds + "s" : ""));
+      } else if (data.type === "removed" || data.type === "closed") {
+        leaveRoom(data.type);
       } else if (data.type === "users") {
-        renderPeople(data.members);
+        renderPeople(data);
         pals.observe({ users: data.userCount });
       } else if (data.type === "error") {
         if (music.state().pending) music.fail(data.message);
@@ -318,7 +398,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   count.addEventListener("click", () => setPeopleOpen(!document.body.classList.contains("people-open")));
 
   function render() {
-    renderPeople(room.members);
+    renderPeople(room);
     pals.observe({ users: room.userCount, queue: room.queue.length, current: room.queue[room.currentIndex]?.id ?? null, title: room.queue[room.currentIndex]?.title || '' });
     const signature = JSON.stringify([room.queue, room.currentIndex]);
     if (signature !== queueSignature) {

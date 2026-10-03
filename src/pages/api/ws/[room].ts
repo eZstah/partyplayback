@@ -35,7 +35,11 @@ export const GET: APIRoute = async context => {
     headers.set("X-Party-Name", encodeURIComponent(displayName(user)));
     const avatar = avatarUrl(user);
     if (avatar) headers.set("X-Party-Avatar", new URL(avatar).href);
-    if (details) context.locals.runtime.ctx.waitUntil(rememberJoin(env, user.id, details).catch(() => {}));
   }
-  return stub.fetch(new Request(request, { headers }));
+  const response = await stub.fetch(new Request(request, { headers }));
+  // Someone the host removed doesn't get the room back in their list.
+  if (user && details && !response.headers.get("X-Party-Removed")) {
+    context.locals.runtime.ctx.waitUntil(rememberJoin(env, user.id, details).catch(() => {}));
+  }
+  return response;
 };

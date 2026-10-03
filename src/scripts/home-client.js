@@ -1,5 +1,6 @@
 import { bootAuth } from "./auth-client.js";
 import { enterCreatedRoom, enterRoom } from "./room-transition.js";
+import { saveHostKey } from "./host-key.js";
 import { beginInviteCopy } from "./invite-copy.js";
 import { illustrativeSyncCount } from "../lib/activity.js";
 import { bootHomeMascots } from "./home-mascots.js";
@@ -49,7 +50,7 @@ export function bootHome() {
     try {
       const response = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, title }) });
       const data = await response.json();
-      if (response.ok) { leaving = true; await enterCreatedRoom(data.url, submit, inviteCopy.complete(data.url)); }
+      if (response.ok) { saveHostKey(data.url, data.hostKey); leaving = true; await enterCreatedRoom(data.url, submit, inviteCopy.complete(data.url)); }
       else if (data.signIn) { try { sessionStorage.setItem("pp_room_draft", title || ""); } catch {} savedDialog.close(); auth.open("/?create=member"); }
       else message.textContent = data.message || "Couldn't create your room. Try again.";
     } catch { leaving = false; document.body.classList.remove("room-departing"); document.getElementById("room-portal").hidden = true; message.textContent = "Couldn't connect. Please try again."; }
