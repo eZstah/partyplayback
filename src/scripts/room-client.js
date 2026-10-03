@@ -255,7 +255,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
         remove.addEventListener("click", () => confirmHost(
           "Remove " + person.name + "?", person.member
             ? "They leave the room now and can't come back unless you let them back in."
-            : "They leave the room now. Guests can come back from a new tab, so for real trouble use a saved room.",
+            : "They leave the room now. Guests can come back from a new tab, so for real trouble use a permanent room.",
           "Remove", () => send({ type: "remove-person", peerId: person.peerId })));
         li.append(remove);
       }

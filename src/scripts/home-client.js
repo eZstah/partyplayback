@@ -54,18 +54,21 @@ export function bootHome() {
       else if (data.signIn) { try { sessionStorage.setItem("pp_room_draft", title || ""); } catch {} savedDialog.close(); auth.open("/?create=member"); }
       else message.textContent = data.message || "Couldn't create your room. Try again.";
     } catch { leaving = false; document.body.classList.remove("room-departing"); document.getElementById("room-portal").hidden = true; message.textContent = "Couldn't connect. Please try again."; }
-    finally { inviteCopy.cancel(); creating = false; if (!leaving) { submit.disabled = false; submit.removeAttribute("aria-busy"); submit.querySelector("span").textContent = mode === "member" ? "Create saved room" : "Create room"; } }
+    finally { inviteCopy.cancel(); creating = false; if (!leaving) { submit.disabled = false; submit.removeAttribute("aria-busy"); submit.querySelector("span").textContent = submit.dataset.label; } }
     });
   }
+  // Buttons go back to their own wording after a failed or abandoned attempt.
+  for (const submit of document.querySelectorAll("#create-form button[type=submit], #saved-room-form button[type=submit]")) submit.dataset.label = submit.textContent.trim();
   bindCreation(createForm, "guest", createMessage);
   bindCreation(savedForm, "member", savedMessage);
   window.addEventListener("pageshow", () => {
     creating = false; leaving = false;
     document.body.classList.remove("room-departing");
     document.getElementById("room-portal").hidden = true;
-    for (const [form, label] of [[createForm, "Create room"], [savedForm, "Create saved room"]]) {
-      const submit = form.querySelector("button[type=submit]");
-      submit.disabled = false; submit.removeAttribute("aria-busy"); submit.querySelector("span").textContent = label;
+    for (const form of [createForm, savedForm]) {
+      const submit = form?.querySelector("button[type=submit]");
+      if (!submit) continue;
+      submit.disabled = false; submit.removeAttribute("aria-busy"); submit.querySelector("span").textContent = submit.dataset.label;
     }
   });
   document.getElementById("join-form").addEventListener("submit", event => {

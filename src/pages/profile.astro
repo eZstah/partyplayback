@@ -26,13 +26,13 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
         <span class="profile-avatar">{avatar ? <img src={avatar} alt="" referrerpolicy="no-referrer"/> : name.slice(0, 1)}</span>
         <div>
           <h1 id="profile-name">{name}</h1>
-          <p class="muted">{user.email ? <>{user.email} · </> : null}Signed in with {provider}</p>
+          {user.email && <p class="muted">{user.email}</p>}
         </div>
+        <button id="sign-out" class="sign-out" type="button">Sign out</button>
       </section>
 
       <form id="name-form" class="profile-section">
-        <label for="display-name">Name in rooms</label>
-        <p class="muted">This is what friends see next to you while you watch.</p>
+        <label class="sr-only" for="display-name">Name in rooms</label>
         <div class="name-row">
           <input id="display-name" name="name" value={name} maxlength="32" required autocomplete="nickname"/>
           <button class="primary-button" type="submit">Save</button>
@@ -42,10 +42,10 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 
       <section class="profile-section">
         <h2>Your rooms</h2>
-        {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={20}/><span>{room.title}</span><em>{room.joined ? 'Joined' : 'Open'}</em></a><button class="room-forget" type="button" data-room={room.slug} data-title={room.title} data-joined={String(room.joined)}>{room.joined ? 'Leave' : 'Delete'}</button></li>)}</ul> : <p class="muted">No rooms yet. Save one from the home page, or join a friend's.</p>}
+        {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={20}/><span>{room.title}</span><em>{room.joined ? 'Joined' : 'Open'}</em></a><button class="room-forget" type="button" data-room={room.slug} data-title={room.title} data-joined={String(room.joined)}>{room.joined ? 'Leave' : 'Delete'}</button></li>)}</ul> : <p class="muted">No rooms yet. Create a permanent one from the home page, or join a friend's.</p>}
       </section>
     </div>
-    <button id="sign-out" class="sign-out" type="button">Sign out</button>
+    <p class="signed-in-with">Signed in with {provider}</p>
   </main>
   <SiteFooter/>
   <style>
@@ -79,8 +79,9 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
     .room-forget { flex: none; background: transparent; border: 0; cursor: pointer; min-height: 52px; padding: 0 14px; border-radius: 16px; color: #8a4a5c; font: inherit; font-size: 15px; font-weight: 700; }
     .room-forget:hover, .room-forget:focus-visible { background: #f0dde1; }
     .room-list em { font-style: normal; color: #756779; font-size: 15px; }
-    .sign-out { margin-top: 18px; min-height: 44px; padding: 0 18px; border-radius: 100px; background: transparent; color: var(--muted); font-size: 16px; }
-    .sign-out:hover { color: var(--ink); background: #ffffff0d; }
+    .sign-out { flex: none; align-self: flex-start; margin: -6px -10px 0 auto; min-height: 40px; padding: 0 14px; border-radius: 100px; background: transparent; color: #756779; font-size: 15px; font-weight: 700; }
+    .sign-out:hover, .sign-out:focus-visible { color: #322b41; background: #322b410d; }
+    .signed-in-with { margin: 18px 0 0; color: var(--muted); font-size: 15px; }
     @media(max-width:600px) { .profile { padding-top: 28px; } .profile-wordmark { font-size: 28px; margin-bottom: 22px; } .profile-card { padding: 24px 20px; border-radius: 29px; } }
   </style>
   <script>
