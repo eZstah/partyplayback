@@ -1,0 +1,2 @@
+/* Chrome injects this before the room renders, so installed users see no install prompt. */
+.room-extension-promo { display: none !important; }

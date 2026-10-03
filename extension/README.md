@@ -28,6 +28,11 @@ video's link to your room only when you click one of its buttons or the menu.
 
 `http://localhost:8787` rooms work too, for `npm run preview`.
 
+Version 1.4.1 and newer hide the room's extension suggestion using a stylesheet
+injected into room pages before they render. No installed-state tracking or new
+permissions are needed. After installing, updating, disabling or removing the
+extension, refresh the room to update the suggestion's visibility.
+
 ## Publishing
 
 Run `npm run pack:extension` from the project root to create
