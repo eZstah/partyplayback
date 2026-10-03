@@ -96,6 +96,33 @@ Small next steps, one per pull request:
 6. **More rooms later.** Only after the above: a second layout (for example a
    kitchen or a sunny afternoon), chosen per visit. Keep one room at a time.
 
+### 4b. Grow Bean's moves
+
+Bean has a wind-up before big jumps, a big leap between pieces of furniture,
+a high jump to bat at a dust speck, and mid-air twists and rolls (see "Moves"
+in ARCHITECTURE.md). Each next move is one small pull request, built from
+`moves.js`, `springUp()`, `jumpTo()` and existing pose channels. Each must be
+rare outside Aquarium and invited play, and must keep `test/cat-pacing.test.js`
+passing.
+
+1. **Pounce on a toy.** In Aquarium, Bean stalks the yarn or the mouse on the
+   floor, winds up and lands on it with both paws, then bats it. *Done when*
+   `youpleCats.play('Bean', 'pounce')` lands on a toy and the toy wobbles.
+2. **Wall kick.** On a jump that is too high, Bean kicks off the side of a solid
+   (the bookshelf or the player) and up onto the top. *Done when* a clip shows
+   the kick and `route()` can use it for one height step above the normal limit.
+3. **Halloween hop.** Startled or playful, Bean arches his back, puffs his tail
+   and hops sideways a few times. Needs an arched-back pose channel in
+   `CatBody`. *Done when* the pose reads clearly from the side and the front.
+4. **Tail chase.** Bean spins after his own tail a few turns, then sits as if
+   nothing happened. *Done when* it is rare, short and ends with a groom.
+5. **Belly flop.** Bean rolls onto his side or back and wiggles, then gets up.
+   Needs a lying-on-side pose. *Done when* the roll and the getting up both read
+   in a clip.
+6. **Missed landing.** Very rarely, a big leap ends with his back paws
+   scrambling at the edge before he pulls himself up (reuse `hang`). *Done when*
+   it happens at most a few percent of big leaps and never on the floor.
+
 ## 5. Let familiarity create individuality
 
 Build small persistent preferences and habits from observed interactions, such

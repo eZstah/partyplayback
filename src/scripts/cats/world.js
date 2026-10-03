@@ -7,6 +7,7 @@ import { CatBody } from './body.js';
 import { createRuntime } from './runtime.js';
 import { planRelease } from './release.js';
 import { refusePickup } from './handling.js';
+import { windUp, windUpTime, flightTrick, arcFor } from './moves.js';
 import { CAST, ACTIVE_KINDS } from './cast.js';
 import { Mind, awaySummary, clamp, dayRhythm, pick as sample, videoVibe } from './mind.js';
 
@@ -335,23 +336,29 @@ export function bootCats({ seed } = {}) {
     const b = cat.body;
     b.leap(x, y, 0, arc, dur, options); b.jump.k0 = b.k; b.jump.k1 = k1;
     cat.at = { kind: 'air', ...(options.surface ? { then: options.surface, landingY: yAt(options.surface, x) } : {}) };
-    while (b.jump) yield;
+    const trick = options.trick ? flightTrick(b, options.trick) : null;
+    while (b.jump) { trick?.(); yield; }
     return !options.surface || !!sameLedge(surfaceOf(cat) || cat.at.then, options.surface);
   }
-  function* jumpTo(cat, surface, x, { agile = false, spin = 0, hang = false } = {}) {
+  // windup: seconds to size up the jump first; by default only far or high jumps get one.
+  // twist: whole turns around the vertical axis in the air (see moves.js).
+  function* jumpTo(cat, surface, x, { agile = false, spin = 0, twist = 0, hang = false, windup = null } = {}) {
     const b = cat.body;
     if (surface !== FLOOR) refresh(surface);
     const tx = surface === FLOOR ? clamp(x, 30, W.w - 30) : clamp(x, surface.left, surface.right);
     const edgeY = yAt(surface, tx, 0), rise = b.gy - edgeY;
     const catchEdge = hang && !reduced() && surface !== FLOOR && surface.kind === 'solid' && rise > 60;
     const ty = edgeY + (catchEdge ? 64 * kAt(surface) : 0);
-    b.reset({ crouch: 1, tailUp: .2 }); b.faceYaw(tx >= b.x ? 0 : Math.PI);
+    const sizeUp = reduced() ? 0 : windup ?? windUpTime(tx - b.x, rise, S(), { agile });
+    if (sizeUp > 0) yield* windUp(b, { x: tx, y: edgeY - 20 * S() }, sizeUp);
+    else { b.reset({ crouch: 1, tailUp: .2 }); b.faceYaw(tx >= b.x ? 0 : Math.PI); }
     yield* wait(reduced() ? .1 : agile ? .12 : rise > 120 ? .3 : .2);
     b.set({ crouch: 0, tailUp: .5 });
+    if (sizeUp > 0) { b.face = 'open'; b.look = null; }
     b.z = 0;
     const span = Math.abs(tx - b.x);
     const arc = Math.min((45 + span * .16 + Math.max(0, rise) * .2) * S(), Math.max(20, Math.min(b.gy, ty) - 100 * S()));
-    const options = { spin: reduced() ? 0 : spin, surface, landing: !catchEdge };
+    const options = { spin: reduced() ? 0 : spin, surface, landing: !catchEdge, ...(twist && !reduced() ? { trick: { twist } } : {}) };
     let duration = clamp(.3 + Math.hypot(span, rise) / (agile ? 880 : 700), .35, .95);
     if (rise < -100) { options.type = 'fall'; options.velocityY = -100 * S(); options.gravity = 1600 * S(); duration = null; }
     if (!(yield* leapTo(cat, tx, ty, kAt(surface, 0), arc, duration, options))) return;
@@ -527,6 +534,34 @@ export function bootCats({ seed } = {}) {
         yield* jumpTo(cat, st.to, landingX, { agile: true, spin, hang: hang && steps.length === 1 });
       }
     }
+  }
+
+  // Straight up and back down onto the same surface, to catch something above.
+  // Returns false when the surface went away mid-flight.
+  function* springUp(cat, surface, x, height, { windup = 0, target = null, trick = {} } = {}) {
+    const b = cat.body;
+    if (windup > 0) yield* windUp(b, target || { x, y: b.gy - height }, windup);
+    else { b.reset({ crouch: 1, pupil: 1.2 }); yield* wait(.15); }
+    b.set({ crouch: 0, wiggle: 0, tailUp: .6 }); b.face = 'focus';
+    const duration = clamp(.5 + height / (650 * S()), .55, .95);
+    const ok = yield* leapTo(cat, x, yAt(surface, x, b.z), b.k, arcFor(height, b.k), duration, { surface, trick: reduced() ? {} : trick });
+    b.set({ swat: 0, rear: 0 });
+    if (!ok) return false;
+    land(cat, surface); return true;
+  }
+  // Far or high single jumps from here that are worth showing off, best first.
+  function bigJumps(here, x) {
+    measure();
+    const out = [];
+    for (const to of [FLOOR, ...W.ledges]) {
+      if (sameLedge(here, to) || (to !== FLOOR && (!onScreen(to.rect) || !document.contains(to.el)))) continue;
+      const link = hop(here, to, x); if (!link) continue;
+      const landing = safeLanding(to, link.xb); if (landing === null) continue;
+      const span = Math.abs(landing - link.xa), rise = yAt(here, link.xa) - yAt(to, landing);
+      if (rise < -100 * S() || (span < 170 * S() && rise < 140 * S())) continue;
+      out.push({ ...link, xb: landing, span, rise, score: span + rise * 1.3 - Math.abs(x - link.xa) * .8 });
+    }
+    return out.sort((p, q) => q.score - p.score);
   }
 
   // ---------- peeking: over or around cards, and in from the screen edges ----------
@@ -900,6 +935,67 @@ export function bootCats({ seed } = {}) {
       b.set({ mouth: .4 }); yield* wait(.4); b.set({ mouth: 0 });
       log(`${cat.name} had the zoomies.`);
     },
+    // Show off: walk to the edge of a far or high jump, size it up with a long
+    // wind-up and go, sometimes with a roll or a corkscrew twist in the air.
+    *leap(cat) {
+      const b = cat.body;
+      if (cat.at.kind === 'behind') yield* popOut(cat);
+      const here = surfaceOf(cat); if (!here) return;
+      const jumps = bigJumps(here, b.x);
+      if (!jumps.length) { yield* A.highjump(cat); return; }
+      const st = pick(jumps.slice(0, 3));
+      try {
+        cat.phase = 'eyeing a big jump'; b.reset({ tailUp: .6 }); b.look = null;
+        yield* walkTo(cat, st.xa, here === FLOOR ? 0 : null, walkSpeed(cat) * 1.3);
+        if (st.to !== FLOOR && (!document.contains(st.to.el) || !onScreen(refresh(st.to).rect))) return;
+        const dir = st.xb > b.x ? 1 : -1, roomy = Math.min(b.gy, yAt(st.to, st.xb)) > 200 * S();
+        const roll = random(), trick = roll < .3 && roomy && st.span > 160 * S() ? { spin: dir } : roll < .55 ? { twist: dir } : {};
+        cat.phase = 'leaping';
+        yield* jumpTo(cat, st.to, st.xb, { windup: .9 + random() * .5, ...trick });
+        if (!sameLedge(surfaceOf(cat), st.to)) return;
+        b.face = 'happy'; b.look = 'viewer'; b.bounce(.6);
+        if (random() < .5) say(cat, 'leap', .6);
+        log(`${cat.name} made a big leap.`);
+        cat.mind.drives.playful = Math.max(0, cat.mind.drives.playful - 25);
+        yield* wait(1.2); b.face = 'open'; restPose(cat, 'sit'); b.look = null;
+        yield* A.sit(cat, 3 + random() * 4);
+      } finally { cat.phase = null; }
+    },
+    // A speck of dust drifts down. Bean tracks it, winds up and springs straight
+    // up to bat at it, sometimes twisting in the air on the way.
+    *highjump(cat) {
+      const b = cat.body;
+      if (cat.at.kind === 'behind') yield* popOut(cat);
+      const s = surfaceOf(cat); if (!s) return;
+      const height = Math.min((180 + random() * 150) * S(), b.gy - 110 * b.k - 30);
+      if (height < 90 * S()) { yield* A.sit(cat); return; }
+      const dir = random() < .5 ? -1 : 1;
+      const x = s === FLOOR ? clamp(b.x + dir * 30 * S(), 40, W.w - 40) : clamp(b.x + dir * 30 * S(), s.left, s.right);
+      // The speck drifts down so that it reaches his raised paw at the top of the jump.
+      const paw = b.gy - height - 70 * b.k, windup = .7 + random() * .4, drift = 14 * S();
+      const meet = 1.2 + windup + clamp(.5 + height / (650 * S()), .55, .95) / 2;
+      particle('mote', x, paw - drift * meet, { color: '#f3ecff', size: 4, rise: -drift * 6, life: 6, vx: 0 });
+      const mote = W.particles[W.particles.length - 1];
+      const follow = () => { if (mote.age < mote.life) b.look = { x: mote.x, y: mote.y }; };
+      try {
+        cat.phase = 'watching a dust speck';
+        b.stop(); restPose(cat, 'sit'); b.set({ overEdge: 0, pupil: 1.15 }); b.face = 'focus'; follow();
+        let t = 0; while (t < 1.2) { t += yield; follow(); }
+        const twist = random() < .3 ? dir : 0;
+        cat.phase = 'jumping for it';
+        if (!(yield* springUp(cat, s, x, height, { windup, target: mote, trick: { swipe: true, reach: !twist, twist } }))) return;
+        const caught = Math.abs(mote.x - b.x) < 60 * S() && random() < .5;
+        if (caught) { mote.age = mote.life; particle('✦', x, paw, { color: '#f2c78d', size: 18 }); say(cat, 'caught', .5); }
+        else { mote.vx = dir * 40; say(cat, 'miss', .4); }
+        log(caught ? `${cat.name} caught a speck of dust.` : `${cat.name} jumped for a speck of dust.`);
+        cat.mind.drives.playful = Math.max(0, cat.mind.drives.playful - 20);
+        restPose(cat, 'sit'); b.set({ overEdge: 0 });
+        if (caught) { b.look = null; b.goal.headPitch = -.35; yield* wait(1.1); b.goal.headPitch = 0; }
+        else { t = 0; while (t < 1.6) { t += yield; follow(); } }
+        b.face = 'open'; b.look = null;
+        yield* A.sit(cat, 2 + random() * 3);
+      } finally { cat.phase = null; b.set({ swat: 0, rear: 0, wiggle: 0 }); }
+    },
     *stalk(cat) {
       const b = cat.body;
       let t = 0, still = 0;
@@ -1092,6 +1188,16 @@ export function bootCats({ seed } = {}) {
             if (!(yield* leapTo(cat, x, yAt(s, x, b.z), b.k, clamp(height - 40 * b.k, 35, 210 * S()), .6, { surface: s }))) break;
             land(cat, s); b.set({ swat: 0 });
             if (Math.hypot(b.top.x - bug.x, b.top.y - bug.y) < 130 * S() && random() < .45) {
+              bug.flee = true; particle('✦', bug.x, bug.y, { color: '#f2c78d', size: 18 }); log(`${cat.name} nearly caught a butterfly.`);
+            }
+            cat.mind.drives.playful = Math.max(0, cat.mind.drives.playful - 14);
+          } else if (close && height >= 270 * S() && height < 420 * S() && b.gy - height > 120 * b.k) {
+            // Out of pouncing reach: a big vertical leap with a quick wind-up.
+            cat.phase = 'leaping for it';
+            const x = safeLanding(s, bug.x) ?? b.x;
+            if (!(yield* springUp(cat, s, x, height - 50 * b.k, { windup: .45, target: bug, trick: { swipe: true, reach: true } }))) break;
+            // His paw reached the butterfly's height; only the sideways miss matters.
+            if (Math.abs(b.x - bug.x) < 110 * S() && random() < .4) {
               bug.flee = true; particle('✦', bug.x, bug.y, { color: '#f2c78d', size: 18 }); log(`${cat.name} nearly caught a butterfly.`);
             }
             cat.mind.drives.playful = Math.max(0, cat.mind.drives.playful - 14);
@@ -1947,7 +2053,8 @@ export function bootCats({ seed } = {}) {
   function drawParticle(c2, p) {
     const a = 1 - p.age / p.life;
     c2.save(); c2.globalAlpha = clamp(a * 1.6, 0, 1);
-    if (p.glyph === 'dust') { c2.fillStyle = p.color; c2.globalAlpha *= .5; c2.beginPath(); c2.arc(p.x, p.y, p.size * (1 + p.age * 2), 0, TAU); c2.fill(); }
+    if (p.glyph === 'mote') { const x = p.x + Math.sin(p.age * 2.2) * 6; c2.fillStyle = p.color; c2.shadowColor = p.color; c2.shadowBlur = 8; c2.beginPath(); c2.arc(x, p.y, p.size, 0, TAU); c2.fill(); }
+    else if (p.glyph === 'dust') { c2.fillStyle = p.color; c2.globalAlpha *= .5; c2.beginPath(); c2.arc(p.x, p.y, p.size * (1 + p.age * 2), 0, TAU); c2.fill(); }
     else { c2.fillStyle = p.color; c2.font = `700 ${p.size}px ${font}`; c2.textAlign = 'center'; c2.fillText(p.glyph, p.x, p.y); }
     c2.restore();
   }

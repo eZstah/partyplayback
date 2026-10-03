@@ -31,6 +31,20 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## New moves: wind-up, big leaps, high jumps (Claude)
+
+Konstantin asked for more cat moves: preparing and launching a long jump,
+jumping very high to catch something, and jumps with rolls. Added `moves.js`
+(wind-up timing and acting, mid-air twist, swipe and reach) and two activities,
+`leap` and `highjump`. Every far or high jump now has a short wind-up (crouch,
+head bob, butt wiggle); hops do not. The butterfly hunt leaps straight up when
+it flies out of pouncing reach. Acrobatics are rare on an ordinary page (a few
+an hour in the decision simulation) and more common in Aquarium or during play;
+playback, Calm and reduced motion block them. Checked in the browser on the
+home page, in Aquarium and in a room, with frame sheets of the wind-up, a
+sofa-to-TV leap with a twist and a high jump. Next moves are in ROADMAP.md
+under 4b.
+
 ## Aquarium becomes Bean's room (Claude)
 
 Konstantin asked for Aquarium to have big, interesting things to climb, jump

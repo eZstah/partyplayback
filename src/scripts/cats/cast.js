@@ -81,9 +81,9 @@ export const CAST = {
     // Recovery happens during quieter activities, so antics have breathing room.
     pacing: {
       cooldowns: { glass: 210, leave: 240, hide: 100, knock: 110, dance: 100, zoomies: 1200,
-        stalk: 55, approach: 40, stare: 60, explore: 150, hunt: 70 },
+        stalk: 55, approach: 40, stare: 60, explore: 150, hunt: 70, leap: 150, highjump: 200 },
       attentionCost: { glass: 1, leave: .9, hide: .6, knock: .7, dance: .65,
-        zoomies: .85, stalk: .55, hunt: .65, explore: .2 },
+        zoomies: .85, stalk: .55, hunt: .65, explore: .2, leap: .5, highjump: .45 },
       videoRecovery: 120, idleRecovery: 35,
       // Calm by default (Konstantin, 2026-10-03): a real cat rests most of the day and is
       // found mid-nap on a fresh page. Without an invitation, energy builds slowly
@@ -109,7 +109,7 @@ export const CAST = {
       night: ['getting cozy.'], idle: ['what’s that?', 'nice here.'],
       peek: ['peek.', 'still here.', 'found you.'], back: ['back again.', 'quite nice out there.'],
       glass: ['hello in there.', 'a little closer?', 'nose to nose.'], hidden: ['my little nook.'], knock: ['uh oh.'],
-      climb: ['one paw at a time.'],
+      climb: ['one paw at a time.'], leap: ['nailed it.', 'did you see that?'],
     },
   },
 };

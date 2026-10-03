@@ -5,7 +5,7 @@ import { Mind, rng } from '../src/scripts/cats/mind.js';
 
 const quiet = new Set(['sleep', 'watch', 'loaf', 'sit']);
 const durations = { sleep: 35, watch: 35, loaf: 22, sit: 15, groom: 12, stretch: 5,
-  explore: 14, wander: 12, leave: 40, glass: 16, dance: 12, approach: 12, stalk: 14 };
+  explore: 14, wander: 12, leave: 40, glass: 16, dance: 12, approach: 12, stalk: 14, leap: 10, highjump: 9 };
 
 // A decision simulation, not a rendered choreography/performance measurement.
 function session(context, seed, seconds = 1800) {
@@ -165,4 +165,27 @@ test('invited play is not slowed down by calm pacing', () => {
   const invited = Object.fromEntries(plain.inspect().decision.candidates.map(c => [c.type, c.score]));
   const alone = Object.fromEntries(calm.inspect().decision.candidates.map(c => [c.type, c.score]));
   assert.ok(invited.stalk > 0 && invited.stalk > alone.stalk, 'an invitation keeps the cursor game lively');
+});
+
+test('big leaps and high jumps are rare on a page and come more readily in Aquarium', () => {
+  const acrobatic = new Set(['leap', 'highjump']);
+  let page = 0, room = 0;
+  for (const seed of [1, 7, 23]) {
+    const plain = session({ aquarium: false }, seed, 3600), aquarium = session({ aquarium: true }, seed, 3600);
+    const onPage = plain.events.filter(event => acrobatic.has(event.type)).length;
+    assert.ok(onPage <= 8, `seed ${seed}: ${onPage} acrobatic moves in an hour on a page`);
+    assert.ok(plain.quiet / plain.elapsed > .6, `seed ${seed}: still mostly resting`);
+    page += onPage; room += aquarium.events.filter(event => acrobatic.has(event.type)).length;
+  }
+  assert.ok(page > 0, 'they still happen now and then');
+  assert.ok(room > page * 2, `Aquarium has room to play (${room} against ${page})`);
+});
+
+test('acrobatics wait for the video, reduced motion and Calm', () => {
+  const ctx = { shelves: true, aquarium: true, invitedPlay: true };
+  const mind = new Mind('black', {}, rng(2));
+  Object.assign(mind.drives, { playful: 100, curious: 100, sleepy: 0 });
+  for (const extra of [{ playing: true }, { reduced: true }, { calm: true }]) {
+    for (let i = 0; i < 30; i++) assert.ok(!['leap', 'highjump'].includes(mind.choose({ ...ctx, ...extra }).type), JSON.stringify(extra));
+  }
 });

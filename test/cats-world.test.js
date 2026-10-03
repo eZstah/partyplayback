@@ -153,6 +153,35 @@ test('Aquarium furniture becomes surfaces to climb, perch on and hide behind', t
   } finally { world.destroy(); }
 });
 
+test('a big leap sizes up the jump, winds up and lands on furniture', t => {
+  const fixture = habitat(t, { visits: 3 });
+  fixture.perch('cabinet', 'solid', 700, 620, 260, 230);
+  fixture.perch('deck', 'shelf', 300, 560, 150, 20);
+  location.search = '?catdebug';
+  const world = bootCats({ seed: 5 }), bean = world.cats[0];
+  try {
+    bean.mind.choose = () => ({ type: 'sit' }); world.world.nextCritter = Infinity;
+    world.aquarium(true); fixture.advance(500);
+    bean.at = { kind: 'floor' }; bean.body.x = 560; bean.body.z = 0;
+    assert.ok(world.play('Bean', 'leap'));
+    let wiggled = false, flew = false;
+    for (let i = 0; i < 300 && bean.mind.activity === 'leap'; i++) {
+      fixture.advance(50);
+      wiggled ||= bean.body.goal.wiggle === 1; flew ||= bean.at.kind === 'air';
+      if (bean.at.kind === 'ledge') break;
+    }
+    assert.ok(wiggled, 'he wiggles before a big jump');
+    assert.ok(flew, 'and leaps');
+    assert.equal(bean.at.kind, 'ledge', `he lands on furniture, not ${bean.at.kind}`);
+    assert.equal(bean.body.goal.wiggle, 0, 'the wiggle is released');
+    assert.ok(world.play('Bean', 'highjump'));
+    let rose = false;
+    for (let i = 0; i < 300 && bean.mind.activity === 'highjump'; i++) { fixture.advance(50); rose ||= bean.at.kind === 'air'; }
+    assert.ok(rose, 'a high jump leaves the perch');
+    assert.equal(bean.at.kind, 'ledge', 'and comes back down onto it');
+  } finally { world.destroy(); }
+});
+
 test('phones use the static fallback without starting a second cat world', t => {
   const fixture = habitat(t, {}, true);
   assert.deepEqual(bootCats().cats, []);
