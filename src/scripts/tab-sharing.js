@@ -1,5 +1,6 @@
 import { TabShare } from "../lib/tab-share.js";
 import { canCrop, selectShareArea } from "./share-area.js";
+import { captureVideoConstraints } from "../lib/share-video-quality.js";
 
 export function bootTabSharing({ send, toast, onChange }) {
   const $ = id => document.getElementById(id);
@@ -12,9 +13,9 @@ export function bootTabSharing({ send, toast, onChange }) {
     canWatch: inMainRoom,
     capture: async ({ signal }) => {
       const source = await navigator.mediaDevices.getDisplayMedia({
-      video: { width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } },
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false },
-      selfBrowserSurface: "exclude", monitorTypeSurfaces: "exclude", systemAudio: "exclude", surfaceSwitching: "exclude",
+        video: captureVideoConstraints,
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false },
+        selfBrowserSurface: "exclude", monitorTypeSurfaces: "exclude", systemAudio: "exclude", surfaceSwitching: "exclude",
       });
       if (signal.aborted) { source.getTracks().forEach(track => track.stop()); throw new DOMException("Cancelled", "AbortError"); }
       if (canCrop()) return selectShareArea(source, signal, toast);

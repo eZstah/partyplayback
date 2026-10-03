@@ -1,3 +1,5 @@
+import { videoDownscale } from "./share-video-quality.js";
+
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
 // Normalized rectangles keep the selector independent of its on-screen size.
@@ -18,6 +20,6 @@ export function cropPixels(rect, width, height) {
   const x = Math.ceil(r.x * width), y = Math.ceil(r.y * height);
   const w = Math.max(1, Math.floor((r.x + r.width) * width) - x);
   const h = Math.max(1, Math.floor((r.y + r.height) * height) - y);
-  const scale = Math.min(1, 1280 / w, 720 / h);
+  const scale = 1 / videoDownscale(w, h);
   return { x, y, width: w, height: h, outputWidth: Math.max(2, Math.floor(w * scale / 2) * 2), outputHeight: Math.max(2, Math.floor(h * scale / 2) * 2) };
 }

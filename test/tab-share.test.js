@@ -56,6 +56,7 @@ function fakePeer() {
   return {
     connectionState: "new", remoteDescription: null, localDescription: null, tracks: [], candidates: [], closed: false,
     addTrack(track) { this.tracks.push(track); },
+    getSenders() { return this.tracks.map(track => ({ track })); },
     async createOffer() { return { type: "offer", sdp: "test offer" }; },
     async createAnswer() { return { type: "answer", sdp: "test answer" }; },
     async setLocalDescription(description) { this.localDescription = { ...description, toJSON: () => description }; },
@@ -137,6 +138,25 @@ test("viewer queues early ICE, answers the offer and ignores an older share", as
   assert.equal(share.peers.size, 0, "late ICE from before Reconnect is discarded");
   share.disconnect();
   assert.equal(peers[0].closed, true);
+});
+
+test("host applies video quality after the answer, and unsupported hints keep the viewer connected", async () => {
+  const { share, active, ice, peers } = setup();
+  await share.start();
+  share.update({ peerId: "self", share: active() });
+  await ice(); await flush();
+  await share.handle({ type: "share-viewer", shareId: "capture-1", peerId: "viewer", connectionId: "quality" });
+  const pc = peers[0];
+  let attempted = false;
+  pc.getSenders = () => [{
+    track: { kind: "video", getSettings: () => ({ width: 546, height: 972 }) },
+    getParameters() { assert.equal(pc.remoteDescription.type, "answer"); return { encodings: [{}] }; },
+    async setParameters() { attempted = true; throw new Error("unsupported"); },
+  }];
+  await share.handle({ type: "share-signal", shareId: "capture-1", from: "viewer", connectionId: "quality", description: { type: "answer", sdp: "v=0" } });
+  assert.equal(attempted, true);
+  assert.equal(pc.closed, false);
+  share.disconnect();
 });
 
 test("losing the room while picking a tab stops the late capture", async () => {

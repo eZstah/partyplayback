@@ -1,3 +1,5 @@
+import { tuneVideoSender } from "./share-video-quality.js";
+
 // One broadcaster, a few viewers. The room socket carries signaling only;
 // picture and sound travel directly between browsers over WebRTC. No relay.
 export class TabShare {
@@ -36,7 +38,7 @@ export class TabShare {
       const track = stream.getVideoTracks()[0];
       this.local = stream;
       if (!track || track.readyState === "ended") throw new Error("No shared picture was received. Choose a browser tab and try again.");
-      track.contentHint = "motion";
+      track.contentHint = "detail";
       track.addEventListener("ended", () => this.stop(), { once: true });
       if (!this.send({ type: "share-start", requestId: this.pending.id, audio: stream.getAudioTracks().length > 0 })) {
         throw new Error("The room disconnected. Reconnect and share again.");
@@ -202,6 +204,8 @@ export class TabShare {
       if (data.description) {
         if (data.description.type !== (this.hosting ? "answer" : "offer")) return;
         await pc.setRemoteDescription(data.description);
+        if (this.hosting) await Promise.all(pc.getSenders().map(tuneVideoSender));
+        if (this.peers.get(data.from) !== peer) return;
         for (const candidate of peer.candidates.splice(0)) await pc.addIceCandidate(candidate);
         if (!this.hosting) {
           await pc.setLocalDescription(await pc.createAnswer());
