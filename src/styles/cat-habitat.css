@@ -21,8 +21,9 @@ body.cat-wallpaper,.cat-habitat{--u:min(1vw,1.6vh);--floor:13vh;
 .habitat-rug{position:absolute;left:24vw;width:46vw;bottom:2vh;height:9vh;border-radius:50%;background:repeating-radial-gradient(ellipse at center,#d79bb21a 0 calc(.8*var(--u)),#c385a012 calc(.8*var(--u)) calc(1.6*var(--u)));box-shadow:0 0 calc(3*var(--u)) #e3a7c010}
 .habitat-sunbeam{position:absolute;left:calc(27vw + 4*var(--u));top:calc(100vh - var(--floor) - 34*var(--u));width:calc(36*var(--u));bottom:4vh;background:linear-gradient(#ffe6b833,#ffe6b80a);clip-path:polygon(0 0,45% 0,100% 100%,38% 100%);mix-blend-mode:screen;opacity:calc(var(--beam) * var(--beam-mood,1) * 2);transition:opacity 6s}
 .habitat-light{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 18vw 28vh,color-mix(in srgb,var(--glow) 32%,transparent),transparent 34vw);opacity:var(--lamp);mix-blend-mode:soft-light;transition:opacity 6s}
-.habitat-sign{position:absolute;left:66vw;top:5vh;display:grid;gap:9px;color:#d0c0df}
-.habitat-sign .youple-wordmark{font-size:27px;opacity:.85}.habitat-sign .sign-note{font-size:12px;color:#9b8ca7}
+/* A quiet maker's mark on the floorboards, easy to miss. */
+.habitat-sign{position:absolute;left:2vw;bottom:1.6vh;display:flex;align-items:baseline;gap:8px;opacity:.32}
+.habitat-sign .youple-wordmark{font-size:13px}.habitat-sign .sign-note{font-size:11px;color:#c9b8d6}
 .habitat-plant{position:absolute;left:15.5vw;bottom:calc(var(--floor) + .5vh);height:20vh;opacity:.85}
 
 /* Fairy lights along the top of the wall. */
@@ -114,7 +115,6 @@ body.cat-wallpaper .cat-habitat[data-weather=rain] .sky-rain{animation:rain .5s 
 .console-speaker{flex:.6;border-radius:calc(.5*var(--u));background:radial-gradient(circle,#3f2f3a 30%,transparent 32%) 0 0/calc(.9*var(--u)) calc(.9*var(--u)),#4d3a46}
 .tv{left:var(--tv-left);bottom:calc(var(--floor) + var(--tv-lift)*var(--u));width:calc((var(--tv-w) + 2*var(--tv-side))*var(--u));height:calc((var(--tv-h) + var(--tv-top) + var(--tv-chin))*var(--u));border-radius:calc(1.2*var(--u));background:linear-gradient(#2c2733,#1c1922);box-shadow:0 calc(1.2*var(--u)) calc(3*var(--u)) #000a,inset 0 0 0 1px #ffffff12;padding:calc(var(--tv-top)*var(--u)) calc(var(--tv-side)*var(--u)) calc(var(--tv-chin)*var(--u))}
 .tv-screen{width:100%;height:100%;border-radius:calc(.5*var(--u));background:radial-gradient(ellipse at 40% 35%,#3a2f55,#17131f 75%);display:grid;place-items:center;box-shadow:inset 0 0 calc(2*var(--u)) #b8a1e855}
-.tv-screen .youple-wordmark{font-size:calc(2.6*var(--u));filter:drop-shadow(0 0 calc(1*var(--u)) #b8a1e8aa)}
 .tv-led{position:absolute;right:calc(1.6*var(--u));bottom:calc(.85*var(--u));width:calc(.5*var(--u));aspect-ratio:1;border-radius:50%;background:#ff9fb7;box-shadow:0 0 6px #ff9fb7}
 
 /* Bookshelf: climb to the very top, or sit among the books. */
