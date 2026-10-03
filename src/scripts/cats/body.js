@@ -16,13 +16,21 @@ const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const norm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
 const mix = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 const VIEW = [0, ST, CT];
+// Colour helpers for soft shading.
+const tints = new Map();
+export function tint(hex, amount) {
+  const key = hex + amount; if (tints.has(key)) return tints.get(key);
+  const n = parseInt(hex.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255];
+  const out = '#' + c.map(v => Math.round(amount > 0 ? v + (255 - v) * amount : v * (1 + amount)).toString(16).padStart(2, '0')).join('');
+  tints.set(key, out); return out;
+}
 export const visibility = n => dot(n, VIEW);
 export const project2 = v => [v[0], -v[1] * CT + v[2] * ST];
 
 export const REST = {
   sit: 0, loaf: 0, curl: 0, crouch: 0, stretch: 0, rear: 0, dangle: 0, leap: 0,
   headYaw: 0, headPitch: 0, headRoll: 0, earsBack: 0, tailUp: .45, tailCurl: .35, tailWag: .12, tailPuff: 0, tailWrap: 0,
-  eyes: 1, pupil: .7, mouth: 0, groom: 0, pawsUp: 0, swat: 0, knead: 0, bob: 0, wiggle: 0,
+  eyes: 1, pupil: .7, mouth: 0, groom: 0, pawsUp: 0, swat: 0, knead: 0, bob: 0, wiggle: 0, tailHang: 0, overEdge: 0,
 };
 const RATES = { headYaw: 7, headPitch: 7, headRoll: 6, eyes: 16, mouth: 12, swat: 18, earsBack: 10, pupil: 6, tailPuff: 5 };
 const LEGS = [
@@ -33,12 +41,14 @@ const TAIL_SEGMENTS = 9;
 
 export class CatBody {
   constructor(look) {
-    this.L = look; this.x = 0; this.z = 0; this.gy = 0; this.h = 0; this.k = 1; this.yaw = Math.PI / 2; this.yawVel = 0;
+    this.L = { ...look, light: look.light || tint(look.fur, .38) }; this.x = 0; this.z = 0; this.gy = 0; this.h = 0; this.k = 1; this.yaw = Math.PI / 2; this.yawVel = 0;
     this.pose = { ...REST }; this.goal = { ...REST }; this.face = 'open'; this.blink = 0; this.nextBlink = 1 + Math.random() * 3;
     this.speed = 0; this.gait = Math.random() * TAU; this.move = null; this.turnTo = null; this.jump = null;
     this.look = null; this.time = Math.random() * 100; this.squash = 0; this.squashVel = 0; this.alpha = 1; this.shadowY = null;
     this.tail = Array.from({ length: TAIL_SEGMENTS }, () => ({ a: .4, b: 0 })); this.tailSide = Math.random() < .5 ? 1 : -1;
     this.hit = []; this.top = { x: 0, y: 0 }; this.bounds = { left: 0, top: 0, right: 0, bottom: 0 };
+    // Set by the world: an external gait speed (climbing), and whether to draw a floor shadow.
+    this.drive = null; this.noShadow = false; this.headLift = look.headR * 2.6; this.paws = [];
   }
   set(goal) { Object.assign(this.goal, goal); return this; }
   reset(extra = {}) { this.goal = { ...REST, ...extra }; return this; }
@@ -81,7 +91,7 @@ export class CatBody {
         }
       }
       if (!this.move) {
-        this.speed = ease(this.speed, 0, 9, dt);
+        this.speed = ease(this.speed, this.drive ?? 0, this.drive ? 6 : 9, dt);
         if (this.turnTo !== null) {
           const off = wrap(this.turnTo - this.yaw);
           this.yaw += clamp(off, -4.2 * dt, 4.2 * dt);
@@ -131,6 +141,9 @@ export class CatBody {
       a = lerp(a, i === 0 ? .35 : -.04, clamp(this.speed / 260, 0, .6));
       const w = clamp(Math.max(p.tailWrap, p.curl, p.sit * .9, p.loaf * .8), 0, 1);
       a = lerp(a, i === 0 ? -.35 : -.03, w); b = lerp(b, wrapSide * (.12 + .3 * f), w);
+      // Hanging over an edge, swinging lazily.
+      const hang = clamp(p.tailHang, 0, 1);
+      if (hang > .001) { a = lerp(a, i === 0 ? -1.3 : -.02, hang); b = lerp(b, (i === 0 ? 0 : Math.sin(t * 1.4 - i * .45) * .09) , hang); }
       const rate = 14 - f * 9;
       s.a = ease(s.a, a, rate, dt); s.b = ease(s.b, b, rate, dt);
     }
@@ -201,13 +214,13 @@ export class CatBody {
     // Shadow.
     const center = this.screen([B[0], 0, B[2]]);
     const shadowY = this.shadowY ?? (this.gy + k * B[2] * ST);
-    ctx.save(); ctx.globalAlpha = this.alpha * .26 * clamp(1 - this.h / 160, .25, 1) * (this.shadowY ? .6 : 1);
+    ctx.save(); ctx.globalAlpha = this.noShadow ? 0 : this.alpha * .26 * clamp(1 - this.h / 160, .25, 1) * (this.shadowY ? .6 : 1);
     ctx.fillStyle = '#0b0714'; ctx.beginPath();
     ctx.ellipse(center[0], shadowY, k * (R * 1.7 + Math.abs(Math.cos(this.yaw)) * L.spine * .9) * clamp(1 - this.h / 300, .4, 1), k * R * .5, 0, 0, TAU); ctx.fill(); ctx.restore();
     ctx.save(); ctx.globalAlpha = this.alpha;
 
     // Legs: shoulder/hip anchors to paws, with gait.
-    const legVis = clamp(1 - p.loaf - p.curl, 0, 1), sitW = clamp(p.sit, 0, 1);
+    const legVis = clamp(1 - p.loaf - p.curl + p.overEdge, 0, 1), sitW = clamp(p.sit, 0, 1);
     const gallop = this.speed > 170, trot = this.speed > 85;
     for (const leg of LEGS) {
       const base = leg.front ? sk.C : sk.H, s = leg.side;
@@ -221,6 +234,7 @@ export class CatBody {
         paw = mixArr(paw, [sk.C[0] + R * .9 + ll * .9, 0, s * R * .4], p.stretch);
         const kneadLift = Math.max(0, Math.sin(this.time * 7 + (s > 0 ? 0 : Math.PI))) * p.knead * 6;
         paw[1] += kneadLift;
+        if (p.overEdge > .01) paw = mixArr(paw, [sk.C[0] + R * .7 + Math.sin(this.time * 2.2 + s) * 2.5, -ll * 1.2 - R * .45, s * R * .42], clamp(p.overEdge, 0, 1));
       } else {
         paw = mixArr(paw, [sk.H[0] + R * 1.05, 0, s * R * .68], sitW);
       }
@@ -243,6 +257,7 @@ export class CatBody {
       if (leg.front && p.pawsUp > .01 && rear < .01) wp = mix(wp, add(wa, this.dirWorld(R * .6, ll * .9, s * 2, this.yaw)), clamp(p.pawsUp, 0, 1) * .8);
       // Jazz paws: when standing up, front paws wave out to the sides.
       if (leg.front && p.pawsUp > .01 && rear > .3) wp = mix(wp, add(wa, add(this.dirWorld(R * .5, -ll * .75 + Math.sin(this.time * 7.8 + s * 1.6) * 5, s * (R * 1.15 + 3), this.yaw), [0, 0, 0])), clamp(p.pawsUp * rear, 0, 1));
+      if (leg.front) this.paws[s > 0 ? 0 : 1] = { w: wp, depth: this.depth(wp) };
       const hidden = legVis < .05 && !(leg.front && (p.groom > .1 || p.swat > .1));
       const isHindSit = !leg.front && sitW > .5;
       parts.push({ depth: this.depth(wp) + (leg.front ? .5 : 0), draw: () => {
@@ -263,7 +278,7 @@ export class CatBody {
       const dir = this.dirWorld(local[0], local[1] * Math.cos(pitch * .6) , local[2], this.yaw);
       tailPts.push(add(tailPts[i], mul(norm(dir), segLen)));
     }
-    for (const pt of tailPts) if (pt[1] < 2 && dangle < .5) pt[1] = 2 + (pt[1] - 2) * .1;
+    if (p.tailHang < .3) for (const pt of tailPts) if (pt[1] < 2 && dangle < .5) pt[1] = 2 + (pt[1] - 2) * .1;
     const tailDepth = this.depth(tailPts[4]);
     parts.push({ depth: tailDepth, draw: () => drawTail(this, ctx, tailPts, L, outline, ow) });
 
@@ -292,6 +307,8 @@ export class CatBody {
     for (const part of parts) part.draw();
     ctx.restore();
 
+    this.headLift = (this.gy - this.screen(D)[1]) / k; this.headPos = this.screen(D);
+    for (const paw of this.paws) if (paw) paw.s = this.screen(paw.w);
     // Hit areas and the anchor for speech bubbles.
     this.hit = [...bodyBalls, { c: D, r: hr * 1.05 }].map(ball => { const [x, y] = this.screen(ball.c); return { x, y, r: ball.r * k + 4 }; });
     const headTop = this.screen(add(D, [0, hr * 1.5, 0]));
@@ -325,6 +342,14 @@ function drawBalls(body, ctx, balls, outline, ow) {
   for (const b of sorted) {
     ctx.fillStyle = b.fill; ctx.beginPath(); ctx.arc(b.s[0], b.s[1], b.r * k, 0, TAU); ctx.fill();
   }
+  // One soft light over the whole silhouette, so the spheres read as one plump body without seams.
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  for (const b of sorted) { const r = b.r * k; left = Math.min(left, b.s[0] - r); right = Math.max(right, b.s[0] + r); top = Math.min(top, b.s[1] - r); bottom = Math.max(bottom, b.s[1] + r); }
+  ctx.save(); clipBalls(body, ctx, balls);
+  const w = right - left, h = bottom - top, cx = left + w * .4, cy = top + h * .3;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * .7);
+  g.addColorStop(0, `rgba(255,255,255,${body.L.tuxedo ? .1 : .24})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(left, top, w, h); ctx.restore();
   return sorted;
 }
 
@@ -447,7 +472,26 @@ function drawHead(body, ctx, D, [F, U, S], L, outline, ow) {
   for (const e of ears) {
     earPath(e); ctx.strokeStyle = outline; ctx.lineWidth = ow * 2; ctx.stroke(); ctx.fillStyle = L.fur; ctx.fill();
     const v = visibility(e.front);
-    if (v > -.05) { ctx.save(); ctx.globalAlpha *= clamp((v + .05) * 4, 0, 1); earPath(e, .38); ctx.fillStyle = L.ear; ctx.fill(); ctx.restore(); }
+    if (v > -.05) {
+      ctx.save(); ctx.globalAlpha *= clamp((v + .05) * 4, 0, 1); earPath(e, .38); ctx.fillStyle = L.ear; ctx.fill();
+      // A little tuft of fur inside the ear.
+      const b = body.screen(e.base), t = body.screen(e.tip);
+      ctx.strokeStyle = L.light; ctx.lineWidth = 1.5 * k; ctx.lineCap = 'round'; ctx.beginPath();
+      for (const off of [-.18, .18]) { ctx.moveTo(lerp(b[0], t[0], .1) + off * r * k * .5, lerp(b[1], t[1], .1)); ctx.lineTo(lerp(b[0], t[0], .48) + off * r * k * .15, lerp(b[1], t[1], .48)); }
+      ctx.stroke(); ctx.restore();
+    }
+  }
+  // Cheek fluff: spiky tufts that widen the face from any angle.
+  const hs0 = body.screen(D), rr = r * k, puff = L.cheeks;
+  for (const sgn of [1, -1]) {
+    const spikes = [[-.5, .9], [-.3, 1.17], [-.16, .98], [.02, 1.24], [.17, .98], [.33, 1.13], [.52, .88]];
+    ctx.beginPath();
+    spikes.forEach(([da, rad], i) => {
+      const a = sgn > 0 ? .4 + da : Math.PI - .4 - da, q = rad > 1 ? 1 + (rad - 1) * puff : rad;
+      const x = hs0[0] + Math.cos(a) * rr * q, y = hs0[1] + Math.sin(a) * rr * q;
+      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    });
+    ctx.closePath(); ctx.lineJoin = 'round'; ctx.strokeStyle = outline; ctx.lineWidth = ow * 2; ctx.stroke(); ctx.fillStyle = L.fur; ctx.fill();
   }
   const ballDepth = b => body.depth(b.c);
   const balls = [
@@ -462,8 +506,11 @@ function drawHead(body, ctx, D, [F, U, S], L, outline, ow) {
   ctx.fillStyle = outline;
   for (const b of sorted) { ctx.beginPath(); ctx.arc(b.s[0], b.s[1], b.r * k + ow, 0, TAU); ctx.fill(); }
   for (const b of sorted) { ctx.fillStyle = b.fill; ctx.beginPath(); ctx.arc(b.s[0], b.s[1], b.r * k, 0, TAU); ctx.fill(); }
-  // Tuxedo kittens have a dark mask over the top of the muzzle.
   ctx.save(); clipBalls(body, ctx, balls);
+  // Soft light on the forehead.
+  const lg = ctx.createRadialGradient(hs0[0] - rr * .35, hs0[1] - rr * .5, 0, hs0[0] - rr * .35, hs0[1] - rr * .5, rr * 1.25);
+  lg.addColorStop(0, `rgba(255,255,255,${L.tuxedo ? .13 : .3})`); lg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = lg; ctx.fillRect(hs0[0] - rr * 1.6, hs0[1] - rr * 1.6, rr * 3.2, rr * 3.2);
   // Under-chin shade.
   const hs = body.screen(D); ctx.fillStyle = L.shade; ctx.globalAlpha *= L.tuxedo ? .2 : .4;
   ctx.beginPath(); ctx.ellipse(hs[0], hs[1] + r * k * 1.25, r * k * 1.3, r * k * .42, 0, 0, TAU); ctx.fill(); ctx.globalAlpha /= L.tuxedo ? .2 : .4;
@@ -514,17 +561,27 @@ function drawFace(body, ctx, D, [F, U, S], L, muzzle) {
       ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(0, 0, rx + .9, ry + .9, 0, 0, TAU); ctx.fill();
       ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.clip();
       ctx.fillStyle = wide ? '#FFFDF7' : L.iris; ctx.fillRect(-rx, -ry, rx * 2, ry * 2);
+      if (!wide) { ctx.fillStyle = tint(L.iris, -.35); ctx.globalAlpha *= .55; ctx.beginPath(); ctx.ellipse(0, -ry * .95, rx * 1.3, ry * .75, 0, 0, TAU); ctx.fill(); ctx.globalAlpha /= .55; }
       const pupil = wide ? .28 : clamp(p.pupil, .25, 1.3);
       ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(gx, gy, es * .62 * pupil + .5, es * 1.02, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(gx - es * .32, gy - es * .42, es * .3, 0, TAU); ctx.arc(gx + es * .35, gy + es * .4, es * .14, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(gx - es * .3, gy - es * .45, es * .38, 0, TAU); ctx.arc(gx + es * .38, gy + es * .42, es * .17, 0, TAU); ctx.fill();
       // Heavy lids for the critic, or when grumpy / sleepy.
       const lid = Math.max(L.lidded || 0, mood === 'grumpy' ? .45 : 0, (1 - p.eyes) * .8, mood === 'focus' ? .2 : 0);
-      if (lid > .02) { ctx.fillStyle = L.fur; ctx.fillRect(-rx - 2, -ry - 2, rx * 2 + 4, ry * 2 * lid + 2); ctx.strokeStyle = ink; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-rx, -ry + ry * 2 * lid); ctx.lineTo(rx, -ry + ry * 2 * lid - (mood === 'grumpy' ? side * 1.2 : 0)); ctx.stroke(); }
+      if (lid > .02) { ctx.fillStyle = L.fur; ctx.fillRect(-rx - 2, -ry - 2, rx * 2 + 4, ry * 2 * lid + 2); ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-rx, -ry + ry * 2 * lid); ctx.lineTo(rx, -ry + ry * 2 * lid - (mood === 'grumpy' ? side * 1.2 : 0)); ctx.stroke(); }
       ctx.restore();
+      // Lash line along the top of the eye, flicked out at the outer corner.
+      if (lid < .3) {
+        ctx.strokeStyle = ink; ctx.lineWidth = 2.3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.ellipse(0, 0, rx + .8, ry + .8, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+        const corner = Math.PI * (side > 0 ? 1.9 : 1.1);
+        ctx.beginPath(); ctx.moveTo(Math.cos(corner) * (rx + .8), Math.sin(corner) * (ry + .8)); ctx.lineTo(side * (rx + 3.4), -ry * .75 - 1.8); ctx.stroke();
+      }
+      // Brows only when they say something.
+      if (mood === 'grumpy') { ctx.strokeStyle = ink; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(-side * es * 1.1, -es * 1.35); ctx.lineTo(side * es * 1.05, -es * 1.95); ctx.stroke(); }
+      else if (wide) { ctx.strokeStyle = ink; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.ellipse(0, -es * 1.35, es * .9, es * .5, 0, Math.PI * 1.2, Math.PI * 1.8); ctx.stroke(); }
     }
-    if (mood === 'love' || mood === 'happy' || body.blush) {
-      ctx.fillStyle = '#F29BB0'; ctx.globalAlpha *= .55; ctx.beginPath(); ctx.ellipse(side * 1.5, es * 1.7, es * .85, es * .42, 0, 0, TAU); ctx.fill();
-    }
+    // Blush: always a little, more when happy.
+    ctx.fillStyle = '#F29BB0'; ctx.globalAlpha *= (mood === 'love' || mood === 'happy' || body.blush) ? .6 : .28;
+    ctx.beginPath(); ctx.ellipse(side * es * .5, es * 1.75, es * .9, es * .45, 0, 0, TAU); ctx.fill();
     ctx.restore();
   }
   // Nose and mouth on the muzzle.

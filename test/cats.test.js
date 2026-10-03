@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CAST, KINDS, traitWords } from '../src/scripts/cats/cast.js';
 import { Mind, awaySummary, dayRhythm, defaultBonds, rng, videoVibe } from '../src/scripts/cats/mind.js';
-import { CatBody, headBasis, visibility, wrap } from '../src/scripts/cats/body.js';
+import { CatBody, headBasis, tint, visibility, wrap } from '../src/scripts/cats/body.js';
 
 const count = (kind, ctx, runs = 300, seed = 7) => {
   const tally = {};
@@ -122,4 +122,33 @@ test('a walking cat turns toward where it is going and arrives', () => {
   body.goTo(200, -100, 80);
   for (let i = 0; i < 120; i++) body.update(1 / 60);
   assert.ok(Math.sin(body.yaw) < -.5, 'walking away shows its back');
+});
+
+test('the v2 world gives every cat ways to hide, leave and press up to the glass, and only mischief knocks things over', () => {
+  // Live an afternoon: each choice runs for a while, so drives and the repeat penalty shape the next one.
+  const day = (kind, ctx, steps = 600) => {
+    const mind = new Mind(kind, {}, rng(11)), tally = {};
+    for (let i = 0; i < steps; i++) {
+      const { type, partner } = mind.choose(ctx);
+      mind.begin(type, partner); mind.tick(12, ctx);
+      tally[type] = (tally[type] || 0) + 1;
+    }
+    return tally;
+  };
+  const ctx = { shelves: true, hideouts: true, toys: true, aquarium: true };
+  const all = Object.fromEntries(KINDS.map(k => [k, day(k, ctx)]));
+  const seen = new Set(Object.values(all).flatMap(t => Object.keys(t)));
+  for (const type of ['hide', 'leave', 'glass', 'explore', 'knock']) assert.ok(seen.has(type), `${type} never chosen: ${JSON.stringify(all)}`);
+  assert.ok((all.pink.knock || 0) > (all.mint.knock || 0) && (all.pink.knock || 0) > (all.purple.knock || 0), JSON.stringify(all));
+  const bare = day('pink', { shelves: true }, 200);
+  assert.ok(!bare.knock && !bare.hide, 'nothing to knock over and nowhere to hide');
+});
+
+test('a cat hanging off a ledge drops its paws and lets the tail hang', () => {
+  const body = new CatBody(CAST.mint.look);
+  body.set({ overEdge: 1, tailHang: 1 });
+  for (let i = 0; i < 90; i++) body.update(1 / 60);
+  assert.ok(body.pose.overEdge > .9 && body.pose.tailHang > .9, JSON.stringify(body.pose));
+  assert.match(tint('#000000', .5), /^#[0-9a-f]{6}$/i);
+  assert.equal(tint('#ffffff', .5).toLowerCase(), '#ffffff');
 });

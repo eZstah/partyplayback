@@ -39,6 +39,7 @@ const ACTIVITY_LABEL = {
   stare: 'Staring at you', visit: 'Visiting', chase: 'Chasing', flee: 'Running away', cuddle: 'Cuddling', hunt: 'Hunting a butterfly',
   laser: 'Chasing the red dot', treat: 'Going for the treat', follow: 'Following', stretch: 'Stretching', carried: 'Being carried',
   hiss: 'Hissing', wrestle: 'Play-fighting', beg: 'Asking for attention', react: 'Reacting', fall: 'Falling', greet: 'Saying hello',
+  hide: 'Hiding', leave: 'Out exploring', glass: 'At the glass', knock: 'Knocking things over', annoyed: 'Annoyed',
 };
 export const activityLabel = (type, partner) => (ACTIVITY_LABEL[type] || 'Thinking') + (partner && ['visit', 'chase', 'flee', 'cuddle', 'follow', 'wrestle'].includes(type) ? ` ${CAST[partner].name}` : '');
 
@@ -73,8 +74,8 @@ export class Mind {
     const active = ['zoomies', 'chase', 'flee', 'laser', 'hunt', 'dance', 'wrestle', 'stalk'].includes(a);
     d.sleepy += dt * (resting ? -2.2 : (active ? .9 : lazing ? .12 : .3) * (.55 + t.lazy) * day.sleepy);
     d.playful += dt * (active ? -2.4 : resting ? .05 : .45 * (.3 + t.energy) * day.playful);
-    d.lonely += dt * (ctx.nearFriend || a === 'cuddle' || a === 'visit' ? -1.5 : .35 * t.sociable);
-    d.curious += dt * (a === 'explore' || a === 'wander' || a === 'hunt' ? -1.8 : .4 * (.25 + t.curiosity));
+    d.lonely += dt * (ctx.nearFriend || ['cuddle', 'visit', 'glass', 'approach', 'stare'].includes(a) ? -1.5 : .35 * t.sociable);
+    d.curious += dt * (['explore', 'wander', 'hunt', 'leave', 'hide', 'knock'].includes(a) ? -1.8 : .4 * (.25 + t.curiosity));
     d.hungry += dt * .05;
     for (const k in d) d[k] = clamp(d[k], 0, 100);
     const m = this.mood, decay = Math.exp(-dt / 9);
@@ -82,7 +83,7 @@ export class Mind {
     this.since += dt;
     if (this.since > 10) this.petStreak = Math.max(0, this.petStreak - dt * .2);
   }
-  // Score what to do next. ctx: { playing, vibe, day, cursor, laser, treat, critter, shelves, aquarium, reduced, calm, others }
+  // Score what to do next. ctx: { playing, vibe, day, cursor, laser, treat, critter, shelves, hideouts, toys, aquarium, reduced, calm, others }
   choose(ctx = {}) {
     const d = this.drives, t = this.t, others = ctx.others || [], random = this.random;
     const awake = others.filter(o => o.activity !== 'sleep' && o.activity !== 'cuddle' && o.activity !== 'carried');
@@ -100,7 +101,11 @@ export class Mind {
       groom: 14 + (1 - t.mischief) * 14,
       stretch: d.sleepy < 30 && this.last[0] === 'sleep' ? 90 : 4,
       wander: 14 + d.curious * .35 + t.energy * 14,
-      explore: ctx.shelves ? d.curious * .45 + t.bold * 26 + t.curiosity * 14 : 0,
+      explore: ctx.shelves ? 10 + d.curious * .45 + t.bold * 18 + t.curiosity * 12 : 0,
+      hide: ctx.hideouts ? (9 + t.mischief * 18 + (1 - t.bold) * 12 + t.curiosity * 8 + d.curious * .2) * (ctx.playing ? .35 : 1) : 0,
+      leave: (12 + t.curiosity * 14 + t.energy * 10 + d.curious * .25 - t.affection * 6) * (ctx.playing ? .3 : 1),
+      glass: ((ctx.aquarium ? 22 : 6) + t.curiosity * 12 + t.affection * 10 + d.lonely * .15) * motion * (ctx.playing ? .3 : 1),
+      knock: ctx.toys ? Math.max(0, t.mischief * 44 + d.playful * .3 - 10) * motion : 0,
       watch: ctx.playing ? 52 + (this.kind === 'purple' ? 25 : 0) + (ctx.vibe === 'talk' && this.kind !== 'purple' ? -25 : 0) : 0,
       dance: ctx.playing && ctx.vibe === 'music' ? (d.playful * .6 + t.energy * 45 + (this.kind === 'pink' ? 30 : 0)) * motion : 0,
       zoomies: d.playful > 55 ? (d.playful * .6 + t.energy * 30 + (ctx.day?.label === 'morning' || ctx.day?.label === 'evening' ? 18 : 0)) * motion : 0,

@@ -33,3 +33,7 @@ body.cat-wallpaper .cat-dock[data-awake=false] .cat-dock-bar{opacity:.15;transit
 .cat-hint{color:#9d92ab;font-size:11px;line-height:1.5;margin:14px 0 0}
 body.cat-wallpaper .cat-panel-btn{opacity:.4}body.cat-wallpaper .cat-panel-btn:hover{opacity:1}
 @media(max-width:600px){.cat-dock{right:10px;bottom:10px}.cat-panel{padding:16px}.cat-panel-btn{padding:7px 11px 7px 9px;font-size:12px}}
+/* The living cats are desktop-only; phones keep the static mascots. */
+@media (max-width:760px),(hover:none) and (pointer:coarse){.cat-playbar{display:none!important}}
+/* Hide the static mascots before the script runs wherever the living cats will take over. */
+@media (min-width:761px) and (hover:hover),(min-width:761px) and (pointer:fine){.mascot-cast .cast-member,.room-pal{visibility:hidden}}

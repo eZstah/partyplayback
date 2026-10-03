@@ -174,21 +174,33 @@ drives (sleepy, playful, lonely, curious, hungry) rise and fall with what it doe
 and the time of day, and a weighted choice picks what it wants next. Nothing runs
 on a script.
 
-What they do: wander, explore on top of page elements, loaf, groom, stretch and
-yawn, nap (turning around before lying down), cuddle up to friends, visit and boop
-noses, chase and play-fight, hiss at someone they don't like, get the zoomies,
-stalk and pounce on a still cursor, hunt butterflies, race for treats, follow each
-other around, and come to the front to look at you. In a room they sit with their
-backs to you to watch the video, dance to music titles and turn around when it
-pauses.
+The page is their world. They walk a perspective floor along the bottom of the
+screen (smaller and slower further back), jump onto cards, headings, icon tiles
+and even the letters of the wordmark, climb the sides of the create card or the
+player, and hide behind the big panels so only their head and paws show over the
+edge. They peek in from the sides and top of the screen, leave and come back
+later, press their faces against the glass (leaving paw prints and fog), and knock
+the little page decorations around. Routes are planned over the floor and every
+ledge, so a cat that wants a high spot finds a way up or leaves the screen and
+drops in from above.
+
+What else they do: loaf, groom, stretch and yawn, nap (turning around before
+lying down), cuddle up to friends, visit and boop noses, chase and play-fight,
+hiss at someone they don't like, get the zoomies, stalk and pounce on a still
+cursor, hunt butterflies, race for treats and follow each other around. In a room
+they sit with their backs to you to watch the video, dance to music titles and
+turn around when it pauses.
 
 Viewers can stroke a cat with the cursor to pet it, click to boop, drag to pick it
-up, double-click empty space to drop a treat, or turn on the laser pointer from
-the **Cats** panel. The panel shows what each cat is doing, how it feels, how much
-it likes you and who its friends are, plus a short diary. Trust, friendships and
-the diary are kept in `localStorage`, so the cats remember returning visitors and
-notice long absences. **Aquarium** (`?wallpaper=1`) gives them the whole screen with
-a deep floor to walk around on.
+up (and drop it onto a ledge), double-click empty space to drop a treat, or turn on
+the laser pointer from the **Cats** panel. The panel shows what each cat is doing,
+how it feels, how much it likes you and who its friends are, plus a short diary.
+Trust, friendships and the diary are kept in `localStorage`, so the cats remember
+returning visitors and notice long absences. **Aquarium** (`?wallpaper=1`) gives them
+the whole screen with a deep floor to walk around on.
+
+The living cats are desktop only. Phones and touch-first screens keep the static
+mascots.
 
 Video context comes from the current title and playback state only. It does not
 listen to audio or inspect frames. Cat interactions are local to each viewer.
@@ -201,13 +213,15 @@ listen to audio or inspect frames. Cat interactions are local to each viewer.
 - `cats/body.js`: a small 3D rig (spheres, sticks, a lagging tail chain and face
   decals mapped onto the head) drawn to canvas through a tilted camera, so a cat
   can turn all the way round. Pose targets ease, gait drives the legs.
-- `cats/world.js`: one full-screen canvas with `pointer-events: none`, behaviours
-  as generator functions, page elements as shelves, interactions, the panel and
-  persistence. Exposes `observe`, `linkError` and `inviteCopied` for the pages.
+- `cats/world.js`: one full-screen canvas with `pointer-events: none`. It measures
+  the page into a floor, ledges (cards, tiles, glyph skylines of headings),
+  hideouts and toys, plans routes between them, runs behaviours as generator
+  functions, and draws cats that are behind a panel into a masked layer so the
+  panel covers them. Also interactions, the panel and persistence. Exposes `observe`, `linkError` and `inviteCopied` for the pages.
 
 Cats never take clicks from the page: the canvas ignores pointer events, cat
 interactions are ignored over links, buttons, inputs and the player, cats avoid
-resting over text and controls, and they fade while crossing a control. Reduced
+resting over text and controls. Reduced
 motion rules out zoomies, chases and pounces; **Calm cats** puts everyone to sleep.
 Add `?catdebug` to expose `window.youpleCats` for local testing.
 
