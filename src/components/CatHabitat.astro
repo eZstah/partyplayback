@@ -1,5 +1,6 @@
 ---
 import '../styles/cat-habitat.css';
+import Wordmark from './Wordmark.astro';
 // Bean's room for Aquarium mode. Furniture marked data-perch becomes a surface in
 // the cat engine (see docs/bean/ARCHITECTURE.md, "Aquarium furniture"):
 // "solid" pieces can be climbed, sat on, hidden behind and peeked over;
@@ -16,7 +17,7 @@ const bulbs = Array.from({ length: 24 }, (_, i) => { const x = (i + .5) * 1000 /
   <div class="habitat-boards"></div><div class="habitat-rug"></div>
   <div class="habitat-sunbeam"></div>
   <svg class="habitat-garland" viewBox="0 0 1000 50" preserveAspectRatio="none"><path d={garland} fill="none" stroke="#5b4a60" stroke-width="1.4" vector-effect="non-scaling-stroke"/>{bulbs.map(b => <ellipse class={`bulb b${b.tone}`} cx={b.x} cy={b.y} rx="3.2" ry="4.4"/>)}</svg>
-  <div class="habitat-sign"><strong>youple.tv</strong><span>Bean lives here. you’re visiting.</span></div>
+  <div class="habitat-sign"><Wordmark/><span class="sign-note">Bean lives here. you’re visiting.</span></div>
 
   <div class="prop prop-window">
     <div class="window-sky">
@@ -53,7 +54,7 @@ const bulbs = Array.from({ length: 24 }, (_, i) => { const x = (i + .5) * 1000 /
 
   <!-- The TV hangs over a low console. In a room, the player is placed over .tv-screen. -->
   <div class="prop console" data-perch="shelf" data-view><span class="drawer"></span><span class="drawer"></span><span class="console-speaker"></span></div>
-  <div class="prop tv" data-perch="solid"><div class="tv-screen"><span>youple.tv</span></div><span class="tv-led"></span></div>
+  <div class="prop tv" data-perch="solid"><div class="tv-screen"><Wordmark/></div><span class="tv-led"></span></div>
 
   <div class="prop prop-books" data-perch="solid">
     <div class="books row-1"></div><div class="books row-2"></div><div class="books row-3"></div>
