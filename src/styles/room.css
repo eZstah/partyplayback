@@ -235,6 +235,9 @@
   margin-top: 0;
   min-width: 0;
 }
+.room-extension-promo { margin: 14px 18px 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.room-extension-promo a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+@media(max-width:600px), (hover:none) and (pointer:coarse) { .room-extension-promo { display: none; } }
 .playlist-heading h2 {
   font-size: 22px;
   letter-spacing: -.035em;
