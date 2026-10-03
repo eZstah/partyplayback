@@ -7,14 +7,16 @@ you're on to your youple.tv room, so nobody has to copy and paste links.
   YouTube video: it shows the video and your rooms. Pick a room and click
   **Send to <room>**.
 - **Hover any video thumbnail** on YouTube and click the cat in its corner.
-- On a video page, click **Send to <room>** next to the Subscribe button.
+- On a video page, click **Send to <room>** next to the Subscribe button. On
+  Shorts, click the round youple button under Share.
 - **Right-click** any YouTube video link and pick "Send to …".
-- Rooms show up in the list once you've opened them. The thumbnail and page
+- Rooms show up in the list once you've opened them, and your saved rooms show up
+  when you're signed in on youple.tv. The thumbnail and page
   buttons send to the room picked last. An open room adds the video without a
   reload; otherwise the room opens in a background tab with the video added
   (`/room/<name>?add=<YouTube link>`).
 
-It only stores the links and names of rooms you opened, in the browser. It sends a
+It only stores the links and names of rooms you opened or saved, in the browser. It sends a
 video's link to your room only when you click one of its buttons or the menu.
 
 ## Try it

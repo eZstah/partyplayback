@@ -4,7 +4,8 @@ const $ = id => document.getElementById(id);
 const sendButton = $("send"), status = $("status");
 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 const video = videoLink(tab?.url || "");
-let rooms = await chrome.runtime.sendMessage({ type: "rooms" });
+// Show the rooms known so far right away, then add the account's saved rooms from youple.tv.
+let rooms = await chrome.runtime.sendMessage({ type: "rooms", cached: true });
 let { lastRoom } = await chrome.storage.local.get("lastRoom");
 let chosen = rooms.find(room => room.url === lastRoom?.url)?.url || rooms[0]?.url;
 
@@ -12,11 +13,14 @@ if (video) {
   $("video").hidden = false;
   $("video-thumb").src = "https://i.ytimg.com/vi/" + new URL(video).searchParams.get("v") + "/mqdefault.jpg";
   $("video-title").textContent = (tab.title || "").replace(/^\(\d+\)\s*/, "").replace(/ - YouTube$/, "") || "This video";
-} else $("no-video").hidden = false;
+}
+$("rooms-heading").textContent = video ? "Send to" : "Cat buttons on YouTube send to";
 
 function render() {
   $("rooms-section").hidden = !rooms.length;
   $("empty").hidden = !!rooms.length;
+  $("site").hidden = !rooms.length;
+  $("no-video").hidden = !!video || !rooms.length; // the first step is opening a room
   $("rooms").replaceChildren(...rooms.map(room => {
     const item = document.createElement("li");
     const pick = document.createElement("button");
@@ -31,6 +35,11 @@ function render() {
       chosen = room.url;
       chrome.storage.local.set({ lastRoom: { url: room.url, name: room.name } });
       render();
+chrome.runtime.sendMessage({ type: "rooms" }).then(fresh => {
+  rooms = fresh;
+  chosen = rooms.some(room => room.url === chosen) ? chosen : rooms.find(room => room.url === lastRoom?.url)?.url || rooms[0]?.url;
+  render();
+});
     });
     const forget = document.createElement("button");
     forget.type = "button";
@@ -41,8 +50,14 @@ function render() {
       rooms = await chrome.runtime.sendMessage({ type: "forget", room: room.url });
       if (chosen === room.url) chosen = rooms[0]?.url;
       render();
+chrome.runtime.sendMessage({ type: "rooms" }).then(fresh => {
+  rooms = fresh;
+  chosen = rooms.some(room => room.url === chosen) ? chosen : rooms.find(room => room.url === lastRoom?.url)?.url || rooms[0]?.url;
+  render();
+});
     });
-    item.append(pick, forget);
+    item.append(pick);
+    if (!room.saved) item.append(forget);
     return item;
   }));
   const room = rooms.find(room => room.url === chosen);
@@ -53,6 +68,7 @@ function render() {
 sendButton.addEventListener("click", async () => {
   sendButton.disabled = true;
   status.classList.remove("is-error");
+  status.hidden = false;
   status.textContent = "Sending…";
   const result = await chrome.runtime.sendMessage({ type: "send", url: video, room: chosen }).catch(() => "failed");
   const name = rooms.find(room => room.url === chosen)?.name || "your room";
@@ -67,3 +83,8 @@ sendButton.addEventListener("click", async () => {
 });
 
 render();
+chrome.runtime.sendMessage({ type: "rooms" }).then(fresh => {
+  rooms = fresh;
+  chosen = rooms.some(room => room.url === chosen) ? chosen : rooms.find(room => room.url === lastRoom?.url)?.url || rooms[0]?.url;
+  render();
+});

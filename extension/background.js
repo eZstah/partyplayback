@@ -14,17 +14,33 @@ chrome.storage.onChanged.addListener(changes => { if (changes.lastRoom) showRoom
 // The button on YouTube pages (youtube.js).
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   if (message?.type === "send") send(message.url, message.room).then(reply, () => reply("failed"));
-  else if (message?.type === "rooms") recentRooms().then(reply, () => reply([]));
+  else if (message?.type === "rooms") recentRooms(message.cached).then(reply, () => reply([]));
   else if (message?.type === "forget") forget(message.room).then(reply, () => reply([]));
   else return;
   return true;
 });
 
-// Rooms opened recently, newest first, marking the ones open in a tab right now.
-async function recentRooms() {
+// Rooms opened recently, newest first, then the signed-in account's saved rooms on youple.tv,
+// marking the ones open in a tab right now.
+async function recentRooms(cached) {
   const { rooms = [], lastRoom } = await chrome.storage.local.get(["rooms", "lastRoom"]);
-  const list = rooms.length ? rooms : lastRoom ? [lastRoom] : [];
-  return Promise.all(list.map(async room => ({ ...room, open: (await chrome.tabs.query({ url: room.url + "*" })).length > 0 })));
+  const recent = rooms.length ? rooms : lastRoom ? [lastRoom] : [];
+  const account = cached ? (await chrome.storage.local.get("accountRooms")).accountRooms || [] : await accountRooms();
+  const saved = account.filter(room => !recent.some(seen => seen.url === room.url));
+  return Promise.all([...recent, ...saved].map(async room => ({ ...room, open: (await chrome.tabs.query({ url: room.url + "*" })).length > 0 })));
+}
+
+async function accountRooms() {
+  try {
+    const response = await fetch("https://youple.tv/api/rooms", { credentials: "include", signal: AbortSignal.timeout(4000) });
+    const rooms = (await response.json()).rooms
+      .filter(room => /^m-[\w-]+$/.test(room.slug))
+      .map(room => ({ url: "https://youple.tv/room/" + room.slug, name: String(room.title || "Room").slice(0, 64), saved: true }));
+    await chrome.storage.local.set({ accountRooms: rooms });
+    return rooms;
+  } catch {
+    return (await chrome.storage.local.get("accountRooms")).accountRooms || [];
+  }
 }
 
 async function forget(url) {
@@ -53,9 +69,9 @@ async function send(value, room) {
 async function deliver(value, room) {
   const url = videoLink(value || "");
   if (!url) return "no-video";
-  const { lastRoom, rooms = [] } = await chrome.storage.local.get(["lastRoom", "rooms"]);
-  // Only rooms the extension saw opened can be picked.
-  const target = rooms.find(saved => saved.url === room) || lastRoom;
+  const { lastRoom, rooms = [], accountRooms = [] } = await chrome.storage.local.get(["lastRoom", "rooms", "accountRooms"]);
+  // Only rooms the extension saw opened, or the account's saved rooms, can be picked.
+  const target = [...rooms, ...accountRooms].find(known => known.url === room) || lastRoom;
   if (!target) {
     await chrome.tabs.create({ url: "https://youple.tv/" });
     return "no-room";
