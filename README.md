@@ -55,6 +55,22 @@ tab containing TikTok, Instagram Reels, Shorts, or another video and enable
 Edge over HTTPS (localhost also works). Other browsers may support picture but
 not tab audio; viewers can use any browser with WebRTC playback support.
 
+On supported desktop Chromium browsers, a private preview then lets the sharer
+frame the video area: draw, move, resize, or start with a portrait/wide preset.
+Arrow keys move the box; Shift + arrows resize it. Nothing is broadcast before
+**Share selected area** (or the explicit **Share whole tab** option). Unsupported
+browsers are told before capture that only whole-tab sharing is available.
+
+Cropping uses a frame-driven worker with transferable processor/generator streams,
+not a canvas animation loop that pauses when the room tab is in the background.
+Only cropped pixels (at most 1280 × 720, no upscaling) and the original tab audio
+are attached to WebRTC. The full source is still captured locally and cropping
+adds device processing; fewer encoded pixels do not guarantee a fixed bandwidth
+saving. No extension or media server is required. Source dimension changes stop
+the share rather than silently moving the crop. Layout changes within the same
+size, overlays, and other content inside the selected area remain visible; stop
+and share again to reframe. Crop failures never fall back to sending the full tab.
+
 One person shares with up to four viewers. The main player shows the shared tab;
 YouTube pauses and the playlist remains editable. After **Stop sharing**, the
 playlist stays paused until someone presses Play. Browser Stop sharing, leaving

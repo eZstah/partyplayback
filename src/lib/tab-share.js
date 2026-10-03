@@ -20,15 +20,19 @@ export class TabShare {
   async start() {
     if (!this.connected || this.share || this.pending) return;
     const generation = ++this.generation;
+    this.captureAbort = new AbortController();
     this.pending = { id: crypto.randomUUID() };
     this.changed("Choose a browser tab and turn on Share tab audio.");
     try {
       // Called directly from the button gesture, before any network request.
-      const stream = await this.capture();
+      const captured = await this.capture({ signal: this.captureAbort.signal });
+      const stream = captured.stream || captured;
+      const cleanup = captured.stop || (() => stream.getTracks().forEach(track => track.stop()));
       if (generation !== this.generation || !this.connected || this.share) {
-        stream.getTracks().forEach(track => track.stop());
+        cleanup();
         return;
       }
+      this.captureCleanup = cleanup;
       const track = stream.getVideoTracks()[0];
       this.local = stream;
       if (!track || track.readyState === "ended") throw new Error("No shared picture was received. Choose a browser tab and try again.");
@@ -246,6 +250,10 @@ export class TabShare {
     ++this.generation;
     clearTimeout(this.startTimer);
     this.pending = null;
+    this.captureAbort?.abort();
+    this.captureAbort = null;
+    this.captureCleanup?.();
+    this.captureCleanup = null;
     const stream = this.local;
     this.local = null;
     stream?.getTracks().forEach(track => track.stop());

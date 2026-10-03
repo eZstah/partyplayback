@@ -1,4 +1,5 @@
 import { TabShare } from "../lib/tab-share.js";
+import { canCrop, selectShareArea } from "./share-area.js";
 
 export function bootTabSharing({ send, toast, onChange }) {
   const $ = id => document.getElementById(id);
@@ -9,11 +10,16 @@ export function bootTabSharing({ send, toast, onChange }) {
   const sharing = new TabShare({
     send,
     canWatch: inMainRoom,
-    capture: () => navigator.mediaDevices.getDisplayMedia({
+    capture: async ({ signal }) => {
+      const source = await navigator.mediaDevices.getDisplayMedia({
       video: { width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } },
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false },
       selfBrowserSurface: "exclude", monitorTypeSurfaces: "exclude", systemAudio: "exclude", surfaceSwitching: "exclude",
-    }),
+      });
+      if (signal.aborted) { source.getTracks().forEach(track => track.stop()); throw new DOMException("Cancelled", "AbortError"); }
+      if (canCrop()) return selectShareArea(source, signal, toast);
+      return source;
+    },
     createPeer: config => new RTCPeerConnection(config),
     onError: toast,
     onChange: paint,
@@ -53,7 +59,12 @@ export function bootTabSharing({ send, toast, onChange }) {
     onChange?.();
   }
 
-  $("share-start-btn").addEventListener("click", () => $("share-dialog").showModal());
+  $("share-start-btn").addEventListener("click", () => {
+    $("share-crop-hint").textContent = canCrop()
+      ? "Next, frame just the video. Your room will see only the area you choose as you scroll."
+      : "This browser shares the whole tab. Use desktop Chrome or Edge to select just the video area.";
+    $("share-dialog").showModal();
+  });
   $("share-confirm-btn").addEventListener("click", () => {
     $("share-dialog").close();
     void sharing.start();
