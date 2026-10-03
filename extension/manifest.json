@@ -2,25 +2,70 @@
   "manifest_version": 3,
   "name": "youple.tv: Send to room",
   "short_name": "youple.tv",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Send the YouTube video you're on to your youple.tv room, without copying the link.",
   "homepage_url": "https://youple.tv/",
-  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
   "action": {
     "default_title": "Open a youple.tv room first",
-    "default_icon": { "16": "icons/16.png", "32": "icons/32.png" }
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
   },
-  "background": { "service_worker": "background.js", "type": "module" },
-  "content_scripts": [{
-    "matches": ["https://youple.tv/room/*", "http://localhost:8787/room/*"],
-    "js": ["room.js"]
-  }],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://youple.tv/room/*",
+        "http://localhost:8787/room/*"
+      ],
+      "js": [
+        "room.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "youtube.js"
+      ]
+    }
+  ],
   "commands": {
     "_execute_action": {
-      "suggested_key": { "default": "Alt+Shift+Y" },
+      "suggested_key": {
+        "default": "Alt+Shift+Y"
+      },
       "description": "Send this video to your youple.tv room"
     }
   },
-  "permissions": ["activeTab", "contextMenus", "storage"],
-  "host_permissions": ["https://youple.tv/*", "http://localhost:8787/*"]
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://youple.tv/*",
+    "http://localhost:8787/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/32.png"
+      ],
+      "matches": [
+        "https://www.youtube.com/*"
+      ]
+    }
+  ]
 }
