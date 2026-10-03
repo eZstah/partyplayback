@@ -31,6 +31,28 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## Neon Aquarium and the music shelf (Codex)
+
+Konstantin requested a cozy neon room in the site's tones and confirmed that
+clicking the right shelf should load a mix into the shared TV. The scene now
+uses charcoal/plum furniture, lavender edge light and muted pink/mint accents.
+The record shelf offers Ambient, Lo-fi and Piano recordings by Lofi Girl through
+the existing room player. Choices add/select by item identity and reuse queued
+mixes. The selected sleeve follows remote selection and pause state. Loading,
+disconnection, queue capacity, timeouts and embed errors have visible feedback.
+From the homepage the record creates a guest room and carries the choice over.
+
+The first live-radio trial buffered at the room's zero-based timeline, so the
+final catalog uses seekable recordings: `fQ35eh6k0RI`, `8gJ716dhStg`, `cYPJaHT5f3E`.
+All three were verified in the browser with media ready state 4, paused false
+and advancing currentTime. A second local viewer received selection and pause
+state; homepage-to-room selection also worked. Browser checks cover keyboard
+selection, 1907×942, 1440×900, 1280×720 and 1024×768 shelf hit areas/TV alignment,
+fullscreen, and the 390×844 fallback (shelf hidden, no horizontal overflow).
+All 238 tests and `npm run check` pass. The library depends on YouTube
+availability and its normal autoplay policy.
+No changes to the cat engine or room server. Continued in PR #41; not deployed.
+
 ## Aquarium proportions from Konstantin's corrected mockup (Codex)
 
 The October 3 reference enlarges the sunset window and TV, places the sofa
