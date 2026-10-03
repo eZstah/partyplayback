@@ -179,10 +179,12 @@
 .launcher-account { gap: 8px; }
 .join-launcher:hover,.account-launcher:hover { color: #30223f; }
 .room-launcher .signed-avatar { background: #e4dceb; color: #61536b; width: 32px; height: 32px; font-size: 15px; }
-.hangout-heading p.sync-presence {
+p.home-sync {
+  position: relative;
+  z-index: 2;
   display: flex;
   justify-content: center;
-  margin: -22px 0 26px;
+  margin: 16px 0 0;
   color: #a99fb8;
   font-size: 15px;
 }
@@ -939,5 +941,4 @@
 .guest-account span { font-size: 15px; color: #756779; }
 .guest-sign-in { flex: none; min-height: 46px; padding: 0 24px; border-radius: 100px; background: #322b41; color: #f4efe5; font-size: 17px; font-weight: 700; transition: background .2s ease, transform .2s ease; }
 .guest-sign-in:hover, .guest-sign-in:focus-visible { background: #4a3f5e; transform: translateY(-1px); }
-@media(max-width:600px) { .hangout-heading p.sync-presence { margin: -14px 0 20px; } .guest-account { gap: 12px; } .guest-sign-in { padding: 0 18px; } }
-@media(min-width:901px) and (max-height:850px) { .hangout-heading p.sync-presence { margin: -12px 0 18px; } }
+@media(max-width:600px) { .guest-account { gap: 12px; } .guest-sign-in { padding: 0 18px; } }
