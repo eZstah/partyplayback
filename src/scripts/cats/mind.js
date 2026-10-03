@@ -40,17 +40,22 @@ const ACTIVITY_LABEL = {
   laser: 'Chasing the red dot', treat: 'Going for the treat', follow: 'Following', stretch: 'Stretching', carried: 'Being carried',
   hiss: 'Hissing', wrestle: 'Play-fighting', beg: 'Asking for attention', react: 'Reacting', fall: 'Falling', greet: 'Saying hello',
   hide: 'Hiding', leave: 'Out exploring', glass: 'At the glass', knock: 'Knocking things over', annoyed: 'Annoyed', evade: 'Wants a little space',
+  leap: 'Taking a big leap', highjump: 'Jumping at a dust speck',
 };
 export const activityLabel = (type, partner) => (ACTIVITY_LABEL[type] || 'Thinking') + (partner && ['visit', 'chase', 'flee', 'cuddle', 'follow', 'wrestle'].includes(type) ? ` ${CAST[partner].name}` : '');
 
 // Laser has a stationary, look-only performance in reduced-motion mode.
-const MOTION_PLAY = new Set(['glass', 'knock', 'dance', 'zoomies', 'stalk', 'chase', 'hunt']);
+const MOTION_PLAY = new Set(['glass', 'knock', 'dance', 'zoomies', 'stalk', 'chase', 'hunt', 'leap', 'highjump']);
 const PLAYBACK_REST = new Set(['sleep', 'watch', 'sit', 'loaf']);
 const cursorDwell = ctx => Math.max(0, Number(ctx.cursorDwell ?? (ctx.cursor ? 1.4 : 0)) || 0);
 const quietVideo = ctx => !!ctx.playing;
 // Unsolicited activities that carry Bean across the screen; calm pacing makes them rare.
 // Dancing happens in place and exploring ends on a perch, so those keep their weight.
 const SCREEN_CROSSING = ['wander', 'zoomies', 'stalk', 'hunt', 'glass', 'knock'];
+// Acrobatics are rare special moments on an ordinary page, and come more
+// readily in Aquarium (his own room) or when someone is playing with him.
+export const ACROBATICS = ['leap', 'highjump'];
+const ACROBATIC_ELSEWHERE = .5;
 
 export class Mind {
   constructor(kind, memory = {}, random = Math.random) {
@@ -89,7 +94,7 @@ export class Mind {
     if (!Number.isFinite(dt) || dt <= 0) return;
     const d = this.drives, t = this.t, day = ctx.day || dayRhythm(12), a = this.activity;
     const resting = a === 'sleep' || a === 'cuddle', lazing = a === 'loaf' || a === 'sit' || a === 'watch';
-    const active = ['zoomies', 'chase', 'flee', 'laser', 'hunt', 'dance', 'wrestle', 'stalk'].includes(a);
+    const active = ['zoomies', 'chase', 'flee', 'laser', 'hunt', 'dance', 'wrestle', 'stalk', 'leap', 'highjump'].includes(a);
     const pacing = this.cast.pacing, company = pacing && ctx.playing && lazing;
     const calm = pacing?.calm && !ctx.invitedPlay ? pacing.calm : null, drift = calm ? calm.drift : 1;
     this.elapsed += dt;
@@ -144,7 +149,10 @@ export class Mind {
       laser: ctx.laser ? (95 + d.playful * .3 - t.grumpy * 70) * (motion || .3) : 0,
       treat: ctx.treat ? 110 + d.hungry * .6 : 0,
       follow: this.kind === 'black' && awake.length ? 26 + this.bonds.pink * 25 : 0,
+      leap: ctx.shelves ? (6 + d.playful * .3 + t.energy * 14 + t.bold * 10) * motion : 0,
+      highjump: (12 + d.playful * .3 + d.curious * .1 + t.energy * 14) * motion,
     };
+    if (!ctx.aquarium && !ctx.invitedPlay) for (const key of ACROBATICS) scores[key] *= ACROBATIC_ELSEWHERE;
     if (this.cast.pacing) {
       const dwell = cursorDwell(ctx);
       if (!ctx.invitedPlay && dwell < .8) scores.approach = 0;
@@ -216,6 +224,7 @@ export class Mind {
     if (['explore', 'wander', 'hide', 'leave'].includes(type)) return `Curiosity is ${Math.round(d.curious)}; exploring a little.`;
     if (type === 'hunt') return 'A butterfly caught Bean’s curiosity.';
     if (['zoomies', 'knock'].includes(type)) return `Playful energy is ${Math.round(d.playful)}.`;
+    if (ACROBATICS.includes(type)) return ctx.aquarium ? 'His own room has space to jump around.' : `Playful energy is ${Math.round(d.playful)}; a little showing off.`;
     return quietVideo(ctx) ? 'Quiet company while the video plays.' : 'A comfortable pause between adventures.';
   }
   inspect() {

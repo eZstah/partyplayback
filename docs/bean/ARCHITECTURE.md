@@ -184,6 +184,33 @@ Screen-edge refusals retain the peek while acting, then duck behind that same
 edge. They arm cleanup immediately so interruption before the next frame cannot
 leave a phantom peek, gesture or pickup bubble.
 
+## Moves: wind-up, big leaps and high jumps
+
+`moves.js` holds body-level acrobatics that any action can reuse, in the same
+style as `handling.js`: they only touch the rig, so they can be tested on a bare
+`CatBody`.
+
+- `windUpTime(span, rise, scale)` says how long Bean sizes up a jump: nothing for
+  hops, up to about 1.2 s near his limit, shorter in a chase, none in reduced
+  motion. `jumpTo()` uses it on every jump unless an action passes `windup`.
+- `windUp(body, target, seconds)` is the crouch, the head bob while he judges
+  the distance, and the rear-end wiggle that loads the spring.
+- `flightTrick(body, { twist, swipe, reach })` runs during a flight started with
+  `body.leap()`. `twist` turns him around his vertical axis (a corkscrew), `swipe`
+  lashes a paw near the top, `reach` stretches him upright. Pass it to `leapTo()`
+  as `options.trick`, or `twist` to `jumpTo()`. The older `spin` option is a
+  roll in the screen plane.
+- `arcFor(height, k)` turns a height in screen pixels into the rig's jump arc.
+
+In `world.js`, `springUp()` is a straight-up jump back onto the same surface and
+`bigJumps()` lists far or high single jumps from where Bean is. The activities
+`leap` (walk to the edge, long wind-up, jump with a twist or a roll) and
+`highjump` (a dust speck drifts down, he jumps to bat at it) are built from
+these, and the butterfly hunt uses `springUp()` when it flies out of pouncing
+reach. In `mind.js`, `ACROBATICS` are scaled down on an ordinary page and come
+more readily in Aquarium or during invited play; playback, Calm and reduced
+motion block them.
+
 ## Aquarium furniture
 
 Aquarium mode is Bean's own room (`src/components/CatHabitat.astro`, styled in
