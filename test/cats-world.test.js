@@ -28,7 +28,7 @@ function habitat(t, saved = {}, phone = false, reduced = false) {
       getBoundingClientRect: () => ({ left: 200, top: 100, right: 1000, bottom: 550, width: 800, height: 450 }),
     };
   };
-  const nodes = new Map(), surfaces = [], get = id => { if (!nodes.has(id)) nodes.set(id, { ...node(), id }); return nodes.get(id); };
+  const nodes = new Map(), surfaces = [], perches = [], get = id => { if (!nodes.has(id)) nodes.set(id, { ...node(), id }); return nodes.get(id); };
   get('cat-universe').hidden = true;
   get('cat-panel').hidden = true;
   const menu = get('cat-panel'), menuButtons = ['cat-hello-btn', 'cat-treat-btn', 'cat-laser-btn', 'cat-calm-dock'].map(get);
@@ -42,7 +42,8 @@ function habitat(t, saved = {}, phone = false, reduced = false) {
       createElement: node, contains: el => !el?.removed,
       querySelectorAll: sel => sel === '.home-main,.site-footer' ? [get('home'), get('footer')]
         : sel === '.room-launcher,#stage,.playlist-panel,.member-rooms' ? surfaces.filter(el => el.solid && !el.removed)
-        : sel === '.step-symbol,#q-list > li' ? surfaces.filter(el => !el.solid && !el.removed) : [],
+        : sel === '.step-symbol,#q-list > li' ? surfaces.filter(el => !el.solid && !el.removed)
+        : sel === '#cat-universe [data-perch]' ? perches : [],
       querySelector: sel => sel === '.create-room-button' ? get('create') : null },
     window: node(), innerWidth: 1440, innerHeight: 900, devicePixelRatio: 1,
     matchMedia: query => ({ matches: phone && query.includes('760px') || reduced && query.includes('reduced-motion') }),
@@ -69,6 +70,12 @@ function habitat(t, saved = {}, phone = false, reduced = false) {
       const el = get(id); el.solid = solid; el.layout = { left, top, width, height };
       el.getBoundingClientRect = () => ({ ...el.layout, right: el.layout.left + el.layout.width, bottom: el.layout.top + el.layout.height });
       surfaces.push(el); return el;
+    },
+    // Aquarium furniture: an element with data-perch="solid" or "shelf".
+    perch(id, kind, left, top, width, height) {
+      const el = get(id); el.dataset.perch = kind; el.layout = { left, top, width, height };
+      el.getBoundingClientRect = () => ({ ...el.layout, right: el.layout.left + el.layout.width, bottom: el.layout.top + el.layout.height });
+      perches.push(el); return el;
     },
     advance(ms) { clock += ms; const pending = [...frames.values()]; frames.clear(); pending.forEach(fn => fn(clock)); },
     visibility(hidden) { document.hidden = hidden; document.emit('visibilitychange'); },
@@ -126,6 +133,24 @@ test('a returning visitor finds Bean resting where it was, not walking across th
       assert.ok(Math.hypot(bean.body.x - x, bean.body.gy - gy) < 2, `seed ${seed}: Bean did not move`);
     } finally { world.destroy(); }
   }
+});
+
+test('Aquarium furniture becomes surfaces to climb, perch on and hide behind', t => {
+  const fixture = habitat(t, { visits: 3 });
+  fixture.ledge('card', 400, 300, 500, 200, true);
+  const shelf = fixture.perch('bookshelf', 'solid', 1200, 180, 160, 650);
+  const sill = fixture.perch('sill', 'shelf', 540, 270, 320, 22);
+  const world = bootCats({ seed: 3 });
+  try {
+    assert.ok(world.world.solids.some(l => l.el.id === 'card'), 'the page card is a surface on the normal page');
+    assert.ok(!world.world.ledges.some(l => l.el === shelf), 'furniture stays out of the normal page');
+    world.aquarium(true); fixture.advance(500);
+    assert.deepEqual(world.world.solids.map(l => l.el.id), ['bookshelf'], 'only the room furniture counts in Aquarium');
+    assert.deepEqual(world.world.ledges.map(l => [l.el.id, l.kind]), [['bookshelf', 'solid'], ['sill', 'box']]);
+    for (let i = 0; i < 400; i++) fixture.advance(50);
+    world.aquarium(false); fixture.advance(500);
+    assert.ok(world.world.solids.some(l => l.el.id === 'card'), 'leaving Aquarium restores the page surfaces');
+  } finally { world.destroy(); }
 });
 
 test('phones use the static fallback without starting a second cat world', t => {

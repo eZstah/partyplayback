@@ -72,6 +72,30 @@ Actual playback, queue data, navigation and form input must remain functional.
 leave Bean in a valid position; decorative changes clean up; real controls
 remain usable; the effect has setup, payoff and recovery.
 
+### 4a. Grow Aquarium into a place to play
+
+Aquarium is now a furnished room (see "Aquarium furniture" in ARCHITECTURE.md).
+Small next steps, one per pull request:
+
+1. **Cubby hideout.** Let Bean go *into* the cat tree's cubby: walk in through
+   the hole, curl up inside with only the eyes or tail showing, and come out.
+   *Done when* `youpleCats.play('Bean', 'hide')` can pick the cubby and the
+   entry, the stay and the exit each read clearly in a clip.
+2. **Sofa nap spot.** Make the sofa seat a favourite place to nap, for example
+   on the cushions. *Done when* an unscripted 10-minute Aquarium session ends up
+   with Bean napping on the sofa at least once, and calm pacing still passes.
+3. **Toys that react.** The yarn ball rolls and the toy mouse slides when Bean
+   bats them, then they come back. *Done when* knocking either toy plays a short
+   reversible animation and the toy returns to its place.
+4. **Window watching.** Bean sits on the sill and watches something outside
+   (a bird or a passing light), with ears and head following. *Done when* this
+   happens on its own now and then, rarely, and is visible in a clip.
+5. **Layout check.** Furniture stays reachable and on screen at 1280×720,
+   1440×900 and 1920×1080. *Done when* screenshots at those sizes show every
+   platform reachable (`youpleCats.measure()`) and nothing overlapping the dock.
+6. **More rooms later.** Only after the above: a second layout (for example a
+   kitchen or a sunny afternoon), chosen per visit. Keep one room at a time.
+
 ## 5. Let familiarity create individuality
 
 Build small persistent preferences and habits from observed interactions, such

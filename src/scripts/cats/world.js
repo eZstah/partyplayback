@@ -23,6 +23,10 @@ const WORDS = '.hero-wordmark,.how-it-works h2,.how-grid h3,.room-wordmark-link,
 const TEXT = 'h1,h2,h3,p,li,summary,.how-grid article';
 // Decorations a cat may knock about.
 const TOYS = '.step-symbol,.floating-popcorn,.room-doodle,.bg-spark';
+// Aquarium furniture (CatHabitat.astro). Any element marked data-perch becomes a surface:
+// "solid" is opaque (climb, sit on top, hide behind, peek over), "shelf" is a platform.
+const PERCHES = '#cat-universe [data-perch]';
+const HABITAT_TOYS = '#cat-universe [data-toy]';
 const PHONE = '(max-width: 760px), (hover: none) and (pointer: coarse)';
 const PRIORITY = { carried: 100, evade: 90, react: 80, treat: 70, laser: 60, social: 50, normal: 10 };
 const TAU = Math.PI * 2;
@@ -97,7 +101,9 @@ export function bootCats({ seed } = {}) {
   // ---------- geometry ----------
   const S = () => clamp(Math.min(W.w / 1440, W.h / 900), .75, 1.3) * 1.05;
   function floor() {
-    if (W.aquarium) return { base: W.h * .93, slope: .42, zMin: -W.h * .5 / .42, zMax: 30, zBehind: -Infinity };
+    // Aquarium: a room. Furniture stands against the back at 87% of the height (cat-habitat.css
+    // --floor), Bean walks in front of it, and a cat further back than that is behind it.
+    if (W.aquarium) return { base: W.h * .95, slope: .42, zMin: -W.h * .13 / .42, zMax: 30, zBehind: -W.h * .08 / .42 };
     return { base: W.h - 10, slope: .42, zMin: -140, zMax: 60, zBehind: -55 };
   }
   const floorY = z => { const f = floor(); return f.base + z * f.slope; };
@@ -176,7 +182,7 @@ export function bootCats({ seed } = {}) {
     W.text = [];
     for (const el of document.querySelectorAll(TEXT)) { if (el.closest('#cat-universe')) continue; const r = rectOf(el); if (onScreen(r) && visible(el)) W.text.push(r); }
     W.solids = []; W.ledges = []; W.toys = [];
-    if (W.aquarium) return;
+    if (W.aquarium) { measureHabitat(); return; }
     for (const el of document.querySelectorAll(SOLIDS)) {
       if (!visible(el)) continue;
       const l = refresh(boxLedge(el, true));
@@ -187,6 +193,23 @@ export function bootCats({ seed } = {}) {
     for (const el of document.querySelectorAll(WORDS)) if (visible(el)) { const l = wordLedge(el); if (l) ledges.push(refresh(l)); }
     W.ledges = ledges.filter(l => l.right - l.left > 34 && l.top > 40 && l.top < W.h - 70 && l.right > 20 && l.left < W.w - 20);
     for (const el of document.querySelectorAll(TOYS)) if (visible(el)) { const r = rectOf(el); if (onScreen(r) && r.top > 40) W.toys.push({ el, rect: r }); }
+  }
+
+  // Aquarium: the habitat's furniture, plus the room's player, which floats in the scene.
+  function measureHabitat() {
+    const shown = el => !el.checkVisibility || el.checkVisibility({ visibilityProperty: true });
+    const ledges = [];
+    for (const el of document.querySelectorAll(PERCHES)) {
+      if (!shown(el)) continue;
+      const solid = el.dataset.perch === 'solid', l = refresh(boxLedge(el, solid));
+      if (!onScreen(l.rect)) continue;
+      if (solid) W.solids.push(l);
+      ledges.push(l);
+    }
+    const stage = room && document.getElementById('stage');
+    if (stage) { const l = refresh(boxLedge(stage, true)); if (onScreen(l.rect) && l.rect.width > 120) { W.solids.push(l); ledges.push(l); } }
+    W.ledges = ledges.filter(l => l.right - l.left > 34 && l.top > 40 && l.top < W.h - 70);
+    for (const el of document.querySelectorAll(HABITAT_TOYS)) { const r = rectOf(el); if (onScreen(r) && shown(el)) W.toys.push({ el, rect: r }); }
   }
 
   // Where a cat is right now, as a "surface" the planner understands.
