@@ -1,6 +1,5 @@
 ---
-import Mascot from './Mascot.astro';
-import { CAST } from '../scripts/cat-director.js';
+import { CAST } from '../scripts/cats/cast.js';
 import '../styles/cat-universe.css';
 ---
 <div id="cat-universe" hidden>
@@ -11,21 +10,45 @@ import '../styles/cat-universe.css';
     <svg class="habitat-plant" viewBox="0 0 150 280"><g fill="none" stroke="#aca0bf" stroke-width="4" stroke-linecap="round"><path d="M78 215Q63 150 89 50M77 191Q103 135 128 122M76 164Q39 129 23 93"/></g><g fill="#8f9f91"><ellipse cx="88" cy="63" rx="14" ry="36" transform="rotate(16 88 63)"/><ellipse cx="35" cy="109" rx="14" ry="35" transform="rotate(-40 35 109)"/><ellipse cx="112" cy="140" rx="14" ry="35" transform="rotate(38 112 140)"/></g><path d="m48 210 9 63h46l11-63Z" fill="#c69f9e"/><ellipse cx="81" cy="210" rx="33" ry="7" fill="#dbb3b0"/></svg>
     <div class="habitat-sign"><strong>youple.tv</strong><span>the cats live here. you’re visiting.</span></div>
   </div>
-  <div id="cat-world" aria-label="The youple cats">
-    {Object.entries(CAST).map(([kind, cat]) => <div class="sim-actor" data-cat={kind}><div class="sim-depth"><span class="sim-bubble" aria-hidden="true"></span><Mascot kind={kind as 'mint' | 'pink' | 'purple'} interactive/></div></div>)}
-    <svg id="cat-scuffs" aria-hidden="true"><g id="cat-scratch-lines"></g></svg>
-    <div id="cat-toy" aria-hidden="true"><svg viewBox="0 0 48 32"><path d="M32 17q18-15 11-12" fill="none" stroke="#e6c290" stroke-width="2"/><ellipse cx="21" cy="19" rx="15" ry="9" fill="#b8a3df"/><circle cx="15" cy="10" r="6" fill="#debbd1"/><circle cx="9" cy="19" r="2" fill="#42384e"/></svg></div>
-    <div id="cat-impact" aria-hidden="true">✦</div>
-  </div>
-  <div class="cat-dock" data-awake="true">
-    <div id="cat-studio" class="cat-studio" hidden>
-      <div class="studio-heading"><div><strong>Three cats. One shared brain cell.</strong><p id="cat-story-label">Make yourself at home.</p></div><button type="button" id="cat-studio-close" aria-label="Close cat studio">×</button></div>
-      <div class="cat-roster">{Object.entries(CAST).map(([kind,cat])=><div class:list={['cat-roster-item',kind]}><i></i><div><strong>{cat.name}<span>{cat.role}</span></strong><small data-cat-status={kind}>{cat.motive}</small></div></div>)}</div>
-      <div class="cat-settings"><label>Energy<select id="cat-intensity"><option value="watch">Here for the video</option><option value="play" selected>Let them play</option><option value="chaos">Unsupervised</option></select></label><label>Video mood<select id="cat-vibe"><option value="auto">From the video title</option><option value="music">Music / energetic</option><option value="chill">Chill / sleepy</option><option value="talk">Talking / learning</option><option value="action">Action / gaming</option></select></label></div>
-      <p id="cat-context-note" class="cat-context-note">Reactions use the video title and playback, not audio analysis.</p>
-      <div class="cat-scene-actions"><button type="button" data-cat-scene="snack">Share popcorn</button><button type="button" id="cat-toy-btn" aria-pressed="false">Toy mouse</button><button type="button" data-cat-scene="peek">Break the fourth wall</button><button type="button" data-cat-scene="squabble">Start a squabble</button><button type="button" data-cat-scene="mischief">Knock things over</button><button type="button" id="cat-reset">Everybody home</button></div>
-      <p class="cat-studio-hint">Pet or drag a cat. Move the toy to lead a chase. Escape brings everyone home.</p>
-    </div>
-    <div class="cat-dock-bar"><button type="button" id="cat-studio-btn" aria-expanded="false" aria-controls="cat-studio"><span class="cat-dock-paw" aria-hidden="true">✦</span> Cat studio</button><button type="button" id="cat-wallpaper-btn" aria-pressed="false">Wallpaper</button><button type="button" id="cat-pause-btn" aria-pressed="false">Pause cats</button></div>
+  <div id="cat-world"><canvas id="cat-canvas" aria-hidden="true"></canvas></div>
+  <div class="cat-dock">
+    <section id="cat-panel" class="cat-panel" aria-labelledby="cat-panel-title" hidden>
+      <div class="cat-panel-head">
+        <div><h2 id="cat-panel-title">The residents</h2><p>Four cats with their own moods, friendships and memory of you.</p></div>
+        <button type="button" id="cat-panel-close" class="cat-panel-close" aria-label="Close">×</button>
+      </div>
+      <ul class="cat-cards">
+        {Object.entries(CAST).map(([kind, cat]) => (
+          <li class="cat-card" data-cat-card={kind} style={`--cat-fur:${cat.look.fur};--cat-collar:${cat.look.collar}`}>
+            <span class="cat-swatch" aria-hidden="true"></span>
+            <div>
+              <h3>{cat.name} <span>{cat.role}</span></h3>
+              <p class="cat-bio">{cat.bio}</p>
+              <p class="cat-traits" data-traits></p>
+              <dl>
+                <div><dt>Now</dt><dd data-doing>Settling in</dd></div>
+                <div><dt>Feels</dt><dd data-feels>calm</dd></div>
+                <div><dt>Likes you</dt><dd data-trust class="cat-hearts">♡♡♡♡♡</dd></div>
+                <div><dt>Friends</dt><dd data-bonds></dd></div>
+              </dl>
+              <p class="cat-thought" data-thought></p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div class="cat-actions">
+        <button type="button" id="cat-treat-btn">Drop a treat</button>
+        <button type="button" id="cat-laser-btn" aria-pressed="false">Laser pointer</button>
+        <button type="button" id="cat-aquarium-btn" aria-pressed="false">Aquarium</button>
+        <button type="button" id="cat-calm-dock" aria-pressed="false">Calm cats</button>
+      </div>
+      <h3 class="cat-journal-title">Cat diary</h3>
+      <ol id="cat-journal" class="cat-journal"></ol>
+      <p class="cat-hint">Stroke a cat with your cursor to pet it, click to boop, drag to pick it up. Double-click empty space to drop a treat.</p>
+    </section>
+    <button type="button" id="cat-panel-btn" class="cat-panel-btn" aria-expanded="false" aria-controls="cat-panel">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><g fill="currentColor"><ellipse cx="12" cy="16" rx="5" ry="4"/><circle cx="6" cy="10" r="2.2"/><circle cx="18" cy="10" r="2.2"/><circle cx="9.3" cy="6" r="2.1"/><circle cx="14.7" cy="6" r="2.1"/></g></svg>
+      <span>Cats</span>
+    </button>
   </div>
 </div>
