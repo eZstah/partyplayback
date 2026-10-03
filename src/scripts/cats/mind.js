@@ -43,12 +43,15 @@ const ACTIVITY_LABEL = {
 };
 export const activityLabel = (type, partner) => (ACTIVITY_LABEL[type] || 'Thinking') + (partner && ['visit', 'chase', 'flee', 'cuddle', 'follow', 'wrestle'].includes(type) ? ` ${CAST[partner].name}` : '');
 
+const BUSY = ['wander', 'explore', 'knock', 'dance', 'zoomies', 'stalk', 'approach', 'visit', 'chase', 'follow', 'glass'];
+
 export class Mind {
   constructor(kind, memory = {}, random = Math.random) {
     this.kind = kind; this.cast = CAST[kind]; this.t = this.cast.traits; this.random = random;
     const r = () => random() * 30;
     // Drives: 0 = satisfied, 100 = urgent.
-    this.drives = { sleepy: 20 + r(), playful: 30 + r(), lonely: 20 + r(), curious: 30 + r(), hungry: 15 + r() };
+    // Cats are found mid-nap more often than not, so start drowsy and unhurried.
+    this.drives = { sleepy: 45 + r() * 1.3, playful: 15 + r() * .8, lonely: 15 + r() * .6, curious: 20 + r(), hungry: 15 + r() };
     this.mood = { joy: .3, annoyance: 0, fear: 0 };
     this.trust = memory.trust ?? 30 + this.t.affection * 30;
     this.bonds = { ...defaultBonds(kind), ...(memory.bonds || {}) };
@@ -72,10 +75,10 @@ export class Mind {
     const d = this.drives, t = this.t, day = ctx.day || dayRhythm(12), a = this.activity;
     const resting = a === 'sleep' || a === 'cuddle', lazing = a === 'loaf' || a === 'sit' || a === 'watch';
     const active = ['zoomies', 'chase', 'flee', 'laser', 'hunt', 'dance', 'wrestle', 'stalk'].includes(a);
-    d.sleepy += dt * (resting ? -2.2 : (active ? .9 : lazing ? .12 : .3) * (.55 + t.lazy) * day.sleepy);
-    d.playful += dt * (active ? -2.4 : resting ? .05 : .45 * (.3 + t.energy) * day.playful);
+    d.sleepy += dt * (resting ? -.5 : (active ? 1.1 : lazing ? .2 : .45) * (.55 + t.lazy) * day.sleepy);
+    d.playful += dt * (active ? -2.4 : resting ? .03 : .2 * (.3 + t.energy) * day.playful);
     d.lonely += dt * (ctx.nearFriend || ['cuddle', 'visit', 'glass', 'approach', 'stare'].includes(a) ? -1.5 : .35 * t.sociable);
-    d.curious += dt * (['explore', 'wander', 'hunt', 'leave', 'hide', 'knock'].includes(a) ? -1.8 : .4 * (.25 + t.curiosity));
+    d.curious += dt * (['explore', 'wander', 'hunt', 'leave', 'hide', 'knock'].includes(a) ? -1.8 : .2 * (.25 + t.curiosity));
     d.hungry += dt * .05;
     for (const k in d) d[k] = clamp(d[k], 0, 100);
     const m = this.mood, decay = Math.exp(-dt / 9);
@@ -94,19 +97,19 @@ export class Mind {
     const nap = best(sleepers.filter(o => this.bonds[o.kind] > .25), o => this.bonds[o.kind]);
     const motion = ctx.reduced ? 0 : 1, calm = ctx.calm;
     const scores = {
-      sleep: d.sleepy * 1.1 + t.lazy * 25 + (calm ? 400 : 0) - (d.sleepy < 35 ? 60 : 0),
+      sleep: d.sleepy * 1.25 + t.lazy * 30 + (calm ? 400 : 0) - (d.sleepy < 30 ? 50 : 0),
       cuddle: nap && d.sleepy > 40 ? 40 + d.sleepy * .5 + this.bonds[nap.kind] * 40 + t.sociable * 20 : 0,
-      loaf: 18 + t.lazy * 30 + d.sleepy * .25,
-      sit: 16 + t.lazy * 12,
+      loaf: 28 + t.lazy * 30 + d.sleepy * .35,
+      sit: 22 + t.lazy * 12,
       groom: 14 + (1 - t.mischief) * 14,
       stretch: d.sleepy < 30 && this.last[0] === 'sleep' ? 90 : 4,
       wander: 14 + d.curious * .35 + t.energy * 14,
       explore: ctx.shelves ? 10 + d.curious * .45 + t.bold * 18 + t.curiosity * 12 : 0,
       hide: ctx.hideouts ? (9 + t.mischief * 18 + (1 - t.bold) * 12 + t.curiosity * 8 + d.curious * .2) * (ctx.playing ? .35 : 1) : 0,
-      leave: (12 + t.curiosity * 14 + t.energy * 10 + d.curious * .25 - t.affection * 6) * (ctx.playing ? .3 : 1),
+      leave: (18 + t.curiosity * 14 + t.energy * 10 + d.curious * .25 - t.affection * 6) * (ctx.playing ? .3 : 1),
       glass: ((ctx.aquarium ? 22 : 6) + t.curiosity * 12 + t.affection * 10 + d.lonely * .15) * motion * (ctx.playing ? .3 : 1),
       knock: ctx.toys ? Math.max(0, t.mischief * 44 + d.playful * .3 - 10) * motion : 0,
-      watch: ctx.playing ? 52 + (this.kind === 'purple' ? 25 : 0) + (ctx.vibe === 'talk' && this.kind !== 'purple' ? -25 : 0) : 0,
+      watch: ctx.playing ? 36 + (this.kind === 'purple' ? 25 : 0) + (ctx.vibe === 'talk' && this.kind !== 'purple' ? -25 : 0) : 0,
       dance: ctx.playing && ctx.vibe === 'music' ? (d.playful * .6 + t.energy * 45 + (this.kind === 'pink' ? 30 : 0)) * motion : 0,
       zoomies: d.playful > 55 ? (d.playful * .6 + t.energy * 30 + (ctx.day?.label === 'morning' || ctx.day?.label === 'evening' ? 18 : 0)) * motion : 0,
       stalk: ctx.cursor ? (d.playful * .5 + t.mischief * 30 + t.bold * 10) * motion : 0,
@@ -119,6 +122,8 @@ export class Mind {
       treat: ctx.treat ? 110 + d.hungry * .6 : 0,
       follow: this.kind === 'black' && awake.length ? 26 + this.bonds.pink * 25 : 0,
     };
+    // Real cats mostly rest. Anything that sends a cat across the screen needs a real reason to win.
+    for (const k of BUSY) scores[k] *= .6;
     if (calm) for (const k in scores) if (k !== 'sleep' && k !== 'cuddle' && k !== 'treat') scores[k] *= .1;
     const recent = new Set(this.last.slice(0, 2));
     let top = null, topScore = -Infinity;

@@ -4,11 +4,13 @@ import { CAST, KINDS, traitWords } from '../src/scripts/cats/cast.js';
 import { Mind, awaySummary, dayRhythm, defaultBonds, rng, videoVibe } from '../src/scripts/cats/mind.js';
 import { CatBody, headBasis, tint, visibility, wrap } from '../src/scripts/cats/body.js';
 
-const count = (kind, ctx, runs = 300, seed = 7) => {
+// Fresh cats start drowsy; awake: true asks what a rested cat would do.
+const count = (kind, ctx, runs = 300, seed = 7, { awake = true } = {}) => {
   const tally = {};
   const random = rng(seed);
   for (let i = 0; i < runs; i++) {
     const mind = new Mind(kind, {}, random);
+    if (awake) mind.drives.sleepy = 10;
     const { type } = mind.choose(ctx);
     tally[type] = (tally[type] || 0) + 1;
   }
@@ -65,7 +67,7 @@ test('drives follow activity and the time of day', () => {
   for (let i = 0; i < 30; i++) mind.tick(1, { day: dayRhythm(12) });
   assert.ok(mind.drives.sleepy > before);
   mind.begin('sleep');
-  for (let i = 0; i < 60; i++) mind.tick(1, { day: dayRhythm(12) });
+  for (let i = 0; i < 240; i++) mind.tick(1, { day: dayRhythm(12) });
   assert.ok(mind.drives.sleepy < 5);
   assert.equal(dayRhythm(2).label, 'night');
   assert.ok(dayRhythm(2).sleepy > dayRhythm(7).sleepy);
@@ -102,6 +104,26 @@ test('a long absence gets a diary entry, a short one does not', () => {
   const minds = KINDS.map(k => new Mind(k, {}, rng(4)));
   assert.equal(awaySummary(minds, 20), null);
   assert.match(awaySummary(minds, 600, rng(2)), /^You were away 10 minutes\. .+, and .+\.$/);
+});
+
+test('cats are mostly asleep or loafing, and a fresh page finds them drowsy', () => {
+  for (const kind of KINDS) {
+    const first = count(kind, { shelves: true, hideouts: true, toys: true, cursor: true }, 200, 7, { awake: false });
+    assert.ok((first.sleep || 0) + (first.loaf || 0) > 150, `${kind}: ${JSON.stringify(first)}`);
+  }
+  // Over an hour, rest and time off screen dominate; busy outings are occasional.
+  const busy = new Set(['wander', 'explore', 'knock', 'zoomies', 'stalk', 'approach', 'visit', 'chase', 'follow', 'glass']);
+  const ctx = { shelves: true, hideouts: true, toys: true, cursor: true };
+  for (const kind of KINDS) {
+    const mind = new Mind(kind, {}, rng(5)); let busyTime = 0, total = 0;
+    while (total < 3600) {
+      const { type, partner } = mind.choose(ctx); mind.begin(type, partner);
+      const seconds = { sleep: 150, loaf: 60, leave: 120, hide: 40, sit: 20 }[type] || 10;
+      for (let i = 0; i < seconds; i++) mind.tick(1, ctx);
+      total += seconds; if (busy.has(type)) busyTime += seconds;
+    }
+    assert.ok(busyTime / total < .15, `${kind} is busy ${Math.round(busyTime / total * 100)}% of the time`);
+  }
 });
 
 test('the rig shows a face from the front and the back of the head from behind', () => {

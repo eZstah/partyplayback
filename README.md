@@ -184,6 +184,11 @@ the little page decorations around. Routes are planned over the floor and every
 ledge, so a cat that wants a high spot finds a way up or leaves the screen and
 drops in from above.
 
+They behave like real cats, which mostly means resting. A fresh page finds them
+asleep or loafing in their own spots, or out of the screen altogether, and most
+of their day is naps, loafing and time away. Getting up to explore, hide, knock
+something over or come to the glass is occasional, so it reads as an event.
+
 What else they do: loaf, groom, stretch and yawn, nap (turning around before
 lying down), cuddle up to friends, visit and boop noses, chase and play-fight,
 hiss at someone they don't like, get the zoomies, stalk and pounce on a still

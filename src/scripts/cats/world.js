@@ -15,7 +15,7 @@ const CONTROLS = 'a,button,input,select,textarea,summary,label,[role=button],[ro
 const SOLIDS = '.room-launcher,#stage,.playlist-panel,.member-rooms';
 // Small boxes and big words: places to sit, too small to hide behind.
 const BOXES = '.step-symbol,#q-list > li';
-const WORDS = '.hero-wordmark,.how-it-works h2,.how-grid h3,.cat-playbar > span,.room-wordmark-link,.room-name';
+const WORDS = '.hero-wordmark,.how-it-works h2,.how-grid h3,.room-wordmark-link,.room-name';
 // Text cats prefer not to sit on top of.
 const TEXT = 'h1,h2,h3,p,li,summary,.how-grid article';
 // Decorations a cat may knock about.
@@ -59,7 +59,7 @@ export function bootCats() {
   // ---------- world state ----------
   const W = { w: innerWidth, h: innerHeight, dpr: 1, aquarium: false, calm: !!saved.calm, laser: false, time: 0,
     pointer: null, overUI: false, idleSince: performance.now(), controls: [], text: [], solids: [], ledges: [], toys: [], rectsAt: -1,
-    treat: null, critter: null, nextCritter: 25 + Math.random() * 40, particles: [], glass: [], speechAt: 0,
+    treat: null, critter: null, nextCritter: 90 + Math.random() * 90, particles: [], glass: [], speechAt: 0,
     playing: false, title: '', vibe: 'unknown', users: null, hovered: null, press: null, drag: null, petDist: 0 };
 
   const cats = KINDS.map((kind, i) => {
@@ -171,8 +171,8 @@ export function bootCats() {
   const yAt = (surface, x, z = 0) => surface === FLOOR ? floorY(z) : surface.y(x);
 
   // A sitting cat's footprint, for checking it won't cover something.
-  const restBox = (x, y, k) => ({ left: x - 48 * k, right: x + 48 * k, top: y - 120 * k, bottom: y + 4 });
-  const clearOf = box => !W.controls.some(r => hits(box, inflate(r, 8)));
+  const restBox = (x, y, k) => ({ left: x - 58 * k, right: x + 58 * k, top: y - 120 * k, bottom: y + 4 });
+  const clearOf = box => !W.controls.some(r => hits(box, inflate(r, 20)));
   // Words a sitting cat would cover. A word ledge doesn't count against itself.
   const overText = (box, surface) => W.text.some(r => hits(inflate(box, -10), r) && !(surface?.rect && hits(r, surface.rect)));
   function crowded(cat, spot) {
@@ -466,6 +466,15 @@ export function bootCats() {
     const b = cat.body, p = b.headPos; if (!p) return null;
     return applyXf(cat, p[0], p[1]);
   }
+  // Somewhere to look out from behind a panel: over the top, or round a side of a tall one.
+  function hidePeek(cat, l) {
+    const b = cat.body, tall = l.rect.height > 260 * S(), mode = tall && Math.random() < .45 ? 'side' : 'over';
+    if (mode === 'side') return { mode, solid: l, side: Math.random() < .5 ? -1 : 1, v: lerp(110 * S(), Math.min(l.rect.height - 40, 300 * S()), Math.random()) };
+    const spec = { mode, solid: l, u: lerp(l.rect.width * .1, l.rect.width * .9, Math.random()) };
+    const x = l.rect.left + spec.u, hr = b.L.headR * b.k;
+    const box = { left: x - hr * 1.6, right: x + hr * 1.6, top: l.rect.top - hr * 2.4, bottom: l.rect.top };
+    return clearOf(box) && !overText(box, l) ? spec : null;
+  }
   function screenPeekSpec(cat) {
     measure();
     const edges = ['left', 'right', 'bottom', 'bottom', 'top'];
@@ -519,13 +528,13 @@ export function bootCats() {
 
   // ----- activities -----
   const A = {
-    *sit(cat, seconds = 5 + Math.random() * 8) {
+    *sit(cat, seconds = 12 + Math.random() * 20) {
       restPose(cat, 'sit'); let t = 0;
       if (Math.random() < .25) say(cat, 'idle', .15);
       while (t < seconds) { const dt = yield; t += dt; fidget(cat); if (Math.random() < .002) cat.body.set({ knead: cat.body.goal.knead ? 0 : 1 }); }
     },
     *loaf(cat) {
-      restPose(cat, 'loaf'); cat.body.set({ eyes: .55 }); let t = 0; const seconds = 10 + Math.random() * 14;
+      restPose(cat, 'loaf'); cat.body.set({ eyes: .55 }); let t = 0; const seconds = 30 + Math.random() * 60;
       while (t < seconds) {
         const dt = yield; t += dt; fidget(cat);
         // Slow blink at the viewer: cat for "I trust you".
@@ -534,16 +543,12 @@ export function bootCats() {
     },
     *sleep(cat) {
       if (Math.random() < .2 && W.solids.length) { if (yield* A.hide(cat, true)) return; }
-      const spot = findSpot(cat, { where: Math.random() < .55 ? 'ledge' : 'floor' });
-      yield* travel(cat, spot, walkSpeed(cat) * .8);
-      yield* settleToSleep(cat);
-      let t = 0; const max = 25 + Math.random() * 60;
-      while (t < max && (cat.mind.drives.sleepy > 6 || W.calm)) {
-        const dt = yield; t += dt;
-        if (Math.random() < dt * .35) particle('z', cat.body.top.x + 8, cat.body.top.y + 6, { rise: 18, life: 2.4, size: 12 + Math.random() * 6, color: '#cbbbe8' });
-        if (Math.random() < dt * .05) cat.body.goal.tailWag = cat.body.goal.tailWag ? 0 : .2;
+      // Often a cat just drops off where it is.
+      if (Math.random() < .45 && cat.at.kind !== 'behind') yield* nap(cat, 90 + Math.random() * 210);
+      else {
+        yield* travel(cat, findSpot(cat, { where: Math.random() < .55 ? 'ledge' : 'floor' }), walkSpeed(cat) * .8);
+        yield* nap(cat, 90 + Math.random() * 210);
       }
-      yield* wake(cat);
     },
     *cuddle(cat, partnerKind) {
       const p = byKind[partnerKind];
@@ -606,22 +611,18 @@ export function bootCats() {
       b.reset({ sit: 1, tailUp: .5, tailWag: .45 });
       if (nap) {
         b.reset({ curl: 1, eyes: 0, tailWrap: 0, tailUp: .3, tailWag: .1 }); b.face = 'sleep';
-        let t = 0; while (t < 60 && (cat.mind.drives.sleepy > 6 || W.calm)) t += yield;
-        b.face = 'open'; yield* popOut(cat); return true;
+        let t = 0; const max = 90 + Math.random() * 180; while (t < max && (cat.mind.drives.sleepy > 6 || W.calm)) t += yield;
+        b.face = 'open'; b.reset({ sit: 1, tailUp: .5 });
+        // Peek out to check the coast is clear before coming out.
+        const spec = Math.random() < .6 && hidePeek(cat, refresh(l));
+        if (spec) yield* peek(cat, spec, 2 + Math.random() * 2);
+        yield* popOut(cat); return true;
       }
-      let t = 0; const seconds = 18 + Math.random() * 26;
+      let t = 0; const seconds = 25 + Math.random() * 35;
       while (t < seconds) {
-        t += yield* waitT(1.5 + Math.random() * 3.5);
+        t += yield* waitT(5 + Math.random() * 7);
         refresh(l);
-        const tall = l.rect.height > 260 * S(), mode = tall && Math.random() < .45 ? 'side' : 'over';
-        const spec = mode === 'over'
-          ? { mode, solid: l, u: lerp(l.rect.width * .1, l.rect.width * .9, Math.random()) }
-          : { mode, solid: l, side: Math.random() < .5 ? -1 : 1, v: lerp(110 * S(), Math.min(l.rect.height - 40, 300 * S()), Math.random()) };
-        if (mode === 'over') {
-          const x = l.rect.left + spec.u, hr = b.L.headR * b.k;
-          const box = { left: x - hr * 1.6, right: x + hr * 1.6, top: l.rect.top - hr * 2.4, bottom: l.rect.top };
-          if (!clearOf(box) || overText(box, l)) continue;
-        }
+        const spec = hidePeek(cat, l); if (!spec) continue;
         if (Math.random() < .3) say(cat, 'peek', .6);
         const before = performance.now();
         yield* peek(cat, spec, 1.5 + Math.random() * 3);
@@ -638,10 +639,10 @@ export function bootCats() {
       if (Math.random() < .3) say(cat, 'idle', .4);
       yield* exit(cat, walkSpeed(cat) * 1.3);
       log(`${cat.name} went off-screen to explore.`);
-      let t = 0; const seconds = 15 + Math.random() * 40 + cat.mind.t.curiosity * 20;
+      let t = 0; const seconds = 60 + Math.random() * 120 + cat.mind.t.curiosity * 60;
       while (t < seconds) {
-        t += yield* waitT(4 + Math.random() * 8);
-        if (Math.random() < .5 && !W.calm) {
+        t += yield* waitT(15 + Math.random() * 30);
+        if (Math.random() < .3 && !W.calm) {
           const spec = screenPeekSpec(cat);
           if (spec) { if (Math.random() < .35) say(cat, 'peek', 1); yield* peek(cat, spec, 2 + Math.random() * 3); t += 3; }
         }
@@ -726,18 +727,23 @@ export function bootCats() {
     *watch(cat) {
       const s = stageCenter(); if (!s) { yield* A.sit(cat); return; }
       const r = s.rect;
-      let spot = null;
-      for (let i = 0; i < 25 && !spot; i++) {
-        const cand = { surface: FLOOR, x: r.left + 40 + Math.random() * Math.max(20, r.width - 80), z: lerp(-35, 20, Math.random()) };
-        if (clearOf(restBox(cand.x, floorY(cand.z), floorK(cand.z))) && !crowded(cat, cand)) spot = cand;
+      // Usually a cat watches from wherever it already is; sometimes it moves in for a better seat.
+      const stay = (cat.at.kind === 'floor' || (cat.at.kind === 'ledge' && !hits(cat.at.ledge.rect, r))) && clearOf(restBox(cat.body.x, cat.body.gy, cat.body.k)) && Math.random() < .6;
+      if (!stay) {
+        let spot = null;
+        for (let i = 0; i < 25 && !spot; i++) {
+          const cand = { surface: FLOOR, x: r.left + 40 + Math.random() * Math.max(20, r.width - 80), z: lerp(-35, 20, Math.random()) };
+          if (clearOf(restBox(cand.x, floorY(cand.z), floorK(cand.z))) && !crowded(cat, cand)) spot = cand;
+        }
+        yield* travel(cat, spot || findSpot(cat, { where: 'floor' }), walkSpeed(cat) * .8);
+        if (cat.at.kind !== 'floor') { yield* A.sit(cat); return; }
       }
-      yield* travel(cat, spot || findSpot(cat, { where: 'floor' }), walkSpeed(cat));
-      if (cat.at.kind !== 'floor') { yield* A.sit(cat); return; }
-      cat.body.reset({ sit: 1, tailWrap: 1 }); cat.body.look = { x: s.x, y: s.y, behind: true };
+      const lie = Math.random() < .5;
+      cat.body.reset(lie ? { loaf: 1 } : { sit: 1, tailWrap: 1 }); cat.body.look = { x: s.x, y: s.y, behind: true };
       cat.body.faceYaw(Math.atan2(-220, s.x - cat.body.x));
       if (Math.random() < .3) say(cat, 'watch', .25);
       let t = 0;
-      while (W.playing && t < 40 + Math.random() * 40) {
+      while (W.playing && t < 60 + Math.random() * 90) {
         const dt = yield; t += dt;
         const c = stageCenter(); if (c) cat.body.look = { x: c.x, y: c.y, behind: true };
         cat.body.goal.bob = W.vibe === 'music' ? .5 : 0;
@@ -1030,6 +1036,19 @@ export function bootCats() {
     b.reset({ loaf: 1, eyes: .4 }); yield* wait(.8);
     const ledge = cat.at.kind === 'ledge' && cat.at.ledge.kind !== 'word';
     b.reset({ curl: 1, eyes: 0, tailWrap: ledge ? 0 : 1, tailHang: ledge ? 1 : 0 }); b.face = 'sleep';
+  }
+  // Sleep in place until rested (or for as long as calm mode holds), then wake slowly.
+  function* nap(cat, max, settled = false) {
+    if (!settled) yield* settleToSleep(cat);
+    let t = 0;
+    while (t < max && (cat.mind.drives.sleepy > 6 || W.calm)) {
+      const dt = yield; t += dt;
+      if (Math.random() < dt * .35) particle('z', cat.body.top.x + 8, cat.body.top.y + 6, { rise: 18, life: 2.4, size: 12 + Math.random() * 6, color: '#cbbbe8' });
+      if (Math.random() < dt * .05) cat.body.goal.tailWag = cat.body.goal.tailWag ? 0 : .2;
+      // An ear flicks at a dream now and then.
+      if (Math.random() < dt * .04) { cat.body.goal.earsBack = .6; yield* wait(.25); cat.body.goal.earsBack = 0; }
+    }
+    yield* wake(cat);
   }
   function* wake(cat) {
     const b = cat.body; b.face = 'open'; b.reset({ loaf: 1, eyes: .4 }); yield* wait(.7);
@@ -1400,14 +1419,45 @@ export function bootCats() {
     measure(true);
     for (const c of cats) { if (c.at.kind === 'floor') c.body.x = clamp(c.body.x, 20, W.w - 20); c.target = null; }
   }
-  function place(c, i) {
-    const spot = findSpot(c, { where: i % 2 ? 'ledge' : 'floor', near: W.w * (.12 + i * .25), spread: 300 });
-    c.body.x = spot.x; c.body.z = spot.z ?? 0;
+  // Put a cat straight into a resting spot: somewhere of its own, not lined up with the others.
+  function place(c, i, pose = ['sit', 'loaf', 'sit', 'curl'][Math.floor(Math.random() * 4)]) {
+    // Each cat has its own spot: keep well away from the cats already placed.
+    const others = cats.filter(o => o !== c && o.target), gap = s => Math.min(Infinity, ...others.map(o => Math.hypot(o.target.x - s.x, yAt(o.target.surface, o.target.x, o.target.z) - yAt(s.surface, s.x, s.z))));
+    let spot = null;
+    for (let n = 0; n < 12 && (!spot || gap(spot) < 260 * S()); n++) {
+      const s = findSpot(c, { where: Math.random() < .6 ? 'ledge' : 'floor' });
+      if (!spot || gap(s) > gap(spot)) spot = s;
+    }
+    c.body.x = spot.x; c.body.z = spot.z ?? 0; c.target = spot;
     if (spot.surface === FLOOR) { c.at = { kind: 'floor' }; c.body.gy = floorY(c.body.z); c.body.k = floorK(c.body.z); }
     else { land(c, spot.surface); c.body.gy = spot.surface.y(spot.x); c.body.k = S() * LEDGE_K; }
     c.body.yaw = Math.random() < .6 ? Math.PI / 2 + (Math.random() - .5) : Math.random() * TAU;
-    const pose = ['sit', 'loaf', 'sit', 'curl'][Math.floor(Math.random() * 4)];
-    c.body.reset({ [pose]: 1 }); Object.assign(c.body.pose, c.body.goal);
+    if (pose === 'curl') { restPose(c, 'sit'); c.body.reset({ curl: 1, eyes: 0, tailWrap: 1 }); c.body.face = 'sleep'; }
+    else restPose(c, pose);
+    Object.assign(c.body.pose, c.body.goal);
+  }
+  // What you find when the page opens: most cats asleep or loafing in their spots, maybe one out.
+  function opening() {
+    measure(true);
+    let out = 0;
+    [...cats].sort(() => Math.random() - .5).forEach((c, i) => {
+      unstick(c); c.closeup = null; c.xf = null; c.prio = PRIORITY.normal;
+      const r = Math.random();
+      const mode = i === 0 ? (r < .6 ? 'sleep' : 'loaf') : r < .5 ? 'sleep' : r < .72 ? 'loaf' : out++ < 1 ? 'away' : 'sleep';
+      if (mode === 'away') {
+        c.at = { kind: 'away', side: Math.random() < .5 ? 'left' : 'right' }; c.mind.begin('leave');
+        c.plan = (function* () {
+          yield* wait(40 + Math.random() * 80);
+          yield* enter(c, findSpot(c, { where: 'any' }), walkSpeed(c));
+          say(c, 'back', .5); restPose(c, 'sit'); yield* wait(2);
+        })();
+        return;
+      }
+      place(c, i, mode === 'sleep' ? 'curl' : 'loaf');
+      if (mode === 'sleep') { c.mind.drives.sleepy = Math.max(c.mind.drives.sleepy, 55); c.mind.begin('sleep'); c.plan = nap(c, 60 + Math.random() * 200, true); }
+      else { c.mind.begin('loaf'); c.plan = A.loaf(c); }
+    });
+    for (const c of cats) c.target = null;
   }
 
   // Keep a cat attached to whatever it's on (pages scroll; cards move).
@@ -1458,7 +1508,7 @@ export function bootCats() {
     if (!bug) {
       W.nextCritter -= dt;
       if (W.nextCritter <= 0 && !W.calm && !reduced()) {
-        W.nextCritter = (W.aquarium ? 40 : 70) + Math.random() * 90;
+        W.nextCritter = (W.aquarium ? 80 : 150) + Math.random() * 180;
         const fromLeft = Math.random() < .5;
         W.critter = { x: fromLeft ? -20 : W.w + 20, y: W.h * (.25 + Math.random() * .5), dir: fromLeft ? 1 : -1, t: 0, flap: 0, hue: pick(['#f2c78d', '#c3acf0', '#8fd3b5', '#f29bb0']), flee: false, gone: false, life: 25 + Math.random() * 15 };
         log('A butterfly drifted in.');
@@ -1671,10 +1721,8 @@ export function bootCats() {
     // Life went on without you.
     const day = dayRhythm(new Date().getHours());
     for (let t = 0; t < Math.min(away, 3600); t += 5) for (const c of cats) c.mind.tick(5, { day, nearFriend: Math.random() < .4 });
-    cats.forEach((c, i) => { unstick(c); c.closeup = null; c.xf = null; place(c, i); c.plan = null; c.prio = 0; if (c.body.goal.curl) c.mind.begin('sleep'); });
+    opening();
     const summary = awaySummary(cats.map(c => c.mind), away); if (summary) log(summary);
-    const host = [...cats].sort((a, b) => b.mind.trust - a.mind.trust)[0];
-    host.mind.begin('glass'); host.plan = A.glass(host); host.prio = PRIORITY.react;
     W.speechAt = 0;
   });
   listen(window, 'pagehide', save);
@@ -1691,7 +1739,7 @@ export function bootCats() {
 
   // ---------- start ----------
   resize();
-  cats.forEach(place);
+  opening();
   setCalm(W.calm);
   if (new URLSearchParams(location.search).get('wallpaper') === '1') setAquarium(true);
   // Greet the visitor: the host peeks in, then comes up to the glass to say hello.
@@ -1699,13 +1747,14 @@ export function bootCats() {
     const host = firstVisit ? byKind.mint : [...cats].sort((a, b) => b.mind.trust - a.mind.trust)[0];
     const key = firstVisit ? 'greet' : sinceLast > 4 * 3600 ? 'returnLong' : null;
     if (key && !W.calm) {
-      host.mind.begin('glass'); host.prio = PRIORITY.react; host.at = { kind: 'away', side: 'left' };
+      // One cat looks in to say hello; everyone else stays asleep.
+      unstick(host); host.mind.begin('greet'); host.prio = PRIORITY.react; host.at = { kind: 'away', side: 'left' };
       host.plan = (function* () {
-        yield* wait(.8);
-        const spec = screenPeekSpec(host); if (spec) yield* peek(host, spec, 1.6);
-        yield* enter(host, { surface: FLOOR, x: W.w * (.3 + Math.random() * .4), z: 20 });
-        say(host, key, 1, true); yield* wait(1);
-        yield* A.glass(host);
+        yield* wait(1.5);
+        const spec = screenPeekSpec(host); if (spec) yield* peek(host, spec, 2.2);
+        yield* enter(host, findSpot(host, { where: 'floor' }), walkSpeed(host) * .8);
+        say(host, key, 1, true); host.body.look = 'viewer'; yield* wait(1.5);
+        host.mind.begin('loaf'); yield* A.loaf(host);
       })();
       if (firstVisit) log('You met the cats.'); else log(`You came back after ${Math.round(sinceLast / 3600)} hours. ${host.name} noticed.`);
     } else if (!journal.length) log('The cats are settling in.');
