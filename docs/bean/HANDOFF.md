@@ -31,6 +31,25 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## Aquarium proportions from Konstantin's corrected mockup (Codex)
+
+The October 3 reference enlarges the sunset window and TV, places the sofa
+under the window, slims the cat tree and bookshelf, and adds two little plants
+on the low console. Implemented in `CatHabitat.astro` and `cat-habitat.css` from
+`09d8916`, on `codex/aquarium-mockup-layout`. The wall shelf, box and yarn are
+removed; the tree has three decks. Existing perch, nap and viewing markers
+remain on the furniture, and the mouse remains a toy. No cat engine changes.
+TV and player share responsive length variables and keep a 16:9 screen.
+
+Validated with all 229 tests and `npm run check` (build, TypeScript, Wrangler
+dry run). Browser checks cover home and the local empty room, fullscreen in
+and out, and room/player alignment at 1280×720, 1440×900, 1920×1080, 1280×1024,
+1024×768 and the reference's 1907×942. All marked furniture stays on screen;
+player edges match the TV screen within a fraction of a pixel. At 390×844,
+Aquarium exits to the normal room without horizontal overflow. This layout
+check does not verify external video playback or multi-user synchronization.
+This increment is prepared for PR review, without publishing to main.
+
 ## A cozy lofi room with the player on the TV (Claude)
 
 Konstantin asked for Aquarium to be an ultra-cozy cat playground room, with our

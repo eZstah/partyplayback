@@ -30,13 +30,13 @@ const bulbs = Array.from({ length: 24 }, (_, i) => { const x = (i + .5) * 1000 /
     <div class="window-curtain left"></div><div class="window-curtain right"></div>
     <div class="window-sill" data-perch="shelf" data-nap><span class="sill-pot"></span></div>
   </div>
-  <div class="prop wall-shelf" data-perch="shelf"><span class="shelf-lamp"></span><span class="wall-shelf-cup"></span></div>
 
   <div class="prop prop-tree">
     <div class="tree-post"></div>
     <div class="tree-cubby" data-perch="solid" data-nap><span class="cubby-hole"></span></div>
     <div class="tree-deck deck-low" data-perch="shelf"></div>
     <div class="tree-deck deck-mid" data-perch="shelf"><span class="deck-pompom"></span></div>
+    <div class="tree-deck deck-high" data-perch="shelf"></div>
     <div class="tree-bed" data-perch="shelf" data-nap></div>
   </div>
 
@@ -49,11 +49,11 @@ const bulbs = Array.from({ length: 24 }, (_, i) => { const x = (i + .5) * 1000 /
     <span class="sofa-blanket"></span>
   </div>
 
-  <div class="prop prop-box" data-perch="solid" data-nap data-view><span class="box-flap left"></span><span class="box-flap right"></span><span class="box-label">BEAN · this side up</span></div>
-  <span class="prop yarn" data-toy></span>
-
   <!-- The TV hangs over a low console. In a room, the player is placed over .tv-screen. -->
-  <div class="prop console" data-perch="shelf" data-view><span class="drawer"></span><span class="drawer"></span><span class="console-speaker"></span></div>
+  <div class="prop console" data-perch="shelf" data-view>
+    <span class="drawer"></span><span class="drawer"></span><span class="console-speaker"></span>
+    <span class="console-plant"><span></span></span><span class="console-plant small"><span></span></span>
+  </div>
   <div class="prop tv" data-perch="solid"><div class="tv-screen"></div><span class="tv-led"></span></div>
 
   <div class="prop prop-books" data-perch="solid">
