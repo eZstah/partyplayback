@@ -28,7 +28,7 @@ function habitat(t, saved = {}, phone = false, reduced = false) {
       getBoundingClientRect: () => ({ left: 200, top: 100, right: 1000, bottom: 550, width: 800, height: 450 }),
     };
   };
-  const nodes = new Map(), queries = new Map(), surfaces = [], perches = [], get = id => { if (!nodes.has(id)) nodes.set(id, { ...node(), id }); return nodes.get(id); };
+  const nodes = new Map(), queries = new Map(), queried = new Map(), surfaces = [], perches = [], get = id => { if (!nodes.has(id)) nodes.set(id, { ...node(), id }); return nodes.get(id); };
   get('cat-universe').hidden = true;
   get('cat-panel').hidden = true;
   const menu = get('cat-panel'), menuButtons = ['cat-hello-btn', 'cat-treat-btn', 'cat-laser-btn', 'cat-calm-dock'].map(get);
@@ -44,7 +44,7 @@ function habitat(t, saved = {}, phone = false, reduced = false) {
         : sel === '.room-launcher,#stage,.playlist-panel,.member-rooms' ? surfaces.filter(el => el.solid && !el.removed)
         : sel === '.step-symbol,#q-list > li' ? surfaces.filter(el => !el.solid && !el.removed)
         : sel === '#cat-universe [data-perch]' ? perches : [],
-      querySelector: sel => sel === '.create-room-button' ? get('create') : null },
+      querySelector: sel => sel === '.create-room-button' ? get('create') : queried.get(sel) ?? null },
     window: node(), innerWidth: 1440, innerHeight: 900, devicePixelRatio: 1,
     matchMedia: query => { if (!queries.has(query)) queries.set(query, { ...node(), get matches() { return phone && query.includes('760px') || reduced && query.includes('reduced-motion'); } }); return queries.get(query); },
     getComputedStyle: () => ({ fontFamily: 'sans-serif' }),
@@ -77,6 +77,8 @@ function habitat(t, saved = {}, phone = false, reduced = false) {
       el.getBoundingClientRect = () => ({ ...el.layout, right: el.layout.left + el.layout.width, bottom: el.layout.top + el.layout.height });
       perches.push(el); return el;
     },
+    // Answer document.querySelector(selector) with a node (null removes it).
+    query(selector, el) { if (el) queried.set(selector, el); else queried.delete(selector); return el; },
     advance(ms) { clock += ms; const pending = [...frames.values()]; frames.clear(); pending.forEach(fn => fn(clock)); },
     visibility(hidden) { document.hidden = hidden; document.emit('visibilitychange'); },
     // Resize the window across the phone breakpoint.
@@ -242,6 +244,43 @@ test('in Aquarium Bean lives around the room while a video plays, quietly and on
     world.aquarium(false); fixture.advance(500);
     const { x } = bean.body;
     for (let i = 0; i < 4000; i++) { fixture.advance(50); assert.equal(bean.body.x, x, 'outside Aquarium playback stays still'); }
+  } finally { world.destroy(); }
+});
+
+test('Bean listens to the record on the turntable: awake and swaying to lo-fi, dozing to sleep music', t => {
+  const fixture = habitat(t, { visits: 3 });
+  location.search = '?catdebug';
+  const world = bootCats({ seed: 5 }), bean = world.cats[0];
+  const shelf = fixture.get('music-shelf'), deck = fixture.get('turntable');
+  deck.getBoundingClientRect = () => ({ left: 1200, top: 620, right: 1320, bottom: 650, width: 120, height: 30 });
+  shelf.querySelector = sel => sel === '[data-music-mix="lofi"] .record-label' ? { textContent: 'Lo-fi' } : sel === '[data-music-mix="sleep"] .record-label' ? { textContent: 'Sleep' } : null;
+  fixture.query('.music-shelf .turntable', deck);
+  try {
+    world.aquarium(true); fixture.advance(500);
+    bean.at = { kind: 'floor' }; bean.body.x = 600; bean.body.z = 0;
+    Object.assign(shelf.dataset, { record: 'lofi', spinning: 'true' });
+    fixture.query('.music-shelf[data-spinning="true"]', shelf);
+    document.body.dataset.playback = 'playing'; world.observe({ title: 'lofi beats', users: 1 });
+    let swayed = false, listening = false, groove = { awake: 0, all: 0 };
+    for (let i = 0; i < 12000; i++) {
+      fixture.advance(50);
+      assert.equal(bean.bubble, null, 'listening is quiet');
+      swayed ||= Math.abs(bean.body.goal.headRoll) > .05;
+      listening ||= /listening to Lo-fi/.test(bean.phase || '');
+      groove.all++; if (bean.mind.activity !== 'sleep') groove.awake++;
+    }
+    assert.ok(listening, 'the snapshot says what he is listening to');
+    assert.ok(swayed, 'he sways to lo-fi now and then');
+    assert.ok(groove.awake / groove.all > .6, `mostly awake for lo-fi (${Math.round(100 * groove.awake / groove.all)}%)`);
+    shelf.dataset.record = 'sleep';
+    let asleep = 0, all = 0;
+    for (let i = 0; i < 12000; i++) { fixture.advance(50); all++; if (bean.mind.activity === 'sleep') asleep++; }
+    assert.ok(asleep / all > .5, `sleep music makes him doze (${Math.round(100 * asleep / all)}% asleep)`);
+    document.body.dataset.playback = 'paused'; world.observe({}); fixture.advance(500);
+    world.calm(true);
+    document.body.dataset.playback = 'playing'; world.observe({});
+    shelf.dataset.record = 'lofi';
+    for (let i = 0; i < 4000; i++) { fixture.advance(50); assert.equal(bean.body.goal.headRoll || 0, 0, 'Calm keeps him still'); }
   } finally { world.destroy(); }
 });
 

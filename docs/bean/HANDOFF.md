@@ -31,6 +31,18 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## Bean listens to the records (Claude)
+
+Konstantin chose "Bean listens" next. While a shelf record plays, Bean's quiet
+playback rest takes its mood from the record (`playingRecord()` and
+`restForRecord()` in world.js). Lo-fi and Jazz keep him up: he faces the
+turntable, slow-blinks, and every 15 to 30 seconds sways his head for a few
+bars with his tail tapping. Ambient and Piano make him drowsy (he loafs and may
+curl up mid-song), and Sleep sends him to sleep most of the time. He never
+travels or speaks for it, and Calm and reduced motion keep him still. The
+snapshot phase reads "listening to Lo-fi" or "dozing to Sleep". Covered in
+`cats-world.test.js`; checked in Chromium with a stand-in player.
+
 ## Turntable and Bean's pick (Claude)
 
 Konstantin asked for smarter record suggestions. The tall cabinet is now a low
