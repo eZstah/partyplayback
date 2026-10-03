@@ -240,9 +240,17 @@ The follow-up palette keeps the room dim in the website's charcoal and plum,
 with lavender edge lighting and pink/mint accents. Day and weather still change
 the window without turning the room into a bright daytime scene.
 
-The right cabinet is now a music shelf. Its decorative solid/shelf surfaces
-stay in the habitat, while the accessible buttons are a sibling `.music-shelf`
-above the room layout (otherwise `.room-shell` intercepts the top record).
+The right of the room is a record stand: a low cabinet (`.record-stand`, a
+solid perch in the habitat) with a turntable on top and the five sleeves in its
+front. The accessible buttons are a sibling `.music-shelf` laid exactly over
+the stand (otherwise `.room-shell` intercepts the records). The platter spins
+while a record plays (`data-spinning`) and takes the record's colour
+(`data-record`). While nothing is selected, `suggestRecord()` picks "Bean's
+pick": the room's last record, else one for the window's weather, else one for
+the time of day. `followScene()` repaints when the window changes. The sleeve
+carries `data-suggested`, and in Aquarium the mind's `ctx.record` cue lets Bean
+walk over and paw it now and then (`pick`, cooldown 300 s, blocked by playback,
+Calm and reduced motion).
 `music-shelf.js` owns the record catalog (Ambient, Lo-fi, Piano, Jazz and
 Sleep, each with up to three recorded mixes) and a small client controller.
 The first video of a record that plays is used. When the player reports an

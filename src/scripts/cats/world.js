@@ -900,6 +900,23 @@ export function bootCats({ seed } = {}) {
       b.face = 'happy'; b.look = 'viewer'; yield* wait(1.4); b.face = 'open';
       cat.mind.drives.playful = Math.max(0, cat.mind.drives.playful - 30);
     },
+    // Walk to the record shelf and paw the record the shelf suggests, once.
+    *pick(cat) {
+      const b = cat.body, el = suggestedRecord();
+      if (!el || W.playing) { yield* A.sit(cat); return; }
+      const r = rectOf(el), tx = (r.left + r.right) / 2, side = tx > W.w / 2 ? -1 : 1;
+      yield* travel(cat, { surface: FLOOR, x: tx + side * (r.width / 2 + 30 * S()), z: 0 }, walkSpeed(cat) * .8);
+      if (!suggestedRecord()) { yield* A.sit(cat, 2); return; }
+      b.look = { x: tx, y: (r.top + r.bottom) / 2 }; b.faceYaw(tx > b.x ? 0 : Math.PI); b.reset({ sit: 1 }); b.face = 'focus';
+      yield* wait(1.1);
+      b.set({ swat: 1 }); yield* wait(.25); b.set({ swat: 0 });
+      el.dataset.nudged = 'true'; runtime.delay(() => { delete el.dataset.nudged; }, 800);
+      say(cat, 'pick', .8);
+      b.face = 'happy'; b.look = 'viewer'; yield* wait(1.6); b.face = 'open';
+      if (!cat.mind.stats.pick) log(`${cat.name} pawed at a record. Maybe try that one?`);
+      cat.mind.stats.pick = (cat.mind.stats.pick || 0) + 1;
+      yield* A.sit(cat, 3 + random() * 3);
+    },
     *watch(cat) {
       if (W.playing) yield* quietPlayback(cat);
       else yield* A.sit(cat);
@@ -1406,9 +1423,11 @@ export function bootCats({ seed } = {}) {
       invitedPlay: W.time < W.invitedUntil, laser: W.laser && !!W.pointer,
       treat: !!W.treat && !W.treat.eaten, critter: !!W.critter && !W.critter.flee, shelves: W.ledges.length > 0,
       hideouts: W.solids.some(l => l.rect.height > 150 && onScreen(l.rect)), toys: W.toys.length > 0,
-      aquarium: W.aquarium,
+      aquarium: W.aquarium, record: W.aquarium && !!suggestedRecord(),
     };
   }
+  // The record the music shelf is suggesting right now (only while nothing plays).
+  function suggestedRecord() { return document.querySelector('.music-shelf .music-record[data-suggested="true"]'); }
   function next(cat) {
     if (W.playing && !W.laser && (!W.treat || W.treat.eaten)) {
       cat.prio = PRIORITY.normal; cat.plan = quietPlayback(cat); return;

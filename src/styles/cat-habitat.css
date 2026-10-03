@@ -112,39 +112,58 @@ body.cat-wallpaper .cat-habitat[data-weather=rain] .sky-rain{animation:rain .5s 
 .tv-screen{width:100%;height:100%;border-radius:calc(.5*var(--u));background:radial-gradient(ellipse at 40% 35%,#211d31,#0e0d17 75%);display:grid;place-items:center;box-shadow:inset 0 0 calc(2*var(--u)) #c3afff16}
 .tv-led{position:absolute;right:calc(1.6*var(--u));bottom:calc(.85*var(--u));width:calc(.5*var(--u));aspect-ratio:1;border-radius:50%;background:#ff9fb7;box-shadow:0 0 6px #ff9fb7}
 
-/* The record cabinet remains a climbable surface behind the music controls. */
-.prop-books{left:92vw;bottom:var(--floor);width:7vw;height:74vh;border-radius:calc(.6*var(--u));background:var(--wood-dark);border:calc(.65*var(--u)) solid var(--wood);box-shadow:0 calc(1*var(--u)) calc(2.4*var(--u)) #0007}
-.book-shelf{position:absolute;left:calc(.6*var(--u));right:calc(.6*var(--u));bottom:calc(22*var(--u));height:calc(1.2*var(--u));background:var(--wood-top);border-radius:calc(.3*var(--u))}
+/* The record stand: a low cabinet under the TV's right side, a turntable on top
+   and the records standing in its open front. The stand is a climbable surface;
+   the turntable and records belong to .music-shelf, which sits exactly over it. */
+body.cat-wallpaper,.cat-habitat{--stand-w:18vw;--stand-h:calc(8.6*var(--u));--stand-right:1vw}
+.record-stand{right:var(--stand-right);bottom:var(--floor);width:var(--stand-w);height:var(--stand-h);border-radius:calc(.6*var(--u));background:linear-gradient(var(--wood-top),var(--wood) 12%,var(--wood-dark));box-shadow:0 calc(1*var(--u)) calc(2.2*var(--u)) #0007,inset 0 0 0 1px #c3afff14}
+.record-stand::before{content:'';position:absolute;inset:calc(1.1*var(--u)) calc(.8*var(--u)) calc(.8*var(--u));border-radius:calc(.35*var(--u));background:linear-gradient(#0f0d16,#1a1724);box-shadow:inset 0 calc(.5*var(--u)) calc(1*var(--u)) #000a}
 
-/* Real record sleeves on the cabinet: reachable by pointer and keyboard only
-   while Aquarium is visible. The surrounding scenery stays decorative. */
-.music-shelf{position:fixed;z-index:2;visibility:hidden;left:92vw;bottom:var(--floor);width:7vw;height:74vh;padding:calc(1.1*var(--u));pointer-events:auto;display:flex;flex-direction:column;align-items:center;isolation:isolate;color:#eee6fa}
+.music-shelf{position:fixed;z-index:2;visibility:hidden;right:var(--stand-right);bottom:var(--floor);width:var(--stand-w);height:var(--stand-h);pointer-events:none;isolation:isolate;color:#eee6fa;--disc-ink:#c3afff}
 body.cat-wallpaper .music-shelf{visibility:visible}
-.music-shelf-heading{width:100%;text-align:center;line-height:1.35}
-.music-shelf-heading>span:first-child{display:block;font-size:clamp(10px,.8vw,14px);font-weight:700;letter-spacing:.06em;color:var(--accent,#c3afff);text-shadow:0 0 14px #c3afff55}
-.music-shelf-heading>span:last-child{display:block;font-size:clamp(9px,.65vw,11px);color:#b7abc8;margin-top:5px}
-.music-records{display:flex;flex-direction:column;justify-content:space-between;width:100%;flex:1;min-height:0;padding:3vh 0 1.4vh}
-.music-record{--record-ink:#c3afff;--record-dark:#51416c;display:flex;flex-direction:column;align-items:center;position:relative;width:100%;min-height:44px;padding:0;background:none;border:0;border-radius:3px;color:inherit;transition:transform .18s,opacity .18s}
+.music-shelf[data-record=lofi]{--disc-ink:#ee9fb1}.music-shelf[data-record=piano]{--disc-ink:#a8e6cf}.music-shelf[data-record=jazz]{--disc-ink:#f1c58f}.music-shelf[data-record=sleep]{--disc-ink:#a3b5f0}
+
+/* Turntable: a plinth with a platter seen from slightly above. The disc's sheen
+   turns while a record plays on the TV. */
+.turntable{position:absolute;left:8%;bottom:100%;width:52%;height:calc(2.1*var(--u));border-radius:calc(.4*var(--u)) calc(.4*var(--u)) 0 0;background:linear-gradient(#3b3349,#262130);box-shadow:inset 0 1px 0 #c3afff30}
+.platter{position:absolute;left:8%;bottom:55%;width:62%;aspect-ratio:1;border-radius:50%;transform:scaleY(.3);transform-origin:50% 100%;background:#15121c;box-shadow:0 0 0 calc(.25*var(--u)) #4a405a}
+.platter-disc{position:absolute;inset:5%;border-radius:50%;background:radial-gradient(circle,#15121c 0 4%,var(--disc-ink) 5% 18%,#16131d 19% 22%,transparent 23%),conic-gradient(from 0deg,#2b2436,#3b3349 12%,#1d1926 30%,#2b2436 50%,#3e3550 62%,#1d1926 80%,#2b2436);opacity:.35;transition:opacity .4s}
+.music-shelf[data-record]:not([data-record='']) .platter-disc{opacity:1}
+.music-shelf[data-spinning=true] .platter-disc{animation:record-turn 1.8s linear infinite}
+.tonearm{position:absolute;right:9%;bottom:60%;width:24%;height:calc(.35*var(--u));border-radius:9px;background:#a99cbd;transform-origin:100% 50%;transform:rotate(-14deg);transition:transform .8s ease}
+.tonearm::after{content:'';position:absolute;right:-6%;top:-120%;width:calc(1*var(--u));aspect-ratio:1;border-radius:50%;background:#5a4f6b}
+.music-shelf[data-spinning=true] .tonearm{transform:rotate(-30deg)}
+.turntable-led{position:absolute;right:7%;top:42%;width:calc(.45*var(--u));aspect-ratio:1;border-radius:50%;background:#4a405a}
+.music-shelf[data-spinning=true] .turntable-led{background:var(--disc-ink);box-shadow:0 0 6px var(--disc-ink)}
+
+/* Records stand in the open front of the stand, leaning a little like a crate. */
+.music-records{position:absolute;inset:calc(1.1*var(--u)) calc(.8*var(--u)) calc(.8*var(--u));display:flex;align-items:flex-end;justify-content:space-around;gap:3px;padding:0 calc(.3*var(--u)) calc(.4*var(--u))}
+.music-record{--record-ink:#c3afff;--record-dark:#51416c;display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;max-width:calc(6*var(--u));padding:0;background:none;border:0;border-radius:3px;color:inherit;pointer-events:auto;cursor:pointer;transition:transform .25s ease}
+.music-record:nth-child(odd){transform:rotate(-2.5deg)}.music-record:nth-child(even){transform:rotate(2deg)}
 .record-lofi{--record-ink:#ee9fb1;--record-dark:#683b52}.record-piano{--record-ink:#a8e6cf;--record-dark:#284f4d}.record-jazz{--record-ink:#f1c58f;--record-dark:#5b4330}.record-sleep{--record-ink:#a3b5f0;--record-dark:#303a66}
-.record-sleeve{display:block;position:relative;width:100%;aspect-ratio:1;max-height:8.5vh;overflow:hidden;border:1px solid color-mix(in srgb,var(--record-ink) 40%,transparent);border-radius:2px;background:linear-gradient(145deg,var(--record-dark),#1a1727);box-shadow:2px 3px 0 #09070f,0 7px 14px #08060c99;transition:box-shadow .18s,border-color .18s}
-.record-sleeve::after{content:'';position:absolute;left:9%;right:9%;bottom:12%;height:1px;background:var(--record-ink);opacity:.5}
-.record-number{position:absolute;left:8%;top:7%;font-size:clamp(8px,.6vw,11px);color:var(--record-ink)}
-.record-disc{position:absolute;width:69%;aspect-ratio:1;left:26%;top:17%;border-radius:50%;background:radial-gradient(circle,#181321 0 4%,var(--record-ink) 5% 17%,#1b1725 18% 24%,transparent 25%),repeating-radial-gradient(circle,#282132 0 1px,#121017 2px 4px);box-shadow:0 0 12px #0008}
-.record-play{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:clamp(15px,1.3vw,23px);text-shadow:0 2px 6px #000;opacity:0;transition:opacity .18s}
-.record-label{font-size:clamp(11px,.85vw,15px);font-weight:700;margin-top:7px;line-height:1.2}
-.record-caption{font-size:clamp(9px,.65vw,11px);color:#b7abc8;margin-top:3px;line-height:1.2}
-.music-record:hover:not(:disabled),.music-record:focus-visible{transform:translateX(-3px);outline:0}
-.music-record:is(:hover,:focus-visible,[aria-pressed=true]) .record-sleeve{border-color:var(--record-ink);box-shadow:0 0 0 2px #171320,0 0 0 3px var(--record-ink),0 0 24px color-mix(in srgb,var(--record-ink) 24%,transparent)}
+.record-sleeve{display:block;position:relative;width:100%;aspect-ratio:1;overflow:hidden;border:1px solid color-mix(in srgb,var(--record-ink) 40%,transparent);border-radius:2px;background:linear-gradient(145deg,var(--record-dark),#1a1727);box-shadow:2px 3px 0 #09070f,0 6px 12px #08060c99;transition:box-shadow .2s,border-color .2s}
+.record-disc{position:absolute;width:74%;aspect-ratio:1;left:22%;top:13%;border-radius:50%;background:radial-gradient(circle,#181321 0 4%,var(--record-ink) 5% 17%,#1b1725 18% 24%,transparent 25%),repeating-radial-gradient(circle,#282132 0 1px,#121017 2px 4px);box-shadow:0 0 10px #0008}
+.record-play{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:clamp(12px,1vw,18px);text-shadow:0 2px 6px #000;opacity:0;transition:opacity .18s}
+.record-label{font-size:clamp(9px,.72vw,12px);font-weight:700;margin-top:5px;line-height:1.1;white-space:nowrap;color:#d9cfe8}
+.music-record:hover:not(:disabled),.music-record:focus-visible{transform:translateY(-14%);outline:0}
+.music-record:is(:hover,:focus-visible,[aria-pressed=true]) .record-sleeve{border-color:var(--record-ink);box-shadow:0 0 0 2px #171320,0 0 0 3px var(--record-ink),0 0 18px color-mix(in srgb,var(--record-ink) 30%,transparent)}
 .music-record:is(:hover,:focus-visible) .record-play{opacity:1}
+.music-record[aria-pressed=true]{transform:translateY(-10%)}
 .music-record[aria-pressed=true] .record-label{color:var(--record-ink)}
-.music-record[data-playing=true] .record-disc{animation:record-turn 14s linear infinite}
+.music-record[aria-pressed=true] .record-disc{opacity:.25}
 .music-record[aria-busy=true] .record-sleeve{animation:record-loading 1.3s ease-in-out infinite}
 .music-record:disabled{cursor:wait;opacity:.55}
-.music-shelf-status{position:absolute;right:0;top:100%;width:max-content;max-width:230px;text-align:right;font-size:11px;line-height:1.4;color:#c6b9d8;margin:10px 0 0;pointer-events:none}
+/* Bean's pick sticks out of the crate and glows softly; his nudge wiggles it. */
+.music-record[data-suggested=true]{transform:translateY(-8%)}
+.music-record[data-suggested=true] .record-sleeve{border-color:var(--record-ink);animation:record-glow 4s ease-in-out infinite}
+.music-record[data-nudged=true]{animation:record-nudge .7s ease-out}
+.music-shelf-status{position:absolute;right:0;top:calc(100% + 8px);width:max-content;max-width:260px;text-align:right;font-size:11px;line-height:1.4;color:#c6b9d8;margin:0;pointer-events:none}
 .music-shelf[data-error=true] .music-shelf-status{color:#f4adc0;background:#211923;padding:8px 10px;border-radius:6px;pointer-events:auto}
 @keyframes record-turn{to{transform:rotate(360deg)}}
 @keyframes record-loading{50%{opacity:.4}}
-@media(max-width:1150px){.music-shelf{padding:calc(.9*var(--u))}.record-caption{display:none}.music-shelf-heading>span:last-child{font-size:9px}.record-label{font-size:10px}}
+@keyframes record-glow{50%{box-shadow:2px 3px 0 #09070f,0 0 16px color-mix(in srgb,var(--record-ink) 45%,transparent)}}
+@keyframes record-nudge{0%{transform:translateY(-8%)}30%{transform:translateY(-22%) rotate(-6deg)}60%{transform:translateY(-12%) rotate(4deg)}100%{transform:translateY(-8%)}}
+@media(max-width:1150px){.record-label{display:none}}
 @media(prefers-reduced-motion:reduce){body.cat-wallpaper .cat-habitat *,body.cat-wallpaper .music-shelf *{animation:none!important;transition:none!important}}
 
 /* In a room, the real player fills the TV's screen. The fullscreen

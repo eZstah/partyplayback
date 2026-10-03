@@ -5,7 +5,7 @@ import { copyText, takeCreatedRoomNotice } from "./invite-copy.js";
 import { pastedVideo, youtubeUrl, playlistLink } from "./room-paste.js";
 import { bindVolumeControl } from "./volume-control.js";
 import { bindFullscreenControls } from "./fullscreen-controls.js";
-import { createMusicSelector, paintMusicShelf, MUSIC_MIXES } from "./music-shelf.js";
+import { createMusicSelector, paintMusicShelf, followScene, MUSIC_MIXES } from "./music-shelf.js";
 
 export function bootRoom(roomName, arrival = Promise.resolve()) {
   bootAuth();
@@ -67,6 +67,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   const musicShelf = document.querySelector('.music-shelf');
   const music = createMusicSelector({ send, enablePlayback: () => playback.enablePlayback(true),
     onChange: state => paintMusicShelf(musicShelf, state) });
+  followScene(musicShelf);
   musicShelf?.querySelectorAll('[data-music-mix]').forEach(button => {
     button.addEventListener('click', () => music.select(button.dataset.musicMix));
   });

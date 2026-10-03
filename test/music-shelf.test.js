@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMusicSelector, MUSIC_MIXES } from '../src/scripts/music-shelf.js';
+import { createMusicSelector, MUSIC_MIXES, suggestRecord } from '../src/scripts/music-shelf.js';
 
 const ambient = MUSIC_MIXES[0];
 const item = (id, videoId = ambient.videos[0].id) => ({ id, videoId });
@@ -168,4 +168,13 @@ test('only the viewer who picked a record adds its backup', () => {
   assert.equal(s.sent.length, 0, 'someone else picked it, so they add the backup');
   assert.match(s.selector.state().error, /couldn't load/);
   assert.equal(setup(room([item('film', 'movie-id')], 0, true)).selector.unavailable(), false, 'not a record');
+});
+
+test("Bean's pick follows the room's last record, then the weather, then the hour", () => {
+  assert.equal(suggestRecord({ daypart: 'night', weather: 'rain', played: ['piano', 'jazz'] }), 'piano');
+  assert.equal(suggestRecord({ daypart: 'night', weather: 'rain' }), 'jazz');
+  assert.equal(suggestRecord({ daypart: 'night', weather: 'clear' }), 'sleep');
+  assert.equal(suggestRecord({ daypart: 'day' }), 'lofi');
+  assert.equal(suggestRecord({ daypart: 'nowhere', played: ['gone'] }), 'lofi', 'unknown hints fall back to Lo-fi');
+  assert.equal(suggestRecord(), 'lofi');
 });

@@ -40,18 +40,18 @@ const ACTIVITY_LABEL = {
   laser: 'Chasing the red dot', treat: 'Going for the treat', follow: 'Following', stretch: 'Stretching', carried: 'Being carried',
   hiss: 'Hissing', wrestle: 'Play-fighting', beg: 'Asking for attention', react: 'Reacting', fall: 'Falling', greet: 'Saying hello',
   hide: 'Hiding', leave: 'Out exploring', glass: 'At the glass', knock: 'Knocking things over', annoyed: 'Annoyed', evade: 'Wants a little space',
-  leap: 'Taking a big leap', highjump: 'Jumping at a dust speck',
+  leap: 'Taking a big leap', highjump: 'Jumping at a dust speck', pick: 'Picking a record',
 };
 export const activityLabel = (type, partner) => (ACTIVITY_LABEL[type] || 'Thinking') + (partner && ['visit', 'chase', 'flee', 'cuddle', 'follow', 'wrestle'].includes(type) ? ` ${CAST[partner].name}` : '');
 
 // Laser has a stationary, look-only performance in reduced-motion mode.
-const MOTION_PLAY = new Set(['glass', 'knock', 'dance', 'zoomies', 'stalk', 'chase', 'hunt', 'leap', 'highjump']);
+const MOTION_PLAY = new Set(['glass', 'knock', 'pick', 'dance', 'zoomies', 'stalk', 'chase', 'hunt', 'leap', 'highjump']);
 const PLAYBACK_REST = new Set(['sleep', 'watch', 'sit', 'loaf']);
 const cursorDwell = ctx => Math.max(0, Number(ctx.cursorDwell ?? (ctx.cursor ? 1.4 : 0)) || 0);
 const quietVideo = ctx => !!ctx.playing;
 // Unsolicited activities that carry Bean across the screen; calm pacing makes them rare.
 // Dancing happens in place and exploring ends on a perch, so those keep their weight.
-const SCREEN_CROSSING = ['wander', 'zoomies', 'stalk', 'hunt', 'glass', 'knock'];
+const SCREEN_CROSSING = ['wander', 'zoomies', 'stalk', 'hunt', 'glass', 'knock', 'pick'];
 // Acrobatics are rare special moments on an ordinary page, and come more
 // readily in Aquarium (his own room) or when someone is playing with him.
 export const ACROBATICS = ['leap', 'highjump'];
@@ -116,7 +116,7 @@ export class Mind {
     d.sleepy += dt * (resting ? -2.2 * (calm ? calm.restDrain : 1) : (active ? .9 : lazing ? .12 : .3) * (.55 + t.lazy) * day.sleepy);
     d.playful += dt * (active ? -2.4 : resting ? .05 : .45 * (.3 + t.energy) * day.playful * (company ? .45 : 1) * drift);
     d.lonely += dt * (ctx.nearFriend || ['cuddle', 'visit', 'glass', 'approach', 'stare'].includes(a) ? -1.5 : company ? -.22 : .35 * t.sociable);
-    d.curious += dt * (['explore', 'wander', 'hunt', 'leave', 'hide', 'knock'].includes(a) ? -1.8 : company && a === 'watch' ? -.18 : .4 * (.25 + t.curiosity) * drift);
+    d.curious += dt * (['explore', 'wander', 'hunt', 'leave', 'hide', 'knock', 'pick'].includes(a) ? -1.8 : company && a === 'watch' ? -.18 : .4 * (.25 + t.curiosity) * drift);
     d.hungry += dt * .05;
     for (const k in d) d[k] = clamp(d[k], 0, 100);
     const m = this.mood, decay = Math.exp(-dt / 9);
@@ -147,6 +147,8 @@ export class Mind {
       hide: ctx.hideouts ? (9 + t.mischief * 18 + (1 - t.bold) * 12 + t.curiosity * 8 + d.curious * .2) * (ctx.playing ? .35 : 1) : 0,
       leave: (12 + t.curiosity * 14 + t.energy * 10 + d.curious * .25 - t.affection * 6) * (ctx.playing ? .3 : 1),
       glass: ((ctx.aquarium ? 22 : 6) + t.curiosity * 12 + t.affection * 10 + d.lonely * .15) * motion * (ctx.playing ? .3 : 1),
+      // Only in Aquarium, when the shelf has a record to suggest and nothing is playing.
+      pick: ctx.record ? (14 + t.curiosity * 12 + d.curious * .2) * motion : 0,
       knock: ctx.toys ? Math.max(0, t.mischief * 44 + d.playful * .3 - 10) * motion : 0,
       watch: ctx.playing ? 52 + (this.kind === 'purple' ? 25 : 0) + (ctx.vibe === 'talk' && this.kind !== 'purple' ? -25 : 0) : 0,
       dance: ctx.playing && ctx.vibe === 'music' ? (d.playful * .6 + t.energy * 45 + (this.kind === 'pink' ? 30 : 0)) * motion : 0,
@@ -234,6 +236,7 @@ export class Mind {
     if (['glass', 'stare'].includes(type)) return `Affection and attention drive ${Math.round(d.lonely)} invite a check-in.`;
     if (['explore', 'wander', 'hide', 'leave'].includes(type)) return `Curiosity is ${Math.round(d.curious)}; exploring a little.`;
     if (type === 'hunt') return 'A butterfly caught Bean’s curiosity.';
+    if (type === 'pick') return 'The record player is quiet; nudging a record that suits the hour.';
     if (['zoomies', 'knock'].includes(type)) return `Playful energy is ${Math.round(d.playful)}.`;
     if (ACROBATICS.includes(type)) return ctx.aquarium ? 'His own room has space to jump around.' : `Playful energy is ${Math.round(d.playful)}; a little showing off.`;
     return quietVideo(ctx) ? 'Quiet company while the video plays.' : 'A comfortable pause between adventures.';
