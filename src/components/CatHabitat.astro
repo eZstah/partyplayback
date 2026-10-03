@@ -4,19 +4,32 @@ import '../styles/cat-habitat.css';
 // the cat engine (see docs/bean/ARCHITECTURE.md, "Aquarium furniture"):
 // "solid" pieces can be climbed, sat on, hidden behind and peeked over;
 // "shelf" pieces are platforms to jump onto. data-toy items can be knocked about.
+// The window follows the visitor's time of day and the weather changes now and
+// then (src/scripts/habitat-scene.js). In a room, the real player sits in the TV.
+// Fairy lights sag between four hooks along the top of the wall.
+const sag = (x: number) => 6 + 26 * Math.sin(Math.PI * ((x % 250) / 250));
+const garland = Array.from({ length: 101 }, (_, i) => `${i ? 'L' : 'M'}${i * 10} ${sag(i * 10).toFixed(1)}`).join('');
+const bulbs = Array.from({ length: 24 }, (_, i) => { const x = (i + .5) * 1000 / 24; return { x, y: sag(x) + 6, tone: i % 4 }; });
 ---
-<div class="cat-habitat" aria-hidden="true">
-  <div class="habitat-halo"></div>
-  <svg class="habitat-stars" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice"><g fill="#e8dff5">{Array.from({length:38},(_,i)=><circle cx={(i*337+41)%1440} cy={(i*127+39)%680} r={i%4===0?2:1} opacity={.2+i%4*.13}/>)}</g><g stroke="#b7a0e4" stroke-width="1.5" fill="none"><path d="M1220 115v18m-9-9h18M208 221v12m-6-6h12M976 60v12m-6-6h12"/><path d="M99 450Q440 100 789 218T1430 170" opacity=".12"/></g></svg>
-  <div class="habitat-boards"></div><div class="habitat-floor"></div><div class="habitat-rug"></div>
+<div class="cat-habitat" aria-hidden="true" data-daypart="dusk" data-weather="clear">
+  <div class="habitat-wall"></div>
+  <div class="habitat-boards"></div><div class="habitat-rug"></div>
+  <div class="habitat-sunbeam"></div>
+  <svg class="habitat-garland" viewBox="0 0 1000 50" preserveAspectRatio="none"><path d={garland} fill="none" stroke="#5b4a60" stroke-width="1.4" vector-effect="non-scaling-stroke"/>{bulbs.map(b => <ellipse class={`bulb b${b.tone}`} cx={b.x} cy={b.y} rx="3.2" ry="4.4"/>)}</svg>
   <div class="habitat-sign"><strong>youple.tv</strong><span>Bean lives here. you’re visiting.</span></div>
 
   <div class="prop prop-window">
-    <div class="window-sky"><div class="habitat-moon"></div></div>
+    <div class="window-sky">
+      <div class="sky-stars"></div><div class="sky-sun"></div><div class="habitat-moon"></div>
+      <div class="sky-clouds"><span></span><span></span><span></span></div>
+      <svg class="sky-city" viewBox="0 0 300 70" preserveAspectRatio="none"><path d="M0 70V44h18V30h14v12h10V22h22v26h12V36h16V14h18v34h10V40h20V26h14v22h12V32h20v16h10V18h24v30h14V38h16V28h16v42Z"/><g class="city-lights">{Array.from({length:22},(_,i)=><rect x={(i*53+11)%290} y={30+(i*17)%32} width="3" height="4"/>)}</g></svg>
+      <div class="sky-rain"></div>
+    </div>
+    <div class="window-glass"></div>
     <div class="window-curtain left"></div><div class="window-curtain right"></div>
-    <div class="window-sill" data-perch="shelf"></div>
+    <div class="window-sill" data-perch="shelf"><span class="sill-pot"></span></div>
   </div>
-  <div class="prop wall-shelf" data-perch="shelf"><span class="wall-shelf-cup"></span></div>
+  <div class="prop wall-shelf" data-perch="shelf"><span class="shelf-lamp"></span><span class="wall-shelf-cup"></span></div>
 
   <div class="prop prop-tree">
     <div class="tree-post"></div>
@@ -32,19 +45,25 @@ import '../styles/cat-habitat.css';
     <div class="sofa-back" data-perch="solid"></div>
     <div class="sofa-seat" data-perch="solid"><span class="sofa-cushion"></span><span class="sofa-cushion"></span></div>
     <div class="sofa-arm left"></div><div class="sofa-arm right"></div>
+    <span class="sofa-blanket"></span>
   </div>
 
   <div class="prop prop-box" data-perch="solid"><span class="box-flap left"></span><span class="box-flap right"></span><span class="box-label">BEAN · this side up</span></div>
   <span class="prop yarn" data-toy></span>
 
-  <div class="prop prop-media">
-    <div class="tv" data-perch="solid"><div class="tv-screen"><span>youple.tv</span></div><span class="tv-knob"></span></div>
-    <div class="cabinet" data-perch="solid"><span class="drawer"></span><span class="drawer"></span></div>
-  </div>
+  <!-- The TV hangs over a low console. In a room, the player is placed over .tv-screen. -->
+  <div class="prop console" data-perch="shelf"><span class="drawer"></span><span class="drawer"></span><span class="console-speaker"></span></div>
+  <div class="prop tv" data-perch="solid"><div class="tv-screen"><span>youple.tv</span></div><span class="tv-led"></span></div>
 
   <div class="prop prop-books" data-perch="solid">
     <div class="books row-1"></div><div class="books row-2"></div><div class="books row-3"></div>
     <div class="book-shelf" data-perch="shelf"></div>
   </div>
   <span class="prop toy-mouse" data-toy></span>
+  <div class="habitat-light"></div>
 </div>
+<script>
+  import { mountScene } from '../scripts/habitat-scene.js';
+  const habitat = document.querySelector('.cat-habitat');
+  if (habitat instanceof HTMLElement) mountScene(habitat);
+</script>

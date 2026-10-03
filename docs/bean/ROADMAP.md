@@ -96,6 +96,30 @@ Small next steps, one per pull request:
 6. **More rooms later.** Only after the above: a second layout (for example a
    kitchen or a sunny afternoon), chosen per visit. Keep one room at a time.
 
+### 4c. Make the room feel alive (lofi)
+
+The room is a cozy lofi room: fairy lights, a lamp, the player on the TV, and
+a window that follows the time of day and the weather (see the end of
+"Aquarium furniture" in ARCHITECTURE.md). Each step is one small pull request,
+reduced motion keeps still, and nothing may slow the player.
+
+1. **More weather.** Add `snow` and `fog` to `habitat-scene.js` and style them
+   in the window. *Done when* `?scene=night,snow` shows it and the weather
+   still changes on its own.
+2. **Something outside.** Now and then a bird lands on the window ledge
+   outside, or a plane's light crosses the night sky. *Done when* it is rare
+   and Bean's head turns to follow it (see 4a.4 window watching).
+3. **Rain on the glass.** Drops slide down the window pane when it rains.
+   *Done when* it reads at 1280×720 and costs no noticeable CPU.
+4. **Lamp switch.** The lamp turns on at dusk and off by day with a soft fade,
+   and Bean sometimes naps under it. *Done when* the change is visible in a
+   dusk clip.
+5. **Seasons.** A plant that grows, a pumpkin in October, lights in December,
+   from the visitor's date. *Done when* each one is a small markup and CSS
+   change behind a date check, with a test for the date logic.
+6. **A record player.** A small turntable on the console that spins while a
+   video plays. *Done when* it only spins during playback.
+
 ### 4b. Grow Bean's moves
 
 Bean has a wind-up before big jumps, a big leap between pieces of furniture,

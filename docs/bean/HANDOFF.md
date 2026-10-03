@@ -31,6 +31,19 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## A cozy lofi room with the player on the TV (Claude)
+
+Konstantin asked for Aquarium to be an ultra-cozy cat playground room, with our
+player on the TV at a modest size, full screen still possible, and things that
+change over time like a lofi window. The room now has a wall with fairy lights,
+a lamp on the wall shelf, a blanket on the sofa, a wall-mounted TV over a low
+console, and a window whose sky follows the visitor's time of day and drifts
+between clear, cloudy and rainy (`habitat-scene.js`). In a room, the player
+sits on the TV screen with a compact control strip, and fullscreen works as
+before. The floating `#stage` is no longer a separate surface; the TV is.
+Checked at 1280×720, 1440×900, 1920×1080 and 1280×1024, home and room, plus
+fullscreen in and out. Next steps for the room are in ROADMAP.md under 4c.
+
 ## New moves: wind-up, big leaps, high jumps (Claude)
 
 Konstantin asked for more cat moves: preparing and launching a long jump,

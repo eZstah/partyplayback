@@ -196,7 +196,7 @@ export function bootCats({ seed } = {}) {
     for (const el of document.querySelectorAll(TOYS)) if (visible(el)) { const r = rectOf(el); if (onScreen(r) && r.top > 40) W.toys.push({ el, rect: r }); }
   }
 
-  // Aquarium: the habitat's furniture, plus the room's player, which floats in the scene.
+  // Aquarium: the habitat's furniture. In a room the player sits on the TV's screen, so the TV is its block.
   function measureHabitat() {
     const shown = el => !el.checkVisibility || el.checkVisibility({ visibilityProperty: true });
     const ledges = [];
@@ -207,8 +207,6 @@ export function bootCats({ seed } = {}) {
       if (solid) W.solids.push(l);
       ledges.push(l);
     }
-    const stage = room && document.getElementById('stage');
-    if (stage) { const l = refresh(boxLedge(stage, true)); if (onScreen(l.rect) && l.rect.width > 120) { W.solids.push(l); ledges.push(l); } }
     W.ledges = ledges.filter(l => l.right - l.left > 34 && l.top > 40 && l.top < W.h - 70);
     for (const el of document.querySelectorAll(HABITAT_TOYS)) { const r = rectOf(el); if (onScreen(r) && shown(el)) W.toys.push({ el, rect: r }); }
   }
