@@ -35,8 +35,10 @@ permanent technical requirement.
   attention, mood and circumstances rather than an endless random effects loop.
 
 Quiet is part of his range. The aim is a character worth watching, not constant
-motion. While a video is playing, the video and its controls remain easy to use.
-More theatrical antics can belong to invited play and wallpaper mode.
+motion. While a video is playing, Bean should watch, sleep or remain offscreen,
+with no unsolicited roaming, butterflies or decorative events. Music and action
+titles do not override this. Explicit viewer play remains available; idle and
+wallpaper sessions without playback can support more theatrical antics.
 
 ## Baseline we can build on
 
@@ -50,7 +52,7 @@ The local single-Bean implementation already includes:
 | Viewer play | Petting, booping, carrying, treats, laser, cursor reactions and a calm control. |
 | Context | Playback state, video-title hints and page events such as a copied invite or a new viewer. |
 | Continuity | Browser-local trust, interaction counts, visits, settings and a short diary. |
-| Presentation | One active black cat, a plain logo, a Bean panel and wallpaper mode. Desktop roaming; static black-cat fallback on phones/touch-first screens. |
+| Presentation | One active black cat, a plain logo, a compact right-click/paw menu and separate Aquarium button. Desktop roaming; static black-cat fallback on phones/touch-first screens. |
 | Verification | Pure mind/rig tests and a minimal DOM fixture for world startup, single-resident behavior, page events and saved memory. |
 
 These are implemented features, not a claim that their animation quality or
@@ -92,9 +94,11 @@ Prefer the existing site's cozy colors and soft visual character. Improve
 silhouette, volume, expression and motion through visible comparisons rather
 than swapping in unrelated GIFs, a new art style, or photorealistic eyes.
 
-Every merge to `main` deploys youple.tv automatically (Cloudflare Workers
-Builds). So open a pull request for each increment and let Konstantin merge it;
-do not push to `main` directly.
+Publish only within the user's authorization. On 2026-10-03 the user requested
+committing all accumulated changes to GitHub and deploying this checkpoint live.
+Later work requires its own publication instruction.
+Pushing to `main` deploys youple.tv at once, so without such an instruction
+open a pull request and let Konstantin merge it.
 
 ## How to judge an improvement
 

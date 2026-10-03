@@ -39,14 +39,15 @@ const ACTIVITY_LABEL = {
   stare: 'Staring at you', visit: 'Visiting', chase: 'Chasing', flee: 'Running away', cuddle: 'Cuddling', hunt: 'Hunting a butterfly',
   laser: 'Chasing the red dot', treat: 'Going for the treat', follow: 'Following', stretch: 'Stretching', carried: 'Being carried',
   hiss: 'Hissing', wrestle: 'Play-fighting', beg: 'Asking for attention', react: 'Reacting', fall: 'Falling', greet: 'Saying hello',
-  hide: 'Hiding', leave: 'Out exploring', glass: 'At the glass', knock: 'Knocking things over', annoyed: 'Annoyed',
+  hide: 'Hiding', leave: 'Out exploring', glass: 'At the glass', knock: 'Knocking things over', annoyed: 'Annoyed', evade: 'Wants a little space',
 };
 export const activityLabel = (type, partner) => (ACTIVITY_LABEL[type] || 'Thinking') + (partner && ['visit', 'chase', 'flee', 'cuddle', 'follow', 'wrestle'].includes(type) ? ` ${CAST[partner].name}` : '');
 
 // Laser has a stationary, look-only performance in reduced-motion mode.
 const MOTION_PLAY = new Set(['glass', 'knock', 'dance', 'zoomies', 'stalk', 'chase', 'hunt']);
+const PLAYBACK_REST = new Set(['sleep', 'watch', 'sit', 'loaf']);
 const cursorDwell = ctx => Math.max(0, Number(ctx.cursorDwell ?? (ctx.cursor ? 1.4 : 0)) || 0);
-const quietVideo = ctx => !!ctx.playing && !ctx.invitedPlay && !ctx.laser && !ctx.treat;
+const quietVideo = ctx => !!ctx.playing;
 // Unsolicited activities that carry Bean across the screen; calm pacing makes them rare.
 // Dancing happens in place and exploring ends on a perch, so those keep their weight.
 const SCREEN_CROSSING = ['wander', 'zoomies', 'stalk', 'hunt', 'glass', 'knock'];
@@ -66,6 +67,10 @@ export class Mind {
     this.stats = { pets: 0, boops: 0, carried: 0, treats: 0, ...(memory.stats || {}) };
     this.activity = 'sit'; this.partner = null; this.since = 0; this.last = []; this.petStreak = 0; this.lastSaid = '';
     this.elapsed = 0; this.cooldowns = {}; this.attention = 1; this.decision = null;
+    // Handling history is session-only. A little personal space is a preference,
+    // not a permanent penalty or a new persistence schema.
+    this.handling = { pressure: 0, held: false, lastAttempt: null, lastAccepted: null,
+      lastReleased: null, lastThrown: null, decision: null };
   }
   get label() { return activityLabel(this.activity, this.partner); }
   feelings() {
@@ -88,6 +93,7 @@ export class Mind {
     const pacing = this.cast.pacing, company = pacing && ctx.playing && lazing;
     const calm = pacing?.calm && !ctx.invitedPlay ? pacing.calm : null, drift = calm ? calm.drift : 1;
     this.elapsed += dt;
+    this.handling.pressure *= Math.exp(-dt / 6);
     if (pacing && !active && !pacing.attentionCost[a]) {
       this.attention = Math.min(1, this.attention + dt / (ctx.playing ? pacing.videoRecovery : pacing.idleRecovery));
     }
@@ -144,14 +150,11 @@ export class Mind {
       if (!ctx.invitedPlay && dwell < .8) scores.approach = 0;
       if (!ctx.invitedPlay && dwell < 1.2) scores.stalk = 0;
       if (scores.approach) scores.approach += Math.min(dwell, 3) * 10;
-      // A title hint can suggest a little dancing, not take over an entire film.
+      // Playback is quiet company even after a recent invitation or music title.
+      // Explicit toys retain their own scores; ambient actions are gated below.
       if (quietVideo(ctx)) {
         scores.watch += 12 + (ctx.vibe === 'talk' ? 25 : ctx.vibe === 'chill' ? 9 : 0);
         scores.loaf += 12; scores.sit += 6;
-        for (const key of ['wander', 'explore', 'hide', 'leave', 'glass', 'knock', 'zoomies', 'hunt']) scores[key] *= .32;
-        scores.dance *= .85;
-        scores.stalk *= .4;
-        if (dwell < 2) scores.approach *= .35;
       }
       const pace = this.cast.pacing.calm;
       if (pace && !ctx.invitedPlay) for (const key of SCREEN_CROSSING) scores[key] *= pace.busy;
@@ -187,6 +190,10 @@ export class Mind {
     if (pacing?.attentionCost[type]) this.attention = Math.max(0, this.attention - pacing.attentionCost[type]);
   }
   pacingBlock(type, ctx = {}) {
+    if (ctx.playing && !PLAYBACK_REST.has(type)
+      && !(type === 'treat' && ctx.treat) && !(type === 'laser' && ctx.laser)) {
+      return 'Playback is active; keeping ambient behavior still.';
+    }
     const pacing = this.cast.pacing;
     if (!pacing) return null;
     if (ctx.calm && !['sleep', 'cuddle', 'treat'].includes(type)) return 'Calm control leaves room for rest.';
@@ -194,7 +201,6 @@ export class Mind {
     if (type === 'treat' || type === 'laser') return null;
     const remaining = (this.cooldowns[type] || 0) - this.elapsed;
     if (remaining > 0) return `Recovering from ${type}: ${Math.ceil(remaining)} seconds left.`;
-    if (quietVideo(ctx) && (pacing.attentionCost[type] || 0) > this.attention + 1e-9) return 'Giving the video a quiet interval.';
     return null;
   }
   canStart(type, ctx = {}) { return !this.pacingBlock(type, ctx); }
@@ -215,9 +221,65 @@ export class Mind {
   inspect() {
     return { time: this.elapsed, attention: this.attention,
       cooldowns: Object.fromEntries(Object.entries(this.cooldowns).filter(([, until]) => until > this.elapsed).map(([type, until]) => [type, until - this.elapsed])),
+      handling: { ...this.handling, decision: this.handling.decision && { ...this.handling.decision, context: { ...this.handling.decision.context } } },
       decision: this.decision && { ...this.decision, context: { ...this.decision.context }, candidates: this.decision.candidates.map(candidate => ({ ...candidate })) } };
   }
   // Interactions with the viewer. Return how the cat takes it.
+  // speed is pointer velocity in CSS px/s. Call once per new pickup attempt;
+  // carried() still records an actual pickup after the world accepts it.
+  requestGrab({ speed = 0, calm = false, reduced = false, invitedPlay = false, approaching = false } = {}) {
+    const h = this.handling, m = this.mood, d = this.drives;
+    if (h.held) return 'accept'; // The same held pointer is not another attempt.
+    const rawSpeed = Number(speed), velocity = Number.isNaN(rawSpeed) ? 0 : clamp(rawSpeed, 0, 4000);
+    const rush = clamp((velocity - 250) / 1100, 0, 1);
+    const age = time => time === null ? Infinity : this.elapsed - time;
+    const sinceRelease = age(h.lastReleased), sinceThrow = age(h.lastThrown);
+    const recentThrow = clamp(1 - sinceThrow / 20, 0, 1);
+    const pressure = h.pressure, sleepy = ['sleep', 'cuddle'].includes(this.activity) || d.sleepy > 80;
+    const bouncy = clamp((d.playful - 65) / 35, 0, 1);
+    const needsSpace = sinceRelease < 1.2 || sinceThrow < 4 || pressure >= 3;
+    const willingness = needsSpace ? 0 : clamp(.56 + this.trust * .004 + this.t.affection * .14
+      + (invitedPlay ? .1 : 0) + (approaching ? .12 : 0)
+      - rush * .74 - pressure * .2 - recentThrow * .4 - m.fear * .6 - m.annoyance * .4
+      - (sleepy ? .36 : 0) - bouncy * .14, .03, .97);
+    let outcome = this.random() < willingness ? 'accept' : 'dodge';
+    const threat = rush * .5 + m.fear * .8 + m.annoyance * .25 + pressure * .12 + recentThrow * .4;
+    if (outcome !== 'accept' && !calm && !reduced && (!sleepy || threat > .75)) {
+      if (threat > .75 || this.random() < clamp(threat - .2, 0, .75)) outcome = 'flee';
+    }
+    const reason = outcome === 'accept' ? 'Trust and mood leave room for this pickup.'
+      : sinceThrow < 4 ? 'That last toss is still fresh; a little space first.'
+      : sinceRelease < 1.2 ? 'Just put down; keeping paws on the ground for a moment.'
+      : pressure >= 3 ? 'Too many hands-on attempts close together.'
+      : rush > .5 ? 'The cursor rushed in; making room to move.'
+      : m.fear > .35 || m.annoyance > .4 ? 'Not comfortable being picked up right now.'
+      : sleepy ? 'Resting feels better than being carried right now.'
+      : bouncy > .5 ? 'Playful paws would rather dodge than be carried.'
+      : 'A friendly cat can still prefer a little space.';
+    h.lastAttempt = this.elapsed;
+    h.pressure = Math.min(4, pressure + .45 + rush * 1.3);
+    if (outcome === 'accept') h.lastAccepted = this.elapsed;
+    if (rush > .5) m.fear = clamp(m.fear + rush * .1, 0, 1);
+    if (pressure > 1) m.annoyance = clamp(m.annoyance + Math.min(pressure, 3) * .05, 0, 1);
+    h.decision = { time: this.elapsed, outcome, reason, willingness,
+      context: { speed: velocity, calm: !!calm, reduced: !!reduced, invitedPlay: !!invitedPlay, approaching: !!approaching } };
+    return outcome;
+  }
+  recordRelease({ thrown = false } = {}) {
+    const h = this.handling;
+    if (!h.held) return false;
+    h.held = false; h.lastReleased = this.elapsed;
+    if (thrown) {
+      h.lastThrown = this.elapsed; h.pressure = Math.min(4, h.pressure + 1.3);
+      this.mood.fear = clamp(this.mood.fear + .3, 0, 1);
+      this.mood.annoyance = clamp(this.mood.annoyance + .2, 0, 1);
+      this.trust = clamp(this.trust - 2, 0, 100);
+    } else {
+      h.pressure = Math.max(0, h.pressure - .15);
+      this.mood.joy = clamp(this.mood.joy + .08, 0, 1);
+    }
+    return true;
+  }
   pet() {
     this.stats.pets++; this.petStreak++; this.drives.lonely = Math.max(0, this.drives.lonely - 20);
     const limit = 2 + Math.round((1 - this.t.grumpy) * 6 + this.trust / 25);
@@ -231,7 +293,11 @@ export class Mind {
     if (this.t.mischief > .7) { this.drives.playful = clamp(this.drives.playful + 25, 0, 100); return 'playful'; }
     this.trust = clamp(this.trust + 1, 0, 100); this.mood.joy = clamp(this.mood.joy + .2, 0, 1); return 'happy';
   }
-  carried() { this.stats.carried++; this.trust = clamp(this.trust - (this.t.grumpy > .5 ? 3 : 0), 0, 100); this.mood.fear = this.t.bold < .5 ? .4 : 0; }
+  carried() {
+    this.stats.carried++; this.handling.held = true; this.handling.lastAccepted = this.elapsed;
+    this.trust = clamp(this.trust - (this.t.grumpy > .5 ? 3 : 0), 0, 100);
+    this.mood.fear = Math.max(this.mood.fear, this.t.bold < .5 ? .18 * (1 - this.trust / 100) : 0);
+  }
   ate() { this.stats.treats++; this.drives.hungry = 0; this.trust = clamp(this.trust + 6, 0, 100); this.mood.joy = clamp(this.mood.joy + .4, 0, 1); }
   startle(amount = .6) { this.mood.fear = clamp(this.mood.fear + amount * (1.2 - this.t.bold), 0, 1); this.trust = clamp(this.trust - 1, 0, 100); }
   bond(kind, delta) { this.bonds[kind] = clamp((this.bonds[kind] ?? 0) + delta, -1, 1); }

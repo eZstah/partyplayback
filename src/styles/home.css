@@ -917,12 +917,6 @@
 .member-rooms li span { color: #756779; font-size: 15px; }
 .member-rooms p { margin: 0; color: #756779; font-size: 16px; line-height: 1.5; }
 
-.cat-playbar { position: relative; z-index: 2; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px 18px; margin: 105px auto -50px; color: #a69caf; font-size: 14px; }
-.cat-playbar button { padding: 9px 4px; background: transparent; color: #d3c3ed; border-radius: 8px; text-underline-offset: 4px; }
-.cat-playbar button:hover { text-decoration: underline; color: #f4edff; }
-.cat-playbar button[aria-pressed=true] { color: #b8d9b0; }
 .cast-mint { transform: rotate(-3deg); }
 .cast-pink { transform: rotate(3deg); }
 .cast-purple { transform: rotate(3deg); }
-@media(max-width:900px) { .cat-playbar { margin: 28px auto 0; } }
-@media(max-width:600px) { .cat-playbar { margin-top: 36px; gap: 2px 20px; font-size: 13px; } .cat-playbar>span { width: 100%; text-align: center; } }

@@ -10,6 +10,7 @@ flowchart LR
   Runtime[runtime.js: time, randomness, effects] --> World
   World --> Mind[mind.js: motives and choices]
   World --> Body[body.js: pose and rendering]
+  World --> Release[release.js: ballistic landing selection]
   Cast[cast.js: Bean definition] --> Mind
   Cast --> Body
   World --> Host[DOM surfaces and input]
@@ -34,10 +35,16 @@ keep the static fallback.
 | `snapshot()` | Returns detached diagnostic data: seed, runtime status, scene context, activity/phase, location, drives, mood, trust, position and director inspection. Disabled layouts return `{ disabled: true, cats: [] }`. |
 | `destroy()` | Saves memory, cancels owned work, restores temporary page changes and releases the mount. Safe to repeat. Old facade commands become inert. |
 
-The facade exposes `version: '1.0.0-rc.1'`. This is a local release candidate;
+The facade exposes `version: '1.0.0-rc.2'`. This is a release candidate;
 full-page visual/performance QA remains outstanding. Direct actor/world mutation is an internal
 testing detail, not a page integration contract. Preserve current methods or
 migrate their callers explicitly when evolving this boundary.
+
+`CatUniverse.astro` provides a compact menu opened by right-clicking Bean or the
+small paw fallback button. It supports arrow/Home/End navigation, Escape/Tab,
+outside dismissal and viewport clamping. Aquarium is a separate dock button.
+The former profile, diary and home playbar are no longer rendered; existing
+memory remains compatible.
 
 ## Time and lifecycle
 
@@ -49,7 +56,9 @@ returns a cancellation function. It does not create a native timeout.
 
 Hidden pages pause the runtime and running decoration animations. Resuming
 does not fast-forward animation. Long absences still use the older bounded
-drive-update/flavor-diary policy; this is not an offscreen simulation. Persisted
+drive-update/flavor-diary policy; this is not an offscreen simulation. During
+playback, long resumes preserve position/offscreen state and skip arrival flavor.
+Persisted
 pagehide/pageshow events suspend/resume; a non-persisted pagehide destroys the
 mount. Teardown also cancels page animations, restores inert containers and
 decorations, removes cat cursor classes, and clears the debug global.
@@ -94,8 +103,18 @@ command can interrupt without being a newly scored autonomous decision.
 Crossing off a control resets this clock. `invitedPlay` is a short window after
 explicit petting, toys or greeting; normal pointer travel is not an invitation.
 Quiet playback satisfies companionship and slows the buildup of play energy.
-Titles remain hints, not audio analysis. Playback starting redirects unsolicited
-antics toward watching; explicit play and existing rest retain their priority.
+`Mind.pacingBlock()` permits only watch/sleep/sit/loaf while playing, plus active
+explicit treat/laser commands. Title hints, recent invitations and cursor dwell
+cannot reopen ambient choices. Titles are not audio analysis.
+
+World `quietPlayback()` settles in place for long rest intervals, without idle
+sleep travel, circling or particles. An offscreen Bean stays away until pause.
+Playback starting cancels current antics and earlier invitations, clears toys,
+butterflies, bubbles and effects, and restores displaced decorations. A held cat
+remains in the viewer's hand; interrupted airborne actions land safely first.
+Butterfly time is frozen during playback with a grace interval after pause.
+Fresh explicit interactions still work, then return to quiet rest. Inactive toy
+flags cannot route rest choices back through idle movement generators.
 
 The `approach` generator commits to one safe floor destination and exposes
 readable phases. Its `finally` clears temporary gestures. Closing an airborne
@@ -109,6 +128,61 @@ walking has planted stance phases; this is not full foot IK through sharp turns.
 `slowBlink(duration)` layers over eye goals. `offerPaw` is a separate gentle held
 gesture; it does not reuse the vibrating swat. Resting poses blend more slowly,
 and relaxed eyes no longer get a second heavy, straight eyelid.
+Torso painter depth uses the belly anchor before its breathing displacement.
+The live silhouette still breathes, but a stationary foreleg cannot repeatedly
+swap in front of the white bib when the belly crosses its depth plane.
+
+`CatBody.goTo()` releases rest/perch/hand poses that pin or hide stepping paws,
+and wakes a sleeping expression. Translation waits for the folded pose to unfold,
+then smoothly accelerates; it cannot move the root while paws stay tucked. The
+action's crouch, gaze and other expression remain available for stalking. This
+shared contract covers same-surface pursuit and travel to sleep, not just wander.
+
+## Flights, pursuit and handling
+
+`release.js` exports the pure `planRelease()` function. Inputs are viewport
+coordinates, pointer velocity in CSS px/s (down-positive y), scale, floor and
+measured flat top edges. It limits velocity to the scene, then chooses the first
+descending edge crossing on the same trajectory used by the rig. The result
+includes start/end, duration, gravity, velocity, surface id and optional spin.
+Word skylines remain route perches but are excluded from release catches; a
+glyph silhouette is not a flat collision edge.
+
+`CatBody.leap(..., options)` retains the original jump call. Options `type: 'fall'
+| 'throw'`, `velocityY`, `gravity`, `spin` and `landing` add ballistic motion,
+tuck/right/reach phases and impact absorption. Rolls transform interaction
+geometry with the character, while its shadow stays level. The `hang` pose and
+viewport `hangPaws` anchors allow edge holds, followed by a pull-up. This is a
+procedural character rig, not a general rigid-body solver or full IK system.
+
+World pursuit shares the measured route graph: it scores reachable destinations,
+runs to takeoff, jumps/climbs, and replans between landings. Hunt and cursor
+evasion use this path without the older travel action's offscreen relocation.
+Optional rolls need room; escape may catch a solid edge and hide behind it.
+Flights own their target independently of the generator. Removed or displaced
+landing geometry, detached climbs and missing cover recover to the floor.
+
+`Mind.requestGrab()` returns `accept`, `dodge` or `flee`, using trust, mood, sleep,
+pointer speed, invitation and recent handling. Only accepted grabs call
+`carried()`. `recordRelease({ thrown })` clears the held state once and changes
+temporary space/caution motives. These handling fields are session-only and
+appear in `inspect()`; the persistence schema is unchanged. Pointer cancellation,
+hidden tabs and Calm release gently; a stationary hand never reuses stale throw
+velocity. Reduced motion keeps refusal quiet and suppresses acrobatic pursuit.
+
+Pickup intent uses distance since pointerdown over the gesture duration (with a
+120 ms sampling floor). A single fast 8–20 px drag sample must not look like a
+rushed approach. Pressure decays over a few seconds, so ordinary pickup/place
+cycles remain usable. `handling.js` supplies the reusable `refusePickup()`
+performance: weight back, raised blocking paw, head shake, then the world's
+dodge. Its cleanup releases temporary poses on interruption. Explicit refusal
+feedback bypasses ambient speech throttling, while retries during escape do not
+restart its plan or add pressure. The grabbing cursor reflects actual held state.
+Leaving the viewport, pointer cancellation and a returning pointer with no held
+primary button all clear stale carry/press state without an accidental boop.
+Screen-edge refusals retain the peek while acting, then duck behind that same
+edge. They arm cleanup immediately so interruption before the next frame cannot
+leave a phantom peek, gesture or pickup bubble.
 
 ## Where to add an improvement
 
@@ -138,8 +212,14 @@ a no-op canvas, hidden/resume, generator cleanup, teardown and remount.
 `test/cats.test.js` covers motives, memory and rig movement/seeded blinking.
 `test/cat-motion.test.js` checks breath, stance, weight transfer, slow blinks and
 the held paw gesture. `test/cat-pacing.test.js` checks quiet video sessions,
-cooldown intervals, invitation precedence and decision traces. World tests also
+cooldown intervals, explicit toy precedence and decision traces. World tests also
 run the entire invitation and verify recovery, long Calm rest and cursor intent.
+`cat-flight`, `cat-release` and `cat-grab` cover flight geometry, ballistic catch
+selection and handling decisions. The world fixture includes a three-level
+course for chase, refusal, hang/hide, actual pointer release and geometry removal.
+Playback regressions cover ten uninterrupted minutes, offscreen rest, long-tab
+resume, title/user changes, inactive toys and decoration cancellation. Menu tests
+cover targeted right-click, focus/navigation, dismissal and independent Aquarium.
 
 `scripts/render-bean.mjs` renders the actual rig independently, without loading a
 page. Supply an existing `@napi-rs/canvas` installation via `BEAN_RENDER_MODULES`
@@ -147,6 +227,25 @@ page. Supply an existing `@napi-rs/canvas` installation via `BEAN_RENDER_MODULES
 `node scripts/render-bean.mjs ../output/bean-motion`. It writes 540 PNG frames,
 a contact sheet and capture metadata. This is a scripted rig study, not an
 end-to-end capture of the production greeting or an extra deployed dependency.
+
+`scripts/render-bean-acrobatics.mjs` uses the same rendering dependency and
+output argument for a 360-frame movement study: linked leaps, roll, hang,
+pull-up, throw, drop and recovery. It uses the real rig and release planner but
+scripted cues; it is not an autonomous-world or browser recording.
+
+`scripts/render-bean-handling.mjs` independently renders the same refusal
+generator used by the world. The cursor and subsequent dodge are scripted;
+this remains rig evidence rather than browser UI evidence.
+
+`scripts/render-bean-seated.mjs` renders five seconds of settled breathing at
+120 viewing angles. It reports sudden torso pixel changes and saves the worst
+adjacent-frame pairs, using the same optional native-canvas dependency. The
+seated regression in `cat-motion.test.js` records actual foreleg/bib paint order
+through several breaths at the affected angles without requiring native canvas.
+
+`scripts/render-bean-walk.mjs` captures the actual `goTo()` transition from sit,
+loaf, sleep and perched rest, including traveled distance and paw heights. World
+tests reproduce a floor/ledge butterfly chase followed by travel to a nap spot.
 
 Run focused tests, then `npm test` and `npm run check`. Stop Wrangler preview
 before builds and restart after. The no-op canvas tests validate runtime logic,

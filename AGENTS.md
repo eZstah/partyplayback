@@ -15,8 +15,8 @@ npm run check     # build, TypeScript and a Wrangler dry run (what CI runs)
 
 ## Pull requests
 
-- Every merge to `main` deploys youple.tv automatically. Never push to `main`:
-  open a pull request from your own branch and let Konstantin merge it.
+- Every push to `main` deploys youple.tv automatically. Unless Konstantin asks
+  you to publish, open a pull request from your own branch and let him merge it.
 - One focused change per pull request, with `npm test` and `npm run check` passing.
 - Before branching, fetch `main` and look at open pull requests, because others
   may be changing the same files.

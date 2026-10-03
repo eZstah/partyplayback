@@ -99,6 +99,8 @@ export const CAST = {
     gait: .96, voice: {
       greet: ['oh, hello.', 'a friend :)', 'room for one more?'], returnLong: ['there you are.', 'saved you a spot.'],
       pet: ['prrr.', 'that’s the spot.', 'stay a little.'], boop: ['boop!', 'hehe.', 'my nose.'], carried: ['oh, up we go.', 'a new view.'],
+      refuseGrab: ['not up. paws here.', 'no uppies right now.'], fleeGrab: ['too fast! give me a sec.'],
+      spaceGrab: ['a little space, please.'],
       landed: ['soft landing.', 'thank you.'], treat: ['for me?', 'a little snack.'], sleep: ['five more minutes.'],
       wake: ['just stretching.'], watch: ['ooh, this bit.', 'i’m watching too.'], pause: ['little break?'], music: ['tiny dance.'],
       newVideo: ['ooh, a new one.'], newcomer: ['a new friend!!'], hunt: ['just a closer look.'], miss: ['nearly.'], caught: ['did you see?'],
