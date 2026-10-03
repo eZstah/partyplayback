@@ -923,3 +923,6 @@
 .cast-mint { transform: rotate(-3deg); }
 .cast-pink { transform: rotate(3deg); }
 .cast-purple { transform: rotate(3deg); }
+
+/* Coming back to the home page shouldn't replay its entrance. */
+.home-seen .reveal { animation: none; }

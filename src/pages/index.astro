@@ -25,7 +25,10 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 ---
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content="Watch YouTube with your friends. Create a room, share the link, and press play together on youple.tv."/><meta name="theme-color" content="#181622"/><title>youple.tv — Watch YouTube together</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/><link rel="canonical" href="https://youple.tv/"/></head>
+<head><script is:inline>
+  // The entrance animation plays once per visit, not every time someone comes back to the home page.
+  try { if (sessionStorage.getItem("youple-home-seen")) document.documentElement.classList.add("home-seen"); sessionStorage.setItem("youple-home-seen", "1"); } catch {}
+</script><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content="Watch YouTube with your friends. Create a room, share the link, and press play together on youple.tv."/><meta name="theme-color" content="#181622"/><title>youple.tv — Watch YouTube together</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"/><link rel="canonical" href="https://youple.tv/"/></head>
 <body class="home-page" data-signed-in={String(!!user)}>
   <div class="playground-background" aria-hidden="true"><span></span><span></span><span></span><i class="bg-dot dot-one"></i><i class="bg-dot dot-two"></i><i class="bg-dot dot-three"></i><i class="bg-spark"><Icon name="spark" size={32}/></i></div>
   <main class="home-main">

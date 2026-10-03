@@ -15,6 +15,10 @@ const links = [
   <nav aria-label="Site"><ul>{links.map(link => <li><a href={link.href}>{link.label}</a></li>)}</ul></nav>
   <p>Watch together. Snacks optional.</p>
 </footer>
+<style is:global>
+  /* Pages with this footer crossfade into each other instead of flashing a full reload. Rooms opt out. */
+  @media (prefers-reduced-motion: no-preference) { @view-transition { navigation: auto; } }
+</style>
 <style>
   .site-footer { display: grid; justify-items: center; gap: 12px; padding: 40px 16px 44px; text-align: center; color: #a39aac; font-size: 15px; }
   .site-footer-brand { font-weight: 700; font-size: 18px; letter-spacing: -.04em; color: var(--accent); }
