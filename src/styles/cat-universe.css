@@ -1,6 +1,7 @@
 #cat-universe[hidden],#cat-universe [hidden]{display:none!important}
 #cat-world{position:fixed;inset:0;z-index:55;pointer-events:none;overflow:hidden}
 #cat-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#cat-universe.cat-off #cat-world{visibility:hidden}
 html.cat-hover,html.cat-hover body{cursor:grab}
 html.cat-carrying,html.cat-carrying body{cursor:grabbing}
 body.cat-simulation .mascot-cast .cast-member,body.cat-simulation .room-pal{visibility:hidden;pointer-events:none}
