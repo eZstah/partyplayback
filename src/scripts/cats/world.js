@@ -66,7 +66,7 @@ export function bootCats() {
     const mind = new Mind(kind, saved.cats?.[kind]);
     const body = new CatBody(CAST[kind].look);
     return { kind, i, name: CAST[kind].name, cast: CAST[kind], mind, body, plan: null, prio: 0, at: { kind: 'floor' }, target: null,
-      bubble: null, nextGlance: 0, thought: '', xf: null, peek: null, closeup: null, forceMask: false, edgePaws: null, offAt: 0 };
+      bubble: null, nextGlance: 0, thought: '', xf: null, peek: null, closeup: null, forceMask: false, edgePaws: null, offAt: 0, home: .14 + i * .24 };
   });
   const byKind = Object.fromEntries(cats.map(c => [c.kind, c]));
 
@@ -146,8 +146,10 @@ export function bootCats() {
     FLOOR.right = W.w - 30;
     W.controls = [];
     for (const el of document.querySelectorAll(CONTROLS)) {
-      if (el.closest('#cat-world')) continue;
-      const r = rectOf(el); if (onScreen(r) && visible(el)) W.controls.push(r);
+      // The cats' own buttons count too (visible() skips everything in #cat-universe).
+      if (el.closest('#cat-world,[hidden],[inert]')) continue;
+      if (el.checkVisibility && !el.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
+      const r = rectOf(el); if (onScreen(r)) W.controls.push(r);
     }
     W.text = [];
     for (const el of document.querySelectorAll(TEXT)) { if (el.closest('#cat-universe')) continue; const r = rectOf(el); if (onScreen(r) && visible(el)) W.text.push(r); }
@@ -179,9 +181,21 @@ export function bootCats() {
     return cats.some(c => c !== cat && c.target && c.target.surface === spot.surface && Math.abs(c.target.x - spot.x) < 70 * S());
   }
   // Pick somewhere to be. where: 'any' | 'floor' | 'ledge' | 'high'
+  // Cats keep to themselves: each has a home patch of the screen and keeps its distance from the others.
+  function crowdGap(cat, x, y) {
+    let gap = Infinity;
+    for (const o of cats) {
+      if (o === cat) continue;
+      if (o.at.kind !== 'away') gap = Math.min(gap, Math.hypot(o.body.x - x, o.body.gy - y));
+      if (o.target) gap = Math.min(gap, Math.hypot(o.target.x - x, yAt(o.target.surface, o.target.x, o.target.z) - y));
+    }
+    return gap;
+  }
   function findSpot(cat, { where = 'any', near = null, spread = 400, z = null } = {}) {
     measure();
     const f = floor(), ledges = W.ledges.filter(l => onScreen(l.rect));
+    const social = near !== null;
+    if (!social && Math.random() < .7) { near = cat.home * W.w; spread = W.w * .4; }
     for (let i = 0; i < 50; i++) {
       let spot;
       const wantLedge = ledges.length && (where === 'ledge' || where === 'high' || (where === 'any' && Math.random() < .6));
@@ -202,6 +216,7 @@ export function bootCats() {
       if (!clearOf(box) || crowded(cat, spot)) continue;
       // Try not to sit on top of words, on the floor or up on a card.
       if (i < 35 && overText(box, spot.surface === FLOOR ? null : spot.surface)) continue;
+      if (!social && i < 40 && crowdGap(cat, spot.x, y) < (i < 25 ? 300 : 180) * S()) continue;
       return spot;
     }
     return { surface: FLOOR, x: 60 + Math.random() * (W.w - 120), z: 0 };
@@ -1421,13 +1436,7 @@ export function bootCats() {
   }
   // Put a cat straight into a resting spot: somewhere of its own, not lined up with the others.
   function place(c, i, pose = ['sit', 'loaf', 'sit', 'curl'][Math.floor(Math.random() * 4)]) {
-    // Each cat has its own spot: keep well away from the cats already placed.
-    const others = cats.filter(o => o !== c && o.target), gap = s => Math.min(Infinity, ...others.map(o => Math.hypot(o.target.x - s.x, yAt(o.target.surface, o.target.x, o.target.z) - yAt(s.surface, s.x, s.z))));
-    let spot = null;
-    for (let n = 0; n < 12 && (!spot || gap(spot) < 260 * S()); n++) {
-      const s = findSpot(c, { where: Math.random() < .6 ? 'ledge' : 'floor' });
-      if (!spot || gap(s) > gap(spot)) spot = s;
-    }
+    const spot = findSpot(c, { where: Math.random() < .6 ? 'ledge' : 'floor' });
     c.body.x = spot.x; c.body.z = spot.z ?? 0; c.target = spot;
     if (spot.surface === FLOOR) { c.at = { kind: 'floor' }; c.body.gy = floorY(c.body.z); c.body.k = floorK(c.body.z); }
     else { land(c, spot.surface); c.body.gy = spot.surface.y(spot.x); c.body.k = S() * LEDGE_K; }
@@ -1440,6 +1449,9 @@ export function bootCats() {
   function opening() {
     measure(true);
     let out = 0;
+    // Spread the home patches across the screen, in a different order each visit.
+    const homes = [.14, .38, .62, .86].sort(() => Math.random() - .5);
+    cats.forEach((c, i) => { c.home = homes[i]; c.target = null; c.at = { kind: 'away', side: 'left' }; });
     [...cats].sort(() => Math.random() - .5).forEach((c, i) => {
       unstick(c); c.closeup = null; c.xf = null; c.prio = PRIORITY.normal;
       const r = Math.random();

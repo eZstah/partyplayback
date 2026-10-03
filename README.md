@@ -188,6 +188,8 @@ They behave like real cats, which mostly means resting. A fresh page finds them
 asleep or loafing in their own spots, or out of the screen altogether, and most
 of their day is naps, loafing and time away. Getting up to explore, hide, knock
 something over or come to the glass is occasional, so it reads as an event.
+Each cat keeps to its own patch of the screen, away from the others, and only
+now and then visits, plays or curls up with a friend.
 
 What else they do: loaf, groom, stretch and yawn, nap (turning around before
 lying down), cuddle up to friends, visit and boop noses, chase and play-fight,

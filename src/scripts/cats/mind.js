@@ -43,6 +43,7 @@ const ACTIVITY_LABEL = {
 };
 export const activityLabel = (type, partner) => (ACTIVITY_LABEL[type] || 'Thinking') + (partner && ['visit', 'chase', 'flee', 'cuddle', 'follow', 'wrestle'].includes(type) ? ` ${CAST[partner].name}` : '');
 
+const SOCIAL = ['cuddle', 'visit', 'follow', 'chase'];
 const BUSY = ['wander', 'explore', 'knock', 'dance', 'zoomies', 'stalk', 'approach', 'visit', 'chase', 'follow', 'glass'];
 
 export class Mind {
@@ -124,6 +125,8 @@ export class Mind {
     };
     // Real cats mostly rest. Anything that sends a cat across the screen needs a real reason to win.
     for (const k of BUSY) scores[k] *= .6;
+    // They mostly keep to themselves; company is an occasional thing.
+    for (const k of SOCIAL) scores[k] *= .55;
     if (calm) for (const k in scores) if (k !== 'sleep' && k !== 'cuddle' && k !== 'treat') scores[k] *= .1;
     const recent = new Set(this.last.slice(0, 2));
     let top = null, topScore = -Infinity;
