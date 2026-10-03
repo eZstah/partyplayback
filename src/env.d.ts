@@ -5,6 +5,7 @@ declare namespace App {
 }
 
 interface Env {
+  TAB_SHARING_ENABLED?: string;
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
   AUTH_REDIRECT_ORIGIN?: string;

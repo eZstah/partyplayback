@@ -17,7 +17,7 @@ function socket() {
   };
 }
 
-async function setup() {
+async function setup(env = {}) {
   const saved = new Map();
   const sockets = [socket(), socket()];
   const ctx = {
@@ -31,7 +31,7 @@ async function setup() {
     blockConcurrencyWhile(fn) { return fn(); },
     getWebSockets() { return sockets; },
   };
-  const room = new RoomDO(ctx, {});
+  const room = new RoomDO(ctx, env);
   const send = (data, ws = sockets[0]) => room.webSocketMessage(ws, JSON.stringify(data));
   await send({ type: "join", username: "Alice" });
   await send({ type: "join", username: "Bob" }, sockets[1]);
@@ -40,8 +40,38 @@ async function setup() {
   return { room, ctx, saved, send, sockets, add, control };
 }
 
+test("disabled tab sharing rejects stale clients without interrupting YouTube", async () => {
+  for (const env of [{}, { TAB_SHARING_ENABLED: "false" }]) {
+    const { room, send, sockets, add, control } = await setup(env);
+    await add();
+    const revision = room.state.revision;
+    await send({ type: "share-start", requestId: "old-client", audio: true });
+    assert.deepEqual(sockets[0].messages.findLast(message => message.type === "share-error"), {
+      type: "share-error", requestId: "old-client", message: "Tab sharing is temporarily disabled.",
+    });
+    assert.equal(room.state.isPlaying, true);
+    assert.equal(room.state.revision, revision);
+    assert.equal(sockets[0].attachment.sharing, undefined);
+
+    // A pre-disable share restored from a socket attachment cannot own the stage.
+    sockets[0].attachment.sharing = { id: "old-share", audio: true };
+    sockets[1].attachment.watching = "old-share";
+    assert.equal(room._snapshot().share, null);
+    for (const type of ["share-watch", "share-ice", "share-signal"]) {
+      const hostMessages = sockets[0].messages.length;
+      await send({ type, shareId: "old-share", connectionId: "stale", to: sockets[0].attachment.peerId }, sockets[1]);
+      assert.equal(sockets[1].messages.at(-1).type, "share-error");
+      assert.equal(sockets[0].messages.length, hostMessages);
+    }
+    await control("pause", 10);
+    assert.equal(room.state.isPlaying, false);
+    await control("play", 10);
+    assert.equal(room.state.isPlaying, true);
+  }
+});
+
 test("sharing pauses YouTube, has one owner, and ignores old and non-owner controls", async () => {
-  const { room, send, sockets, add, control } = await setup();
+  const { room, send, sockets, add, control } = await setup({ TAB_SHARING_ENABLED: "true" });
   await add();
   await control("seek", 42);
   await send({ type: "share-start", requestId: "capture-1", audio: true });
@@ -65,7 +95,7 @@ test("sharing pauses YouTube, has one owner, and ignores old and non-owner contr
 });
 
 test("share signaling is targeted, server-identified, and restricted to host/viewer pairs", async () => {
-  const { room, send, sockets, ctx } = await setup();
+  const { room, send, sockets, ctx } = await setup({ TAB_SHARING_ENABLED: "true" });
   const outsider = socket();
   ctx.getWebSockets().push(outsider);
   await send({ type: "join", username: "Eve", peerId: sockets[0].attachment.peerId }, outsider);
@@ -96,13 +126,13 @@ test("share signaling is targeted, server-identified, and restricted to host/vie
 });
 
 test("share ownership survives hibernation and renaming; disconnect releases it", async () => {
-  const { room, ctx, send, sockets } = await setup();
+  const { room, ctx, send, sockets } = await setup({ TAB_SHARING_ENABLED: "true" });
   await send({ type: "share-start", requestId: "capture" });
   const shareId = room._share().id;
   await send({ type: "share-watch", connectionId: "connection-1", shareId }, sockets[1]);
   await send({ type: "join", username: "New name" });
   assert.equal(room._share().id, shareId);
-  const restored = new RoomDO(ctx, {});
+  const restored = new RoomDO(ctx, room.env);
   await restored.ready;
   assert.equal(restored._share().name, "New name");
   await restored.webSocketClose(sockets[0], 1000, "bye");
@@ -112,7 +142,7 @@ test("share ownership survives hibernation and renaming; disconnect releases it"
 });
 
 test("sharing viewer limit and departure notifications bound host connections", async () => {
-  const { room, ctx, send, sockets } = await setup();
+  const { room, ctx, send, sockets } = await setup({ TAB_SHARING_ENABLED: "true" });
   await send({ type: "share-start", requestId: "capture" });
   const shareId = room._share().id;
   for (let i = 0; i < 4; i++) {
@@ -131,7 +161,7 @@ test("sharing viewer limit and departure notifications bound host connections", 
 });
 
 test("empty-room queue additions stay paused during sharing and new viewers discover the share", async () => {
-  const { room, send, add, sockets } = await setup();
+  const { room, send, add, sockets } = await setup({ TAB_SHARING_ENABLED: "true" });
   await send({ type: "share-start", requestId: "capture" });
   await add();
   assert.equal(room.state.isPlaying, false);
@@ -143,8 +173,7 @@ test("empty-room queue additions stay paused during sharing and new viewers disc
 });
 
 test("sharing never provisions a relay even when old TURN secrets are configured", async () => {
-  const { room, send, sockets } = await setup();
-  room.env = { TURN_KEY_ID: "test-key", TURN_KEY_API_TOKEN: "server-secret" };
+  const { room, send, sockets } = await setup({ TAB_SHARING_ENABLED: "true", TURN_KEY_ID: "test-key", TURN_KEY_API_TOKEN: "server-secret" });
   await send({ type: "share-start", requestId: "capture" });
   const shareId = room._share().id;
   const realFetch = globalThis.fetch;
@@ -164,7 +193,7 @@ test("sharing never provisions a relay even when old TURN secrets are configured
 });
 
 test("quickly restarting a share does not throttle direct connection setup", async () => {
-  const { room, send, sockets } = await setup();
+  const { room, send, sockets } = await setup({ TAB_SHARING_ENABLED: "true" });
   await send({ type: "share-start", requestId: "first" });
   await send({ type: "share-ice", shareId: room._share().id });
   await send({ type: "share-stop", shareId: room._share().id });

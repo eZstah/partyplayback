@@ -409,6 +409,7 @@ export class RoomDO {
   // Capture is tied to one live socket, never to a user-supplied session id.
   // Attachments keep ownership through hibernation without persisting SDP/media.
   _share() {
+    if (this.env.TAB_SHARING_ENABLED !== "true") return null;
     const host = this._members().map(ws => ws.deserializeAttachment()).find(person => person.sharing);
     return host ? { ...host.sharing, hostId: host.peerId, name: host.username } : null;
   }
@@ -447,6 +448,7 @@ export class RoomDO {
     if (++rate.count > 120) return;
     person = { ...person, shareRate: rate };
     ws.serializeAttachment(person);
+    if (this.env.TAB_SHARING_ENABLED !== "true") return fail("Tab sharing is temporarily disabled.");
     if (data.type === "share-start") {
       if (share) return fail("Someone is already sharing. Wait for them to stop.");
       if (typeof data.requestId !== "string" || data.requestId.length > 64) return;
