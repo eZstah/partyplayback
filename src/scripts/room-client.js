@@ -1,4 +1,5 @@
 import { RoomPlayer } from "../lib/room-player.js";
+import { bootTabSharing } from "./tab-sharing.js";
 import { bootAuth } from "./auth-client.js";
 import { bootRoomMascots } from "./room-mascots.js";
 import { copyText, takeCreatedRoomNotice } from "./invite-copy.js";
@@ -63,6 +64,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       if (blocked) toast("Press Join playback to watch with everyone");
     },
   });
+  const sharing = bootTabSharing({ send, toast, onChange: () => controls() });
 
   const musicShelf = document.querySelector('.music-shelf');
   const music = createMusicSelector({ send, enablePlayback: () => playback.enablePlayback(true),
@@ -80,7 +82,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   }
   function controls() {
     music.update(room, joined);
-    const hasVideo = !!room?.queue[room.currentIndex];
+    const hasVideo = !!room?.queue[room.currentIndex] && !room?.share;
     youtubeButton.disabled = !hasVideo || !playback.player;
     playButton.disabled = !joined || !hasVideo;
     nextButton.disabled = !joined || !hasVideo || (room.currentIndex + 1 >= room.queue.length && !room.autoClear);
@@ -102,7 +104,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     queueList.querySelectorAll(".qi-play").forEach(button => {
       const current = button.closest("li").dataset.itemId === room?.queue[room.currentIndex]?.id;
       const active = current && playing;
-      button.disabled = !joined || active;
+      button.disabled = !joined || active || !!room?.share;
       button.dataset.playing = String(active);
       button.title = (active ? "Playing " : "Play ") + button.dataset.videoTitle;
       button.setAttribute("aria-label", button.title);
@@ -248,6 +250,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
         lastServerTime = data.serverTime;
         room = data;
         playback.receive(data, latency);
+        sharing.update(data);
         render();
         setConnection("connected");
         if (pastedAddition && room.queue.some(item => item.url === pastedAddition.url && !pastedAddition.before.has(item.id))) {
@@ -267,6 +270,8 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
           }
         }
         ensurePlayer();
+      } else if (typeof data.type === "string" && data.type.startsWith("share-")) {
+        void sharing.handle(data).catch(() => toast("The shared tab could not connect. Try Reconnect."));
       } else if (data.type === "skipped" && Array.isArray(data.skips) && data.skips.length) {
         const seconds = Math.round(data.skips.reduce((total, skip) => total + Math.max(0, skip.to - skip.from), 0));
         const names = [...new Set(data.skips.map(skip => SKIPPED[skip.category] || "segment"))].join(" and ");
@@ -287,6 +292,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       joined = false;
       requests.clear();
       playback.disconnected();
+      sharing.disconnect();
       setConnection("disconnected");
       clearTimeout(reconnectTimer);
       if (!stopping) reconnectTimer = setTimeout(connect, delay);
@@ -370,8 +376,8 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     for (const row of rows.values()) row.remove();
     }
     const item = room.queue[room.currentIndex];
-    $("placeholder").style.display = item ? "none" : "flex";
-    const status = item ? (room.isPlaying ? "Playing: " : "Paused: ") + item.title : "No video selected.";
+    $("placeholder").style.display = item || room.share ? "none" : "flex";
+    const status = room.share ? room.share.name + " is sharing a browser tab." : item ? (room.isPlaying ? "Playing: " : "Paused: ") + item.title : "No video selected.";
     if ($("playing-status").textContent !== status) $("playing-status").textContent = status;
     $("queue-count").textContent = String(room.queue.length).padStart(2, "0");
     $("queue-empty").hidden = !!room.queue.length;
@@ -526,7 +532,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     }
   }
   function seek(time) {
-    if (!joined || !room?.queue[room.currentIndex]) return;
+    if (!joined || room?.share || !room?.queue[room.currentIndex]) return;
     const duration = playback.player?.getDuration?.() || 604800;
     playback.command("seek", Math.max(0, Math.min(time, duration)));
   }
@@ -627,7 +633,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       j: () => seek(playback.targetTime() - 10), l: () => seek(playback.targetTime() + 10),
       n: () => { if (!nextButton.disabled) nextButton.click(); },
       f: () => $("fullscreen-btn").click(), t: () => $("theater-btn").click(),
-      m: () => $("mute-btn").click(),
+      m: () => { if (room?.share) { if (!sharing.hosting) $("shared-video").muted = !$("shared-video").muted; } else $("mute-btn").click(); },
       "?": () => $("help-btn").click(),
     };
     if (actions[key]) { event.preventDefault(); actions[key](); }
@@ -689,6 +695,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     stopping = true;
     fullscreenControls.destroy();
     music.destroy();
+    sharing.stop();
     clearInterval(sampleTimer);
     clearInterval(syncTimer);
     clearTimeout(reconnectTimer);

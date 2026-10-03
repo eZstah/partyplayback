@@ -47,6 +47,43 @@ Some YouTube videos cannot be embedded, and browser/network restrictions can
 prevent an individual player from loading. An error in one player does not
 automatically skip the video for everyone; use Next or remove that queue item.
 
+## Sharing a browser tab
+
+In the main room, choose **Share a tab**, then **Choose a tab**. Select a browser
+tab containing TikTok, Instagram Reels, Shorts, or another video and enable
+**Share tab audio** in the browser picker. Start sharing from desktop Chrome or
+Edge over HTTPS (localhost also works). Other browsers may support picture but
+not tab audio; viewers can use any browser with WebRTC playback support.
+
+One person shares with up to four viewers. The main player shows the shared tab;
+YouTube pauses and the playlist remains editable. After **Stop sharing**, the
+playlist stays paused until someone presses Play. Browser Stop sharing, leaving
+the room, and losing the room connection release capture and peer connections.
+Viewers may need **Join shared tab** for autoplay, or **Reconnect** after a network
+failure. The sharer's preview is muted to avoid echo; viewers control their own
+sound with the shared video's controls. Aquarium sharing and remote scrolling
+are outside this first version. Sharing captures the selected surface, including
+any other content shown there; this app does not record it.
+
+Media goes over WebRTC, not the room WebSocket. The existing Durable Object routes
+bounded SDP/ICE messages between the sharer and subscribed viewers only. Per-socket
+server-generated identities and share generations reject spoofed or stale signals.
+Ownership/subscriptions survive hibernation as socket attachments; SDP is not saved.
+
+Without relay credentials, the prototype uses Cloudflare STUN and direct peers.
+Some networks cannot connect directly. For production reliability create a
+[Cloudflare TURN key](https://developers.cloudflare.com/realtime/turn/generate-credentials/)
+and set `TURN_KEY_ID` and `TURN_KEY_API_TOKEN` as Worker secrets (or in `.dev.vars`
+locally). The server issues four-hour credentials over a joined room connection;
+the permanent key never reaches the client. Configure relay billing/usage limits
+in Cloudflare before a public rollout. Large rooms need an SFU instead of adding
+more peer connections and host upload bandwidth.
+
+Manual checks: two browsers, tab picture + sound, autoplay recovery, picker cancel,
+browser Stop sharing, simultaneous sharers, a late viewer, host departure, viewer
+reconnect, and YouTube pause/resume. Also test two separate networks with TURN
+configured; a localhost pass alone does not verify NAT traversal.
+
 ## Validation
 
 ```sh

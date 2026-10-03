@@ -83,15 +83,18 @@ export class RoomDO {
     let data;
     try {
       const text = typeof message === "string" ? message : new TextDecoder().decode(message);
-      if (text.length > 8192) return this._error(ws, "Message too large");
+      if (text.length > 32768) return this._error(ws, "Message too large");
       data = JSON.parse(text);
       if (!data || typeof data !== "object" || Array.isArray(data)) return;
+      if (text.length > 8192 && data.type !== "share-signal") return this._error(ws, "Message too large");
     } catch { return; }
 
     if (data.type === "join") {
       const identity = ws.deserializeAttachment();
       ws.serializeAttachment({
+        ...identity,
         joined: true, userId: identity?.userId, verifiedName: identity?.verifiedName, avatar: identity?.avatar || null,
+        peerId: identity?.peerId || crypto.randomUUID(),
         username: identity?.verifiedName || (typeof data.username === "string" ? data.username : "Guest").slice(0, 32) || "Guest",
         sessionId: identity?.sessionId || (typeof data.sessionId === "string" ? data.sessionId : crypto.randomUUID()).slice(0, 64),
         joinedAt: identity?.joinedAt || Date.now(),
@@ -106,6 +109,10 @@ export class RoomDO {
       this._sendState(ws, data.requestId);
       return;
     }
+    if (typeof data.type === "string" && data.type.startsWith("share-")) return this._shareMessage(ws, data);
+    // A shared tab owns the stage. Keep the YouTube timeline paused until it ends,
+    // including commands from older clients or viewers in Aquarium.
+    if (this._share() && ["play", "pause", "seek", "select", "next", "ended"].includes(data.type)) return this._sendState(ws);
 
     const s = this.state;
     switch (data.type) {
@@ -147,7 +154,7 @@ export class RoomDO {
           title: (typeof data.title === "string" ? data.title : videoId).slice(0, 200) || videoId,
           url: "https://www.youtube.com/watch?v=" + videoId,
         });
-        if (s.currentIndex === -1) this._load(0, true);
+        if (s.currentIndex === -1) this._load(0, !this._share());
         break;
       }
       case "remove": {
@@ -325,6 +332,7 @@ export class RoomDO {
     return {
       ...this.state, type: "state", currentTime: this._time(),
       serverTime: Date.now(), userCount: members.length, members,
+      peerId: ws?.deserializeAttachment()?.peerId, share: this._share(),
       ...(typeof requestId === "string" ? { requestId: requestId.slice(0, 64) } : {}),
     };
   }
@@ -368,16 +376,20 @@ export class RoomDO {
 
   async webSocketClose(ws, code, reason) {
     await this.ready;
+    const leaving = ws.deserializeAttachment();
     ws.serializeAttachment(null);
     // Required with the project's pre-April-2026 compatibility date.
     try { ws.close(code === 1005 ? 1000 : code, reason); } catch {}
+    await this._shareDeparted(leaving);
     await this._departed();
   }
 
   async webSocketError(ws) {
     await this.ready;
+    const leaving = ws.deserializeAttachment();
     ws.serializeAttachment(null);
     try { ws.close(1011, "Connection error"); } catch {}
+    await this._shareDeparted(leaving);
     await this._departed();
   }
 
@@ -392,6 +404,143 @@ export class RoomDO {
     }
     this._broadcastUsers();
     await this._keepAlive();
+  }
+
+  // Capture is tied to one live socket, never to a user-supplied session id.
+  // Attachments keep ownership through hibernation without persisting SDP/media.
+  _share() {
+    const host = this._members().map(ws => ws.deserializeAttachment()).find(person => person.sharing);
+    return host ? { ...host.sharing, hostId: host.peerId, name: host.username } : null;
+  }
+
+  async _shareChanged() {
+    this.state.revision++;
+    await this.ctx.storage.put("room", this.state);
+    this._broadcast(ws => this._snapshot(undefined, ws));
+    await this._schedule();
+  }
+
+  _clearViewers() {
+    for (const ws of this._members()) {
+      const person = ws.deserializeAttachment();
+      if (person.watching) ws.serializeAttachment({ ...person, watching: null });
+    }
+  }
+
+  async _shareDeparted(person) {
+    if (person?.sharing) {
+      this._clearViewers();
+      await this._shareChanged();
+    } else if (person?.watching) {
+      const host = this._members().find(ws => ws.deserializeAttachment().sharing?.id === person.watching);
+      if (host) this._send(host, { type: "share-left", shareId: person.watching, peerId: person.peerId });
+    }
+  }
+
+  async _shareMessage(ws, data) {
+    let person = ws.deserializeAttachment();
+    const share = this._share();
+    const fail = message => this._send(ws, { type: "share-error", requestId: data.requestId, message });
+    // ICE candidates arrive in bursts. Bound signaling without storing its payload.
+    const now = Date.now();
+    const rate = person.shareRate?.at > now - 10000 ? person.shareRate : { at: now, count: 0 };
+    if (++rate.count > 120) return;
+    person = { ...person, shareRate: rate };
+    ws.serializeAttachment(person);
+    if (data.type === "share-start") {
+      if (share) return fail("Someone is already sharing. Wait for them to stop.");
+      if (typeof data.requestId !== "string" || data.requestId.length > 64) return;
+      ws.serializeAttachment({ ...person, sharing: { id: crypto.randomUUID(), requestId: data.requestId, audio: data.audio === true } });
+      Object.assign(this.state, { currentTime: this._time(), updatedAt: now, isPlaying: false, pausedBy: null });
+      return this._shareChanged();
+    }
+    if (!share || data.shareId !== share.id) return;
+    const host = this._members().find(socket => socket.deserializeAttachment().peerId === share.hostId);
+    if (data.type === "share-stop") {
+      if (person.peerId !== share.hostId) return;
+      ws.serializeAttachment({ ...person, sharing: null });
+      this._clearViewers();
+      return this._shareChanged();
+    }
+    if (data.type === "share-watch") {
+      if (person.peerId === share.hostId) return;
+      if (typeof data.connectionId !== "string" || !data.connectionId || data.connectionId.length > 64) return;
+      if (person.watching !== share.id && this._members().filter(socket => socket.deserializeAttachment().watching === share.id).length >= 4) {
+        return fail("This shared tab has four viewers already. Try again when someone leaves.");
+      }
+      ws.serializeAttachment({ ...person, watching: share.id, watchingConnectionId: data.connectionId });
+      this._send(host, { type: "share-viewer", shareId: share.id, peerId: person.peerId, connectionId: data.connectionId });
+      return;
+    }
+    if (data.type === "share-leave") {
+      if (person.watching !== share.id) return;
+      ws.serializeAttachment({ ...person, watching: null });
+      this._send(host, { type: "share-left", shareId: share.id, peerId: person.peerId });
+      return;
+    }
+    if (data.type === "share-ice") {
+      // Reserve a viewer slot before minting relay credentials. This also bounds
+      // credential issuance to the same small group that can receive the media.
+      if (person.peerId !== share.hostId && person.watching !== share.id) {
+        if (this._members().filter(socket => socket.deserializeAttachment().watching === share.id).length >= 4) {
+          return fail("This shared tab has four viewers already. Try again when someone leaves.");
+        }
+        person = { ...person, watching: share.id };
+        ws.serializeAttachment(person);
+      }
+      this.shareIce ??= new Map();
+      for (const [id, config] of this.shareIce) if (config.expiresAt <= now || !this._members().some(socket => socket.deserializeAttachment().peerId === id)) this.shareIce.delete(id);
+      const cached = this.shareIce.get(person.peerId);
+      if (cached) return this._send(ws, { type: "share-ice", shareId: share.id, iceServers: cached.iceServers, relay: cached.relay });
+      if (person.iceShare === share.id && person.iceAt > now - 30000) return fail("Please wait a moment before reconnecting the shared tab.");
+      ws.serializeAttachment({ ...person, iceAt: now, iceShare: share.id });
+      const iceServers = [{ urls: "stun:stun.cloudflare.com:3478" }];
+      let relay = false;
+      if (this.env.TURN_KEY_ID && this.env.TURN_KEY_API_TOKEN) {
+        try {
+          const response = await fetch("https://rtc.live.cloudflare.com/v1/turn/keys/" + encodeURIComponent(this.env.TURN_KEY_ID) + "/credentials/generate-ice-servers", {
+            method: "POST", headers: { Authorization: "Bearer " + this.env.TURN_KEY_API_TOKEN, "Content-Type": "application/json" },
+            body: JSON.stringify({ ttl: 14400 }), signal: AbortSignal.timeout(5000),
+          });
+          if (!response.ok) throw new Error("TURN unavailable");
+          const result = await response.json();
+          if (!Array.isArray(result.iceServers)) throw new Error("Invalid TURN response");
+          for (const server of result.iceServers.slice(0, 8)) {
+            const urls = (Array.isArray(server.urls) ? server.urls : [server.urls]).filter(url => typeof url === "string" && /^turns?:/.test(url) && !/:53(?:\?|$)/.test(url));
+            if (urls.length && typeof server.username === "string" && typeof server.credential === "string") {
+              iceServers.push({ urls, username: server.username, credential: server.credential });
+              relay = true;
+            }
+          }
+        } catch { /* Direct connections can still work when the relay is unavailable. */ }
+      }
+      if (this._share()?.id === share.id && ws.deserializeAttachment()?.joined) {
+        this.shareIce.set(person.peerId, { iceServers, relay, expiresAt: now + (relay ? 3600000 : 30000) });
+        this._send(ws, { type: "share-ice", shareId: share.id, iceServers, relay });
+      }
+      return;
+    }
+    if (data.type !== "share-signal") return;
+    const target = this._members().find(socket => socket.deserializeAttachment().peerId === data.to);
+    if (!target || target === ws) return;
+    const recipient = target.deserializeAttachment();
+    const fromHost = person.peerId === share.hostId && recipient.watching === share.id;
+    const toHost = recipient.peerId === share.hostId && person.watching === share.id;
+    if (!fromHost && !toHost) return;
+    if (!data.connectionId || data.connectionId !== (fromHost ? recipient : person).watchingConnectionId) return;
+    const payload = { type: "share-signal", shareId: share.id, from: person.peerId, connectionId: data.connectionId };
+    if (data.description) {
+      const { type, sdp } = data.description;
+      if (type !== (fromHost ? "offer" : "answer") || typeof sdp !== "string" || sdp.length > 24000) return;
+      payload.description = { type, sdp };
+    } else if (data.candidate && typeof data.candidate.candidate === "string" && data.candidate.candidate.length <= 2048) {
+      const { candidate, sdpMid, sdpMLineIndex, usernameFragment } = data.candidate;
+      if (sdpMid != null && (typeof sdpMid !== "string" || sdpMid.length > 64)) return;
+      if (sdpMLineIndex != null && (!Number.isInteger(sdpMLineIndex) || sdpMLineIndex < 0 || sdpMLineIndex > 10)) return;
+      if (usernameFragment != null && (typeof usernameFragment !== "string" || usernameFragment.length > 256)) return;
+      payload.candidate = { candidate, sdpMid, sdpMLineIndex, usernameFragment };
+    } else return;
+    this._send(target, payload);
   }
 
   // Unsaved rooms are cleared once nobody has opened them for a while.

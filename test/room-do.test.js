@@ -40,6 +40,144 @@ async function setup() {
   return { room, ctx, saved, send, sockets, add, control };
 }
 
+test("sharing pauses YouTube, has one owner, and ignores old and non-owner controls", async () => {
+  const { room, send, sockets, add, control } = await setup();
+  await add();
+  await control("seek", 42);
+  await send({ type: "share-start", requestId: "capture-1", audio: true });
+  const share = room._share();
+  assert.equal(share.audio, true);
+  assert.equal(share.hostId, sockets[0].attachment.peerId);
+  assert.equal(room.state.isPlaying, false);
+  assert.ok(room.state.currentTime >= 42);
+  await send({ type: "share-start", requestId: "capture-2" }, sockets[1]);
+  assert.equal(sockets[1].messages.at(-1).type, "share-error");
+  await control("play", 42);
+  assert.equal(room.state.isPlaying, false);
+  await send({ type: "share-stop", shareId: share.id }, sockets[1]);
+  await send({ type: "share-stop", shareId: "old-capture" });
+  assert.equal(room._share().id, share.id);
+  await send({ type: "share-stop", shareId: share.id });
+  assert.equal(room._share(), null);
+  assert.equal(room.state.isPlaying, false);
+  await control("play", 42);
+  assert.equal(room.state.isPlaying, true);
+});
+
+test("share signaling is targeted, server-identified, and restricted to host/viewer pairs", async () => {
+  const { room, send, sockets, ctx } = await setup();
+  const outsider = socket();
+  ctx.getWebSockets().push(outsider);
+  await send({ type: "join", username: "Eve", peerId: sockets[0].attachment.peerId }, outsider);
+  assert.notEqual(outsider.attachment.peerId, sockets[0].attachment.peerId);
+  await send({ type: "share-start", requestId: "capture" });
+  const shareId = room._share().id;
+  const hostId = sockets[0].attachment.peerId;
+  const viewerId = sockets[1].attachment.peerId;
+  await send({ type: "share-watch", connectionId: "connection-1", shareId }, sockets[1]);
+  const offer = { type: "share-signal", connectionId: "connection-1", shareId, to: viewerId, from: "forged", description: { type: "offer", sdp: "v=0\r\n" } };
+  await send(offer);
+  assert.equal(sockets[1].messages.at(-1).from, hostId);
+  const count = sockets[1].messages.length;
+  await send(offer, outsider);
+  await send({ ...offer, shareId: "stale" });
+  await send({ ...offer, description: { type: "answer", sdp: "wrong direction" } });
+  await send({ ...offer, description: { type: "offer", sdp: "x".repeat(25000) } });
+  assert.equal(sockets[1].messages.length, count);
+  await send({ type: "share-signal", connectionId: "connection-1", shareId, to: hostId, candidate: { candidate: "candidate:1", sdpMid: "0", sdpMLineIndex: 0 } }, sockets[1]);
+  assert.equal(sockets[0].messages.at(-1).from, viewerId);
+  assert.notEqual(outsider.messages.at(-1).type, "share-signal");
+  await send({ type: "share-watch", shareId, connectionId: "replacement" }, sockets[1]);
+  const beforeReconnect = sockets[1].messages.length;
+  await send(offer);
+  assert.equal(sockets[1].messages.length, beforeReconnect);
+  await send({ ...offer, connectionId: "replacement" });
+  assert.equal(sockets[1].messages.at(-1).connectionId, "replacement");
+});
+
+test("share ownership survives hibernation and renaming; disconnect releases it", async () => {
+  const { room, ctx, send, sockets } = await setup();
+  await send({ type: "share-start", requestId: "capture" });
+  const shareId = room._share().id;
+  await send({ type: "share-watch", connectionId: "connection-1", shareId }, sockets[1]);
+  await send({ type: "join", username: "New name" });
+  assert.equal(room._share().id, shareId);
+  const restored = new RoomDO(ctx, {});
+  await restored.ready;
+  assert.equal(restored._share().name, "New name");
+  await restored.webSocketClose(sockets[0], 1000, "bye");
+  assert.equal(restored._share(), null);
+  assert.equal(sockets[1].attachment.watching, null);
+  assert.equal(sockets[1].messages.findLast(m => m.type === "state").share, null);
+});
+
+test("sharing viewer limit and departure notifications bound host connections", async () => {
+  const { room, ctx, send, sockets } = await setup();
+  await send({ type: "share-start", requestId: "capture" });
+  const shareId = room._share().id;
+  for (let i = 0; i < 4; i++) {
+    const viewer = socket();
+    ctx.getWebSockets().push(viewer);
+    await send({ type: "join" }, viewer);
+    await send({ type: "share-watch", connectionId: "connection-1", shareId }, viewer);
+  }
+  await send({ type: "share-watch", connectionId: "connection-1", shareId }, sockets[1]);
+  assert.equal(sockets[1].messages.at(-1).type, "share-error");
+  const leaving = ctx.getWebSockets().at(-1);
+  await room.webSocketClose(leaving, 1000, "bye");
+  assert.equal(sockets[0].messages.at(-2).type, "share-left");
+  await send({ type: "share-watch", connectionId: "connection-1", shareId }, sockets[1]);
+  assert.equal(sockets[1].attachment.watching, shareId);
+});
+
+test("empty-room queue additions stay paused during sharing and new viewers discover the share", async () => {
+  const { room, send, add, sockets } = await setup();
+  await send({ type: "share-start", requestId: "capture" });
+  await add();
+  assert.equal(room.state.isPlaying, false);
+  await send({ type: "sync" }, sockets[1]);
+  assert.equal(sockets[1].messages.at(-1).share.id, room._share().id);
+  await send({ type: "share-ice", shareId: room._share().id }, sockets[1]);
+  assert.deepEqual(sockets[1].messages.at(-1).iceServers, [{ urls: "stun:stun.cloudflare.com:3478" }]);
+  assert.equal(sockets[1].messages.at(-1).relay, false);
+});
+
+test("TURN returns temporary credentials only to the requester and handles an outage", async () => {
+  const { room, send, sockets } = await setup();
+  room.env = { TURN_KEY_ID: "test-key", TURN_KEY_API_TOKEN: "server-secret" };
+  await send({ type: "share-start", requestId: "capture" });
+  const shareId = room._share().id;
+  const realFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async (url, options) => {
+      assert.match(url, /test-key\/credentials\/generate-ice-servers$/);
+      assert.equal(options.headers.Authorization, "Bearer server-secret");
+      return Response.json({ iceServers: [{ urls: ["turn:turn.cloudflare.com:3478", "turn:turn.cloudflare.com:53"], username: "temporary", credential: "short-lived" }] });
+    };
+    await send({ type: "share-ice", shareId });
+    const config = sockets[0].messages.at(-1);
+    assert.equal(config.relay, true);
+    assert.deepEqual(config.iceServers[1].urls, ["turn:turn.cloudflare.com:3478"]);
+    assert.equal(JSON.stringify(config).includes("server-secret"), false);
+    assert.notEqual(sockets[1].messages.at(-1).type, "share-ice");
+    globalThis.fetch = async () => { throw new Error("offline"); };
+    await send({ type: "share-ice", shareId }, sockets[1]);
+    assert.equal(sockets[1].messages.at(-1).relay, false);
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test("quickly restarting a share reuses ICE configuration instead of throttling the host", async () => {
+  const { room, send, sockets } = await setup();
+  await send({ type: "share-start", requestId: "first" });
+  await send({ type: "share-ice", shareId: room._share().id });
+  await send({ type: "share-stop", shareId: room._share().id });
+  await send({ type: "share-start", requestId: "second" });
+  await send({ type: "share-ice", shareId: room._share().id });
+  assert.equal(sockets[0].messages.at(-1).type, "share-ice");
+  const count = room.shareIce.size;
+  assert.equal(count, 1);
+});
+
 test("play, pause, and paused seek broadcast authoritative state to both viewers", async () => {
   const { room, add, control, sockets } = await setup();
   await add();

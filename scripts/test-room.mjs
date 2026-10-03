@@ -35,7 +35,11 @@ async function connect(room = slug) {
     async sync() { return this.send({ type: "sync", requestId: crypto.randomUUID() }); },
     async close() {
       if (socket.readyState === WebSocket.CLOSED) return;
-      await new Promise(resolve => { socket.addEventListener("close", resolve, { once: true }); socket.close(1000, "Test complete"); });
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("Room socket did not finish closing: " + room + " (readyState " + socket.readyState + ")")), 10000);
+        socket.addEventListener("close", () => { clearTimeout(timer); resolve(); }, { once: true });
+        socket.close(1000, "Test complete");
+      });
     },
   };
   peers.push(peer);
@@ -155,7 +159,33 @@ try {
   assert.equal(state.currentIndex, -1);
   assert.equal(state.autoClear, true);
 
-  console.log("PASS: guest creation, member-room auth guard, origin checks, safe callback, real Cloudflare sockets, two-way controls, seeking, playlist selection, Auto-clear, queue edits, duplicate endings, late join, reconnect, and isolation");
+  // Sharing uses server-assigned socket identities and targeted signaling.
+  state = await rejoined.send({ type: "share-start", requestId: "integration-capture", audio: true });
+  const shareId = state.share.id;
+  assert.equal(state.share.hostId, rejoined.state.peerId);
+  assert.equal((await observer.sync()).share.id, shareId);
+  assert.equal((await isolated.sync()).share, null);
+  let mark = observer.messages.length;
+  observer.socket.send(JSON.stringify({ type: "share-ice", shareId }));
+  const ice = await observer.wait(message => message.type === "share-ice", mark);
+  assert.ok(ice.iceServers.length);
+  mark = rejoined.messages.length;
+  observer.socket.send(JSON.stringify({ type: "share-watch", connectionId: "connection-1", shareId }));
+  await rejoined.wait(message => message.type === "share-viewer", mark);
+  mark = observer.messages.length;
+  rejoined.socket.send(JSON.stringify({ type: "share-signal", connectionId: "connection-1", shareId, to: observer.state.peerId,
+    description: { type: "offer", sdp: "v=0\r\ns=integration\r\n" } }));
+  const signal = await observer.wait(message => message.type === "share-signal", mark);
+  assert.equal(signal.from, rejoined.state.peerId);
+  observer.socket.send(JSON.stringify({ type: "share-stop", shareId }));
+  assert.equal((await observer.sync()).share.id, shareId);
+  await rejoined.close();
+  assert.equal((await observer.sync()).share, null);
+
+  console.log("PASS: room auth/origin checks, real Cloudflare sockets, playback, queue edits, late joins, reconnects, isolation, tab-sharing ownership, targeted signaling, ICE configuration, and host departure");
+} catch (error) {
+  console.error("Integration failure:", error);
+  throw error;
 } finally {
   await Promise.all(peers.map(peer => peer.close()));
 }
