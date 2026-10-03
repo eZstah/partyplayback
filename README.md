@@ -49,6 +49,11 @@ automatically skip the video for everyone; use Next or remove that queue item.
 
 ## Sharing a browser tab
 
+Temporarily disabled. `TAB_SHARING_ENABLED` is set to `"false"` in
+`wrangler.json`: the sharing bar is hidden, the client does not initialize
+capture, and the server rejects sharing requests. Set it to `"true"` and deploy
+to restore the feature; the implementation and its tests are retained.
+
 In the main room, choose **Share a tab**, then **Choose a tab**. Select a browser
 tab containing TikTok, Instagram Reels, Shorts, or another video and enable
 **Share tab audio** in the browser picker. Start sharing from desktop Chrome or

@@ -16,12 +16,13 @@ if (slug.startsWith('m-') && !details) return Astro.redirect('/');
 const user = await verifiedUser(Astro);
 if (details?.mode === 'member' && !user) return Astro.redirect('/?signin=1&next=' + encodeURIComponent('/room/' + slug));
 const title = details?.title || slug;
+const tabSharingEnabled = Astro.locals.runtime.env.TAB_SHARING_ENABLED === 'true';
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 ---
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="theme-color" content="#181622"/><title>{title} — youple.tv</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"/><PortalArrival/></head>
-<body class="room-page" data-playback="idle" data-room={slug} data-user-name={user ? displayName(user) : ''}>
+<body class="room-page" data-playback="idle" data-room={slug} data-user-name={user ? displayName(user) : ''} data-tab-sharing-enabled={String(tabSharingEnabled)}>
   <script is:inline>
     try {
       const touchLayout = matchMedia("(max-width:600px), (max-width:900px) and (pointer:coarse)").matches;
@@ -37,7 +38,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
   </header>
   <main class="watch-layout">
     <section class="watch-column" aria-label="Watch together">
-      <div class="share-bar">
+      <div class="share-bar" hidden={!tabSharingEnabled}>
         <div class="share-copy"><strong id="share-heading">Watch anything together</strong><p id="share-hint" role="status">TikToks, Reels, Shorts — share a tab with sound.</p><p id="share-audio-note" hidden>No tab audio is being shared. To include sound, stop and select Share tab audio.</p></div>
         <div class="share-actions"><button id="share-start-btn" class="soft-button" type="button" disabled><Icon name="screen" size={18}/>Share a tab</button><button id="share-retry-btn" class="soft-button" type="button" hidden>Reconnect</button><button id="share-fullscreen-btn" class="icon-button" type="button" aria-label="Fullscreen shared tab" title="Fullscreen" hidden><Icon name="fullscreen"/></button><button id="share-stop-btn" class="soft-button share-stop" type="button" hidden>Stop sharing</button></div>
       </div>
