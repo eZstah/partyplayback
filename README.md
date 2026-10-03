@@ -165,9 +165,58 @@ requests periodic snapshots to correct drift, and reconnects after connection
 loss. Remote player events settle against the desired room state instead of
 being suppressed for a fixed number of milliseconds.
 
-The home page puts an inline Create room form beneath the youple.tv wordmark,
-with three animated mascot characters and a short explanation below. The home
-and room pages use larger readable labels, no navigation arrows or eyebrow
-labels, native accessible dialogs, local fonts and reduced-motion support.
-Mascot eyes follow pointer movement; playlist additions use the Web
-Animations API without replacing unchanged rows on every sync.
+## The cat simulation
+
+Miso is the caretaker, Mochi the instigator, and Pixel the critic. Their energy,
+trust, boredom and tension drive a shared director: music invites performances,
+long talking videos can send Pixel out of the room, and a snack dispute can lead
+to a chase which Miso breaks up. Petting earns trust; a trusting Miso stops fleeing
+the cursor. Stories have cooldowns and consequences rather than independent
+random animation timers.
+
+Open **Cat studio** on either page. Choose viewing energy, offer a toy mouse,
+share popcorn, start a squabble, trigger a screen-edge close-up, or let Mochi
+knock things over. Miso repairs the visual damage automatically. Escape cancels
+all choreography and brings everyone home. Cats can be petted with Enter/Space
+or dragged with pointer input; touch preserves vertical scrolling.
+
+**Wallpaper** gives the scene the viewport, a layered illustrated environment,
+and near/far character staging. In a room the synchronized video stays visible.
+The URL's `?wallpaper=1` parameter opens this view directly. This is a web wallpaper
+view; it does not install or configure an OS wallpaper application. Controls fade
+when idle and remain available through pointer or keyboard focus.
+
+Video context comes from the current title and playback state. It does **not**
+listen to YouTube audio, detect beats, inspect video frames or claim semantic
+understanding. Unknown titles remain unknown. The Video mood selector overrides
+the hint. Cat interactions are local to each viewer; the existing room timeline
+continues to synchronize video playback.
+
+### Architecture
+
+- `CatUniverse.astro` renders the fixed stage, vector environment and controls.
+- `cat-director.js` is DOM-independent personality, motivation, title classification
+  and a cancellable story clock. Time advances only with the live scene.
+- `cat-simulator.js` maps room events and viewer input into coordinated stories,
+  owns prop/effect cleanup, camera scale/rotation, and actor destinations.
+- `mascot-scene.js` runs one frame loop for articulated SVG actors, spring motion,
+  gaze and props. `mascot-motion.js` provides the pure motion primitives, priority
+  arbitration and constrained travel. World mode supports deliberate excursions
+  beyond the viewport; ordinary movement is clamped to its bounds.
+- `mascot-moves.js` holds normalized pose clips. Add a clip with a mood, duration
+  and pose frames; ordinary gestures finish at `REST`. Add story beats through
+  `StoryClock`, never free-running choreography timers.
+- Home/room adapters preserve the existing `observe`, `linkError`, and
+  `inviteCopied` integration points. Room snapshots also supply the video title.
+
+The simulation does not mutate queues, trigger controls, remove page elements or
+change playback. Interface mischief uses temporary Web Animations and removable
+scratch marks. Cancellation, calm mode, resize, hidden tabs, dialogs and teardown
+clear pending stories and restore visual effects. Reduced motion keeps static cats
+and expressions. Calm preference is shared across tabs. Browser page-cache returns
+resume from a resting scene rather than replaying a backlog.
+
+Tests cover motion independence, collision sweeps, action arbitration, title
+classification, role/need differences, story consequences, watch-mode limits,
+cooldowns and interruption. Browser validation covers wallpaper mode, cinematic
+entrances, coordinated stories, responsive controls and playback integration.

@@ -1,301 +1,111 @@
-
+/* Youple's little cinema club. Shared vector rig, distinct coats and expressions. */
 .mascot {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  --friend-light: #d8ffc9;
-  --friend: #aadf97;
-  --friend-shadow: #789d64;
-  animation: friend-bob 5s ease-in-out infinite;
-  transform-origin: 50% 90%;
+  --fur: #f4edda; --fur-line: #c8bba5; --bib: #fff8e8; --stripe: #d8cbb2;
+  --inner-ear: #e9acb4; --collar: #b8d9b0; --cat-ink: #44354e;
+  --look-x: 0px; --look-y: 0px;
+  position: relative; display: block; width: 100%; height: 100%; padding: 0;
+  border: 0; background: transparent; color: var(--cat-ink); transform-origin: 50% 85%;
 }
-.mascot.pink {
-  --friend-light: #ffe0e7;
-  --friend: #f4adc0;
-  --friend-shadow: #bd7699;
-  animation-delay: -2s;
-}
-.mascot.purple {
-  --friend-light: #e6dcff;
-  --friend: #b5a0e6;
-  --friend-shadow: #77649f;
-  animation-delay: -3s;
-}
-.mascot-body {
-  position: absolute;
-  inset: 8% 8% 15%;
-  border-radius: 48% 48% 42% 42%;
-  background: radial-gradient(ellipse at 35% 22%,var(--friend-light),var(--friend) 55%,var(--friend-shadow) 110%);
-  box-shadow: inset -8px -9px 20px #35273d0d,0 10px 18px #0001;
-}
-.mascot.pink .mascot-body {
-  border-radius: 45% 49% 44% 50%;
-  transform: rotate(-3deg);
-}
-.mascot.purple .mascot-body {
-  border-radius: 44% 49% 40% 47%;
-}
-.mascot-arm {
-  position: absolute;
-  width: 24%;
-  height: 36%;
-  top: 38%;
-  border-radius: 50%;
-  background: var(--friend);
-  transform-origin: 50% 85%;
-  z-index: 1;
-}
-.arm-left {
-  left: -1%;
-  transform: rotate(30deg);
-}
-.arm-right {
-  right: -2%;
-  transform: rotate(-35deg);
-  animation: arm-wave 5s ease-in-out infinite;
-}
-.mascot.pink .arm-right {
-  animation-delay: -2s;
-}
-.mascot-foot {
-  position: absolute;
-  width: 28%;
-  height: 17%;
-  bottom: 10%;
-  background: var(--friend-shadow);
-  border-radius: 50%;
-  z-index: -1;
-}
-.foot-left {
-  left: 18%;
-  transform: rotate(-12deg);
-}
-.foot-right {
-  right: 18%;
-  transform: rotate(12deg);
-}
-.mascot-face {
-  position: absolute;
-  left: 15%;
-  right: 15%;
-  top: 37%;
-  height: 42%;
-  color: #352c41;
-  display: flex;
-  justify-content: center;
-  gap: 20%;
-  align-items: start;
-}
-.mascot-eye {
-  width: 20%;
-  height: 35%;
-  max-width: 24px;
-  max-height: 35px;
-  background: #fffcf4;
-  border-radius: 50%;
-  position: relative;
-  overflow: hidden;
-  animation: eye-blink 7s infinite;
-}
-.mascot-eye i {
-  width: 53%;
-  height: 66%;
-  position: absolute;
-  top: 19%;
-  left: 26%;
-  background: #352c41;
-  border-radius: 50%;
-  transform: translate(var(--look-x),var(--look-y));
-  transition: transform .6s var(--ease);
-}
-.mascot-mouth {
-  position: absolute;
-  left: calc(50% - 19px);
-  top: 42%;
-  width: 38px;
-  transition: transform .3s;
-}
-.mascot.purple .mascot-face {
-  gap: 17%;
-}
-.mascot.purple .mascot-mouth {
-  width: 22px;
-  left: calc(50% - 11px);
-  top: 28%;
-}
-.cheek {
-  width: 18%;
-  height: 12%;
-  position: absolute;
-  top: 34%;
-  background: #ee8eb057;
-  border-radius: 50%;
-}
-.cheek-left {
-  left: 0;
-}
-.cheek-right {
-  right: 0;
-}
-.mascot-shadow {
-  position: absolute;
-  bottom: 1%;
-  left: 8%;
-  right: 8%;
-  height: 9%;
-  background: #0002;
-  filter: blur(6px);
-  border-radius: 50%;
-}
-.mascot-outfit {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  overflow: hidden;
-}
-.mascot-glasses {
-  position: absolute;
-  inset: -5% 0 auto;
-  width: 100%;
-  height: 48%;
-  overflow: visible;
-}
-.mascot-scarf {
-  position: absolute;
-  left: 0;
-  top: 58%;
-  width: 100%;
-  height: 42%;
-}
-.mascot-headphones {
-  position: absolute;
-  width: 110%;
-  height: 66%;
-  top: -6%;
-  left: -5%;
-  overflow: visible;
-}
-.mascot-flower {
-  position: absolute;
-  width: 20%;
-  height: 20%;
-  top: -8%;
-  left: 13%;
-  transform: rotate(-24deg);
-  z-index: 1;
-}
-.mascot-beanie {
-  position: absolute;
-  width: 104%;
-  height: 46%;
-  top: -16%;
-  left: -2%;
-  transform: rotate(-3deg);
-  overflow: visible;
-}
-.mascot-vest {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 42%;
-}
-@keyframes friend-bob {
-  0%,100% {
-    transform: translateY(0) rotate(-2deg);
-  }
-  50% {
-    transform: translateY(-12px) rotate(2deg);
-  }
-}
-@keyframes arm-wave {
-  0%,60%,100% {
-    transform: rotate(-35deg);
-  }
-  70%,90% {
-    transform: rotate(-65deg);
-  }
-  80% {
-    transform: rotate(-45deg);
-  }
-}
-@keyframes eye-blink {
-  0%,42%,46%,100% {
-    scale: 1 1;
-  }
-  44% {
-    scale: 1 .1;
-  }
-}
-.mascot-rig {
-  position: absolute;
-  inset: 0;
-  transform-origin: 50% 88%;
-}
-.mascot-mouth-o {
-  position: absolute;
-  left: calc(50% - 7px);
-  top: 44%;
-  width: 14px;
-  height: 16px;
-  border-radius: 50%;
-  background: #352c41;
-  opacity: 0;
-  scale: .3;
-  transition: opacity .18s ease,scale .25s var(--ease);
-}
-.mascot.purple .mascot-mouth-o {
-  width: 9px;
-  height: 10px;
-  left: calc(50% - 4.5px);
-  top: 30%;
-}
-.mascot-mouth,.cheek,.mascot-eye i {
-  transition: transform .6s var(--ease),opacity .2s ease,scale .25s var(--ease),background .3s ease;
-}
-/* Moods are set from script for a moment at a time. */
-.mascot.is-surprised .mascot-mouth,.mascot.is-sleepy .mascot-mouth { opacity: 0; }
-.mascot.is-surprised .mascot-mouth-o { opacity: 1; scale: 1; }
-.mascot.is-surprised .mascot-eye i { scale: .7; }
-.mascot.is-eager .mascot-eye i { scale: 1.18; }
-.mascot.is-eager .mascot-mouth { transform: scale(1.15); }
-.mascot.is-happy .cheek,.mascot.is-dizzy .cheek { background: #ee8eb0a8; scale: 1.15; }
-.mascot.is-happy .mascot-mouth { transform: scale(1.2,1.3); }
-.mascot.is-happy .mascot-eye,.mascot.is-sleepy .mascot-eye {
-  background: transparent;
-  overflow: visible;
-  animation: none;
-}
-.mascot.is-happy .mascot-eye i,.mascot.is-sleepy .mascot-eye i { opacity: 0; }
-.mascot.is-happy .mascot-eye::after,.mascot.is-sleepy .mascot-eye::after {
-  content: "";
-  position: absolute;
-  inset: 30% -4% 34%;
-  border: 3.5px solid #352c41;
-  border-bottom: 0;
-  border-radius: 50% 50% 0 0/100% 100% 0 0;
-}
-.mascot.is-sleepy .mascot-eye::after {
-  inset: 40% -4% 26%;
-  border: 3px solid #352c41;
-  border-top: 0;
-  border-radius: 0 0 50% 50%/0 0 100% 100%;
-}
-.mascot.is-sleepy .mascot-mouth-o { opacity: .75; scale: .55; }
-.mascot.is-dizzy .mascot-eye { animation: none; }
-.mascot.is-dizzy .mascot-eye i {
-  transform-origin: 50% 105%;
-  animation: eye-dizzy .45s linear infinite;
-}
-.mascot.is-dizzy .mascot-eye + .mascot-eye i { animation-direction: reverse; }
-.mascot-fx {
-  position: absolute;
-  z-index: 3;
-  pointer-events: none;
-  line-height: 1;
-  font-weight: 800;
-  will-change: transform,opacity;
-}
+.mascot.pink { --fur: #edba9b; --fur-line: #c18b74; --bib: #fff0d9; --stripe: #cc9276; --collar: #e9a7bc; }
+.mascot.purple { --fur: #bcb0d9; --fur-line: #8e80b0; --bib: #e7dff3; --stripe: #9683bd; --collar: #c2dcae; }
+.mascot-rig { position: absolute; display: block; inset: 0; transform-origin: 50% 85%; }
+.cat-art { display: block; width: 100%; height: 100%; overflow: visible; user-select: none; }
+.cat-ground { fill: #0e0b18; opacity: .3; }
+.cat-fur { fill: var(--fur); }
+.cat-outline { stroke: var(--fur-line); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.cat-bib,.cat-muzzle { fill: var(--bib); }
+.cat-ear-inner { fill: var(--inner-ear); }
+.cat-forehead { fill: none; stroke: var(--stripe); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.mint .cat-forehead { stroke-width: 3; opacity: .6; }
+.cat-tail { fill: none; stroke: var(--fur); stroke-width: 15; stroke-linecap: round; transform-origin: 127px 180px; }
+.cat-detail { fill: none; stroke: var(--fur-line); stroke-width: 2; stroke-linecap: round; }
+.cat-collar { fill: var(--collar); }
+.cat-tag circle { fill: #f5ce87; stroke: #bfa070; stroke-width: 1.5; }
+.cat-tag path { fill: #66506a; }
+.cat-blush { fill: var(--inner-ear); opacity: .55; }
+.cat-whiskers { stroke: var(--fur-line); stroke-width: 2; stroke-linecap: round; }
+.cat-head { transform-origin: 90px 123px; transition: transform .35s ease; }
+.cat-ear-left { transform-origin: 52px 65px; }
+.cat-ear-right { transform-origin: 129px 65px; }
+.cat-arm-left { transform-origin: 59px 139px; }
+.cat-arm-right { transform-origin: 120px 139px; }
+.cat-eyes { fill: var(--cat-ink); transform-origin: 90px 83px; }
+.cat-eye-white { fill: #fffcf1; stroke: var(--cat-ink); stroke-width: 2; }
+.cat-pupils { transform: translate(var(--look-x),var(--look-y)); transition: transform .18s ease-out; }
+.cat-eye-shine { fill: #fffcf1; }
+.cat-nose { fill: #b87888; stroke: #b87888; stroke-width: 2; stroke-linejoin: round; }
+.cat-brows,.cat-mouth { fill: none; stroke: var(--cat-ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.cat-mouth-open { fill: var(--cat-ink); }
+.cat-tongue { fill: #e9a0b3; }
+.cat-tear { fill: #abcdd3; opacity: .85; }
+.cat-expression,.cat-snack,.cat-delight { display: none; }
+.mascot[data-face=pleading] .face-pleading,
+.mascot[data-face=watching] .face-watching,
+.mascot[data-face=side-eye] .face-side-eye,
+.mascot[data-face=sparkle] .face-sparkle,
+.mascot[data-face=joy] .face-joy,
+.mascot[data-face=scream] .face-scream,
+.mascot[data-face=dizzy] .face-dizzy,
+.mascot[data-face=sleepy] .face-sleepy,
+.mascot[data-face=snack] .face-snack { display: inline; }
+.mascot[data-face=snack] .cat-snack { display: inline; }
+.cat-delight { fill: #f5ce87; stroke: #f5ce87; stroke-width: 2.5; stroke-linecap: round; }
+.mascot[data-face=joy] .cat-delight { display: inline; animation: cat-twinkle .8s ease-in-out 3; }
+.mascot[data-face=joy] .cat-head { animation: cat-bop .48s ease-in-out 5; }
+.mascot[data-face=joy] .cat-arm-left { animation: cat-paws .48s ease-in-out 5 alternate; }
+.mascot[data-face=joy] .cat-arm-right { animation: cat-paws .48s ease-in-out 5 alternate-reverse; }
+.mascot[data-face=joy] .cat-tail { animation: cat-tail-wag .48s ease-in-out 5; }
+.mascot[data-face=sparkle] .cat-head { transform: translateY(-3px) rotate(-4deg); }
+.mascot[data-face=sparkle] .cat-ear-right { animation: cat-ear-flick .65s ease-in-out 2; }
+.mascot[data-face=scream] .cat-head { animation: cat-gasp .55s ease-out both; }
+.mascot[data-face=scream] .cat-arm-left { transform: rotate(110deg); }
+.mascot[data-face=scream] .cat-arm-right { transform: rotate(-110deg); }
+.mascot[data-face=dizzy] .cat-head { animation: cat-wobble .5s ease-in-out 4; }
+.mascot[data-face=sleepy] .cat-head { transform: translateY(5px) rotate(7deg); }
+.mascot[data-face=snack] .cat-head { animation: cat-chew .35s ease-in-out 6; }
+.mascot[data-face=snack] .cat-arm-left { transform: rotate(-26deg); }
+.mascot[data-face=snack] .cat-arm-right { transform: rotate(26deg); }
+.cast-member .mascot[data-reaction=idle] .cat-eyes { animation: cat-blink 6.7s linear infinite; }
+.cast-pink .mascot[data-reaction=idle] .cat-eyes { animation-delay: -2.2s; }
+.cast-purple .mascot[data-reaction=idle] .cat-eyes { animation-delay: -4.1s; }
+.mascot-fx { position: absolute; z-index: 3; pointer-events: none; line-height: 1; font-weight: 800; will-change: transform,opacity; }
 .mascot-fx svg { display: block; width: 100%; overflow: visible; }
-@keyframes eye-dizzy { to { rotate: 360deg; } }
-@media(prefers-reduced-motion: reduce) { .mascot,.mascot-arm,.mascot-eye,.mascot.is-dizzy .mascot-eye i { animation: none!important; } .mascot-eye i { transition: none; } }
+@keyframes cat-blink { 0%,43%,47%,100% { transform: scaleY(1); } 45% { transform: scaleY(.08); } }
+@keyframes cat-bop { 0%,100% { transform: rotate(-5deg); } 50% { transform: translateY(3px) rotate(5deg); } }
+@keyframes cat-paws { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+@keyframes cat-tail-wag { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(9deg); } }
+@keyframes cat-ear-flick { 0%,100% { transform: rotate(0); } 50% { transform: rotate(13deg); } }
+@keyframes cat-gasp { 0% { transform: translateY(3px) scale(.95); } 45% { transform: translateY(-7px) scale(1.07); } 100% { transform: translateY(-3px); } }
+@keyframes cat-wobble { 0%,100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
+@keyframes cat-chew { 0%,100% { transform: scale(1); } 50% { transform: translateY(2px) scale(1.035,.98); } }
+@keyframes cat-twinkle { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+/* Room reactions read as portraits at 38-62px, with no activity over the video. */
+.room-pal .cat-art { transform: translateY(14%) scale(1.28); transform-origin: 50% 0; }
+.room-pal .mascot-rig { overflow: hidden; }
+.room-pal .cat-body,.room-pal .cat-ground,.room-pal .cat-delight { display: none; }
+.room-pal .cat-head { transform-origin: 90px 90px; }
+@media(prefers-reduced-motion:reduce) {
+  .mascot * { animation: none!important; transition: none!important; }
+  .mascot .cat-pupils { transform: none; }
+}
+
+/* A single controller owns joint transforms; legacy CSS is a no-JS fallback. */
+.mascot[data-rig=active] * { animation: none !important; transition: none; }
+.cat-motion { transform-origin: 90px 195px; }
+.cat-foot-left { transform-origin: 62px 181px; }
+.cat-foot-right { transform-origin: 120px 181px; }
+.cat-ground { transform-origin: 90px 199px; }
+.cast-member .mascot[data-rig=active] { cursor: grab; touch-action: pan-y pinch-zoom; }
+.cast-member .mascot.is-carried { cursor: grabbing; }
+.cast-member:has(.is-carried) { z-index: 3; }
+.cast-member .mascot[data-rig=active]:hover .mascot-rig { scale: 1; }
+.cat-projectile { position: absolute; z-index: 5; width: 22px; height: 22px; margin: -11px; pointer-events: none; }
+.cat-projectile svg { width: 100%; height: 100%; }
+/* Full bodies stay visible in the empty player and queue. Only the compact
+   playback caption uses a portrait, keeping the film itself unobstructed. */
+.room-pal:not(.corner-pal) .cat-art { transform: none; }
+.room-pal:not(.corner-pal) .mascot-rig { overflow: visible; }
+.room-pal:not(.corner-pal) .cat-body,.room-pal:not(.corner-pal) .cat-ground { display: inline; }
+.room-pal:not(.corner-pal) .cat-head { transform-origin: 90px 123px; }
+.room-pal .mascot { cursor: pointer; border-radius: 16px; }
+.cat-art { pointer-events: none; }

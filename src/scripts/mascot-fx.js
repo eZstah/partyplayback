@@ -1,4 +1,5 @@
 // Shared bits for the mascots on the home page and in rooms.
+import { showCatFace } from './cat-reactions.js';
 
 const ART = {
   note: '<svg viewBox="0 0 32 44" fill="none"><path d="M17 33V5c0 11 15 6 10 19" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><ellipse cx="10" cy="34" rx="9" ry="6" fill="currentColor" transform="rotate(-20 10 34)"/></svg>',
@@ -35,14 +36,19 @@ export function setLook(mascot, look) {
   mascot.style.setProperty("--look-y", look.y + "px");
 }
 
-const MOODS = ["is-surprised", "is-happy", "is-sleepy", "is-dizzy", "is-eager"];
+const MOODS = ["is-surprised", "is-happy", "is-sleepy", "is-dizzy", "is-eager", "is-error", "is-paused", "is-snack", "is-annoyed"];
 const moodTimers = new WeakMap();
+export function setBaseMood(mascot, mood = 'idle') {
+  mascot.dataset.baseMood = mood;
+  if (!MOODS.some(name => mascot.classList.contains(name))) showCatFace(mascot, mood);
+}
 /** Shows a face for a while; without a duration it stays until replaced. */
 export function setMood(mascot, mood, duration) {
   clearTimeout(moodTimers.get(mascot));
   mascot.classList.remove(...MOODS);
   if (mood) mascot.classList.add("is-" + mood);
-  if (mood && duration) moodTimers.set(mascot, setTimeout(() => mascot.classList.remove("is-" + mood), duration));
+  showCatFace(mascot, mood || mascot.dataset.baseMood || 'idle');
+  if (mood && duration) moodTimers.set(mascot, setTimeout(() => setMood(mascot, null), duration));
 }
 
 export function animate(element, keyframes, options) {
@@ -61,8 +67,8 @@ export function hop(mascot, height = 14) {
 }
 
 export function wave(mascot, times = 2) {
-  return animate(mascot.querySelector(".arm-right"), [
-    { transform: "rotate(-35deg)" }, { transform: "rotate(-80deg)" }, { transform: "rotate(-55deg)" }, { transform: "rotate(-80deg)" }, { transform: "rotate(-35deg)" },
+  return animate(mascot.querySelector(".cat-arm-right"), [
+    { transform: "rotate(0deg)" }, { transform: "rotate(-115deg)" }, { transform: "rotate(-85deg)" }, { transform: "rotate(-115deg)" }, { transform: "rotate(0deg)" },
   ], { duration: 520 * times, iterations: 1 });
 }
 

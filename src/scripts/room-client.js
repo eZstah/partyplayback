@@ -288,7 +288,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
 
   function render() {
     renderPeople(room.members);
-    pals.observe({ users: room.userCount, queue: room.queue.length, current: room.queue[room.currentIndex]?.id ?? null });
+    pals.observe({ users: room.userCount, queue: room.queue.length, current: room.queue[room.currentIndex]?.id ?? null, title: room.queue[room.currentIndex]?.title || '' });
     const signature = JSON.stringify([room.queue, room.currentIndex]);
     if (signature !== queueSignature) {
     queueSignature = signature;
@@ -434,6 +434,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     addForm.dataset.invalid = String(!!message);
     if (message) {
       urlInput.focus();
+      pals.linkError(message);
       linkFeedbackTimer = setTimeout(hideLinkFeedback, 4000);
     }
   }
@@ -561,6 +562,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   let copyingInvite = false, inviteTimer, copiedTimer;
   // Copy confirmations pop up mid-screen so nobody misses that the link is ready to paste.
   function showCopiedInvite(message = "Paste it anywhere to invite friends.") {
+    pals.inviteCopied();
     clearTimeout(inviteTimer);
     $("invite-icon").hidden = true;
     $("invite-success-icon").hidden = false;
