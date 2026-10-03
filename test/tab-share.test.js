@@ -3,6 +3,50 @@ import assert from "node:assert/strict";
 import { TabShare } from "../src/lib/tab-share.js";
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
+
+test("no broadcast while selecting an area; cancellation aborts capture preparation", async () => {
+  let signal;
+  const { share, sent, errors } = setup(options => new Promise((resolve, reject) => {
+    signal = options.signal;
+    signal.addEventListener("abort", () => reject(new DOMException("Cancelled", "AbortError")));
+  }));
+  const starting = share.start();
+  assert.equal(sent.length, 0);
+  share.disconnect();
+  await starting;
+  assert.equal(signal.aborted, true);
+  assert.deepEqual(errors, []);
+});
+
+test("stopping a cropped broadcast releases its source and worker once", async () => {
+  const output = media(), source = media();
+  let releases = 0;
+  const { share, active, ice, peers } = setup(async () => ({ stream: output, stop: () => {
+    releases++; source.track.stop(); output.track.stop();
+  } }));
+  await share.start();
+  share.update({ peerId: "self", share: active() });
+  await ice(); await flush();
+  await share.handle({ type: "share-viewer", shareId: "capture-1", peerId: "viewer", connectionId: "cropped" });
+  assert.deepEqual(peers[0].tracks, [output.track]);
+  assert.ok(!peers[0].tracks.includes(source.track));
+  share.stop(); share.disconnect();
+  assert.equal(source.track.readyState, "ended");
+  assert.equal(releases, 1);
+});
+
+test("late cropped preparation after cancellation runs its full cleanup", async () => {
+  let finish, releases = 0;
+  const output = media();
+  const { share, sent } = setup(() => new Promise(resolve => { finish = resolve; }));
+  const starting = share.start();
+  share.stop();
+  finish({ stream: output, stop: () => { releases++; output.track.stop(); } });
+  await starting;
+  assert.equal(releases, 1);
+  assert.equal(sent.length, 0);
+  assert.equal(output.track.readyState, "ended");
+});
 function media() {
   const track = new EventTarget();
   Object.assign(track, { readyState: "live", stop() { this.readyState = "ended"; } });

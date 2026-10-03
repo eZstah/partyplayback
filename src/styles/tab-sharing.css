@@ -19,6 +19,21 @@
 .share-bar [hidden],.shared-screen[hidden],.share-message[hidden],.share-message [hidden] { display:none; }
 body.cat-wallpaper .share-bar,body.cat-wallpaper #shared-screen { display:none; }
 body.cat-wallpaper.tab-sharing #player-wrap { display:block; }
+.dialog.share-area-dialog { width:min(820px,94vw); max-width:820px; max-height:94dvh; overflow:auto; padding:28px; }
+.dialog.share-area-dialog h2 { margin:0 36px 12px 0; }
+.share-area-toolbar,.share-area-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.share-area-toolbar { margin:18px 0 12px; }
+.share-area-toolbar > div { display:flex; gap:8px; }
+.share-area-toolbar .soft-button { padding:8px 12px; font-size:13px; }
+.share-area-toolbar output { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.share-area-surface { position:relative; overflow:hidden; width:100%; margin-inline:auto; background:#060709; touch-action:none; cursor:crosshair; border-radius:8px; }
+#share-area-preview { display:block; width:100%; height:100%; pointer-events:none; }
+.share-area-box { position:absolute; border:2px solid var(--accent); box-shadow:0 0 0 2000px #060709a8; cursor:move; }
+.share-area-box:focus-visible { outline:2px solid #fff; outline-offset:3px; }
+.share-area-box > span { position:absolute; top:8px; left:8px; background:#181622df; color:#fff; font-size:11px; padding:4px 7px; border-radius:4px; white-space:nowrap; pointer-events:none; }
+.share-area-box > i { position:absolute; right:-6px; bottom:-6px; width:22px; height:22px; background:var(--accent); border:3px solid #181622; border-radius:5px; cursor:nwse-resize; }
+.dialog .share-area-note { font-size:12px; line-height:1.5; margin:12px 0; }
+.share-area-actions { margin-top:20px; }
 .room-shell:fullscreen .share-bar { flex-shrink:0; margin:0; padding:10px 20px; }
 .tab-sharing .room-shell:fullscreen { display:grid; grid-template-rows:auto minmax(0,1fr); }
 .tab-sharing .room-shell:fullscreen .room-nav { position:static; background:var(--bg); }
@@ -26,6 +41,8 @@ body.cat-wallpaper.tab-sharing #player-wrap { display:block; }
 .room-shell:fullscreen .watch-column:has(.shared-screen:not([hidden])) { display:flex; flex-direction:column; }
 .room-shell:fullscreen .watch-column:has(.shared-screen:not([hidden])) #stage { flex:1; min-height:0; }
 @media(max-width:700px) {
+  .dialog.share-area-dialog { padding:24px 16px 16px; }
+  .share-area-actions { flex-wrap:wrap; }
   .share-bar { align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
   .share-copy { flex:1 1 190px; }
   .share-copy strong { font-size:15px; }
