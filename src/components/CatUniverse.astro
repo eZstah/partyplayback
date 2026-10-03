@@ -1,14 +1,9 @@
 ---
 import '../styles/cat-universe.css';
+import CatHabitat from './CatHabitat.astro';
 ---
 <div id="cat-universe" hidden>
-  <div class="cat-habitat" aria-hidden="true">
-    <div class="habitat-halo"></div><div class="habitat-moon"></div>
-    <svg class="habitat-stars" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice"><g fill="#e8dff5">{Array.from({length:38},(_,i)=><circle cx={(i*337+41)%1440} cy={(i*127+39)%680} r={i%4===0?2:1} opacity={.2+i%4*.13}/>)}</g><g stroke="#b7a0e4" stroke-width="1.5" fill="none"><path d="M1220 115v18m-9-9h18M208 221v12m-6-6h12M976 60v12m-6-6h12"/><path d="M99 450Q440 100 789 218T1430 170" opacity=".12"/></g></svg>
-    <div class="habitat-floor"></div><div class="habitat-rug"></div>
-    <svg class="habitat-plant" viewBox="0 0 150 280"><g fill="none" stroke="#aca0bf" stroke-width="4" stroke-linecap="round"><path d="M78 215Q63 150 89 50M77 191Q103 135 128 122M76 164Q39 129 23 93"/></g><g fill="#8f9f91"><ellipse cx="88" cy="63" rx="14" ry="36" transform="rotate(16 88 63)"/><ellipse cx="35" cy="109" rx="14" ry="35" transform="rotate(-40 35 109)"/><ellipse cx="112" cy="140" rx="14" ry="35" transform="rotate(38 112 140)"/></g><path d="m48 210 9 63h46l11-63Z" fill="#c69f9e"/><ellipse cx="81" cy="210" rx="33" ry="7" fill="#dbb3b0"/></svg>
-    <div class="habitat-sign"><strong>youple.tv</strong><span>Bean lives here. you’re visiting.</span></div>
-  </div>
+  <CatHabitat/>
   <div id="cat-world"><canvas id="cat-canvas" aria-hidden="true"></canvas></div>
   <div class="cat-dock">
     <section id="cat-panel" class="cat-panel" role="menu" aria-label="Bean" hidden>

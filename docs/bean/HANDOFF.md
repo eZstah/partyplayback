@@ -31,6 +31,20 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## Aquarium becomes Bean's room (Claude)
+
+Konstantin asked for Aquarium to have big, interesting things to climb, jump
+between and hide behind; before this, Bean only had an empty floor there.
+`CatHabitat.astro` now furnishes it: a cat tree (cubby, two decks, a bed on
+top), a sofa, a cardboard box, a big TV on a cabinet, a tall bookshelf with a
+shelf to sit on, a window sill, a wall shelf, a yarn ball and a toy mouse. In a
+room, the real player is the big block, framed by the cat tree and bookshelf.
+Checked in the browser: climbing the bookshelf, jumping TV to shelf, hiding and
+peeking behind the TV and the box, napping on shelves, butterfly hunts across the
+furniture, no page errors. A 4-minute unscripted session moved 21% of the time,
+more than the normal page (9%), which fits Aquarium being the place to play.
+Next steps are in ROADMAP.md under 4a.
+
 ## Calm idle pacing and browser checks (Claude, pull request on rc.2)
 
 Konstantin's standing direction (see VISION.md): Bean is calm by default. Real

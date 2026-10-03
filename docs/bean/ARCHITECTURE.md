@@ -184,6 +184,33 @@ Screen-edge refusals retain the peek while acting, then duck behind that same
 edge. They arm cleanup immediately so interruption before the next frame cannot
 leave a phantom peek, gesture or pickup bubble.
 
+## Aquarium furniture
+
+Aquarium mode is Bean's own room (`src/components/CatHabitat.astro`, styled in
+`src/styles/cat-habitat.css`). On a normal page Bean uses the page's cards and
+words; in Aquarium `measure()` ignores the page and calls `measureHabitat()`,
+which turns marked furniture into the same surfaces:
+
+- `data-perch="solid"`: an opaque piece. Bean can climb it from the floor, sit
+  on top, hide behind it, peek over or around it, and it masks him when he is
+  further back in the room.
+- `data-perch="shelf"`: a platform to jump onto and rest on.
+- `data-toy`: something to knock about.
+- In a room the real player (`#stage`) also counts as a solid, so it becomes
+  the biggest block to climb.
+
+The room has depth. Furniture stands against the back at 87vh (`--floor: 13vh`),
+which is the aquarium floor's `zBehind` line in `floor()`. Bean walks in front
+of it, and anything deeper than that line is drawn behind the furniture. The
+deepest floor (82vh) is where the wall meets the floorboards. If you change one
+of these numbers, change the other side too.
+
+To add a prop, add markup with `data-perch` and position it with `--u` (a unit
+that keeps proportions at any window size). Keep platforms within reach of
+each other: a jump covers about 430 px across and 330 px up at 1440×900. Use
+`?catdebug&wallpaper=1` and `youpleCats.measure()` to see what Bean perceives,
+and `youpleCats.play('Bean', 'explore')` or `'hide'` to try it.
+
 ## Where to add an improvement
 
 - **Look or proportions:** extend the Bean definition and `CatBody`. Preserve

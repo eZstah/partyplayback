@@ -186,7 +186,9 @@ In rooms he watches the video and responds to playback and title hints.
 Stroke Bean with the cursor to pet him, click to boop, drag to pick him up,
 double-click empty space to drop a treat, or use the laser in the **Bean** panel.
 The panel shows his activity, mood, trust and diary. His memory is saved in
-`localStorage`. **Aquarium** (`?wallpaper=1`) gives him the whole screen.
+`localStorage`. **Aquarium** (`?wallpaper=1`) gives him his own room to play in:
+a cat tree, a sofa, a box, a big TV, a bookshelf and a window sill to climb,
+jump between and hide behind.
 
 The roaming cat is desktop only. Phones and touch-first screens show one
 static black cat instead. The wordmark stays plain on every screen.
