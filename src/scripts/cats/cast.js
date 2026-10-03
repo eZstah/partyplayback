@@ -80,11 +80,16 @@ export const CAST = {
     // Seconds between starts, plus the attention each unsolicited spectacle costs.
     // Recovery happens during quieter activities, so antics have breathing room.
     pacing: {
-      cooldowns: { glass: 210, leave: 240, hide: 100, knock: 110, dance: 100, zoomies: 135,
-        stalk: 55, approach: 40, stare: 60, explore: 40, hunt: 70 },
+      cooldowns: { glass: 210, leave: 240, hide: 100, knock: 110, dance: 100, zoomies: 1200,
+        stalk: 55, approach: 40, stare: 60, explore: 150, hunt: 70 },
       attentionCost: { glass: 1, leave: .9, hide: .6, knock: .7, dance: .65,
         zoomies: .85, stalk: .55, hunt: .65, explore: .2 },
       videoRecovery: 120, idleRecovery: 35,
+      // Calm by default (Konstantin, 2026-10-03): a real cat rests most of the day and is
+      // found mid-nap on a fresh page. Without an invitation, energy builds slowly
+      // (drift), sleep drains slowly (restDrain), rests last longer (restScale) and
+      // screen-crossing activities are scaled down (busy). Invited play is unaffected.
+      calm: { startSleepy: 50, drift: .35, restDrain: .3, restScale: 2, busy: .5 },
     },
     look: {
       size: .7, fur: '#3E3749', shade: '#2E2836', belly: '#F7F1E6', stripe: null, ear: '#E9A7B4', nose: '#E98A9B',

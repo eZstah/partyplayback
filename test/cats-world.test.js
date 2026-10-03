@@ -101,6 +101,20 @@ test('returning visitors keep Bean memory without reviving the other cats', t =>
   assert.equal(fixture.memory().cats.mint.trust, 31, 'dormant memories are preserved');
 });
 
+test('a returning visitor finds Bean resting where it was, not walking across the page', t => {
+  for (const seed of [1, 2, 3, 4, 5, 6]) {
+    const fixture = habitat(t, { visits: 3, lastSeen: Date.now() - 60e3 });
+    const world = bootCats({ seed }), bean = world.cats[0];
+    try {
+      assert.ok(['sleep', 'loaf'].includes(bean.mind.activity), `seed ${seed}: ${bean.mind.activity}`);
+      const x = bean.body.x, gy = bean.body.gy;
+      for (let i = 0; i < 200; i++) fixture.advance(50);
+      assert.ok(['sleep', 'loaf'].includes(bean.mind.activity), `seed ${seed}: still resting after 10 s`);
+      assert.ok(Math.hypot(bean.body.x - x, bean.body.gy - gy) < 2, `seed ${seed}: Bean did not move`);
+    } finally { world.destroy(); }
+  }
+});
+
 test('phones use the static fallback without starting a second cat world', t => {
   const fixture = habitat(t, {}, true);
   assert.deepEqual(bootCats().cats, []);
@@ -348,6 +362,7 @@ test('nearby cursor curiosity requires a deliberate pause outside real controls'
     bean.at = { kind: 'floor' }; bean.body.x = 400;
     world.world.nextCritter = Infinity;
     bean.mind.choose = () => ({ type: 'sit', partner: null });
+    bean.plan = null; // skip the opening nap so the mocked choice runs
     fixture.advance(0);
     for (let i = 0; i < 200; i++) fixture.advance(50);
     const move = (x, ui) => document.emit('pointermove', {

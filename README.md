@@ -174,6 +174,8 @@ current agent handoff. The page integration boundary is `cats/index.js`.
 Bean, a curious black tuxedo kitten, is the only resident on youple.tv. His
 sleepy, playful, lonely, curious and hungry drives rise and fall with what he
 does and the time of day. Weighted choices decide what he wants to do next.
+He is calm by default: you usually find him asleep or loafing, and his trips
+across the screen are rare enough to feel like events.
 
 The page is his world. Bean walks a perspective floor, jumps onto cards and
 headings, climbs panels, hides behind them, peeks around screen edges, leaves

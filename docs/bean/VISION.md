@@ -80,12 +80,21 @@ faces and were rejected. Do not revive that direction as part of a motion or
 engine task. Dormant cast definitions and old saved memories are compatibility
 data, not permission to bring the other cats back.
 
+Bean is **calm by default** (Konstantin, 2026-10-03). Real cats rest most of
+the day, so a fresh page finds Bean asleep or loafing, never walking or doing
+zoomies on load. Unprompted trips across the screen are rare enough to feel like
+events; most of the time Bean is resting or out of sight. When Bean rests on the
+way to sleep, it dozes off where it is. Invited play (petting, the Hello button,
+treats, the laser) keeps its full energy. `cast.pacing.calm` holds the numbers and
+`test/cat-pacing.test.js` guards them; changing that feel needs Konstantin's say.
+
 Prefer the existing site's cozy colors and soft visual character. Improve
 silhouette, volume, expression and motion through visible comparisons rather
 than swapping in unrelated GIFs, a new art style, or photorealistic eyes.
 
-The current work is **local only**. Do not commit, push or deploy without a new
-user instruction authorizing it.
+Every merge to `main` deploys youple.tv automatically (Cloudflare Workers
+Builds). So open a pull request for each increment and let Konstantin merge it;
+do not push to `main` directly.
 
 ## How to judge an improvement
 

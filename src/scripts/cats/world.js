@@ -77,7 +77,7 @@ export function bootCats({ seed } = {}) {
   // ---------- world state ----------
   const W = { w: innerWidth, h: innerHeight, dpr: 1, aquarium: false, calm: !!saved.calm, laser: false, time: 0,
     pointer: null, overUI: false, idleSince: clock(), controls: [], text: [], solids: [], ledges: [], toys: [], rectsAt: -1,
-    treat: null, critter: null, nextCritter: 25 + random() * 40, particles: [], glass: [], speechAt: 0,
+    treat: null, critter: null, nextCritter: 60 + random() * 90, particles: [], glass: [], speechAt: 0,
     playing: false, title: '', vibe: 'unknown', users: null, hovered: null, press: null, drag: null, petDist: 0,
     invitedUntil: 0, attentionReadyAt: 8 };
 
@@ -517,6 +517,8 @@ export function bootCats({ seed } = {}) {
   // Ambient life while doing something calm: glance at things, flick ears and tail.
   function fidget(cat) {
     const b = cat.body;
+    // A passing butterfly holds a resting cat's eyes.
+    if (W.critter && !W.critter.gone && cat.mind.activity !== 'sleep') { b.look = { x: W.critter.x, y: W.critter.y }; return; }
     if (W.time > cat.nextGlance) {
       cat.nextGlance = W.time + 4 + random() * 5;
       const others = cats.filter(o => o !== cat && o.at.kind !== 'away');
@@ -547,6 +549,9 @@ export function bootCats({ seed } = {}) {
     b.reset({ [base]: 1, tailWrap: base === 'sit' ? 1 : .5, ...(l && l.kind !== 'word' && base === 'loaf' ? { tailHang: 1 } : {}) });
   }
 
+  // Calm pacing stretches rests; invited play keeps its normal rhythm.
+  const restScale = cat => (W.time >= W.invitedUntil && cat.mind.cast.pacing?.calm?.restScale) || 1;
+
   // ----- activities -----
   const A = {
     *greet(cat, key = 'greet') {
@@ -558,23 +563,28 @@ export function bootCats({ seed } = {}) {
       yield* wait(2.5); b.set({ headRoll: .08 }); yield* wait(1.2);
       b.set({ headRoll: 0 });
     },
-    *sit(cat, seconds = 9 + random() * 12) {
+    *sit(cat, seconds = (9 + random() * 12) * restScale(cat)) {
       restPose(cat, 'sit'); cat.body.set({ eyes: .88, pupil: .68 }); let t = 0;
       while (t < seconds) { const dt = yield; t += dt; fidget(cat); }
     },
     *loaf(cat) {
-      restPose(cat, 'loaf'); cat.body.set({ eyes: .65, pupil: .65, tailWag: .06 }); let t = 0; const seconds = 18 + random() * 18;
+      restPose(cat, 'loaf'); cat.body.set({ eyes: .65, pupil: .65, tailWag: .06 }); let t = 0; const seconds = (18 + random() * 18) * restScale(cat);
       while (t < seconds) {
         const dt = yield; t += dt; fidget(cat);
         // Quiet eye contact uses the rig's slow blink instead of a bubble.
       }
     },
-    *sleep(cat) {
-      if (random() < .2 && W.solids.length) { if (yield* A.hide(cat, true)) return; }
-      const spot = findSpot(cat, { where: random() < .55 ? 'ledge' : 'floor' });
-      yield* travel(cat, spot, walkSpeed(cat) * .8);
+    // here: already where it wants to be (a fresh page finds Bean mid-nap).
+    *sleep(cat, here = false) {
+      // Usually a resting cat just dozes off where it is.
+      if (!here && ['loaf', 'sit', 'watch'].includes(cat.mind.last[0]) && ['floor', 'ledge'].includes(cat.at.kind) && random() < .7) here = true;
+      if (!here) {
+        if (random() < .2 && W.solids.length) { if (yield* A.hide(cat, true)) return; }
+        const spot = findSpot(cat, { where: random() < .55 ? 'ledge' : 'floor' });
+        yield* travel(cat, spot, walkSpeed(cat) * .8);
+      }
       yield* settleToSleep(cat);
-      let t = 0; const max = 25 + random() * 60;
+      let t = 0; const max = (25 + random() * 60) * restScale(cat);
       while (W.calm || (t < max && cat.mind.drives.sleepy > 6)) {
         const dt = yield; t += dt;
         if (random() < dt * .35) particle('z', cat.body.top.x + 8, cat.body.top.y + 6, { rise: 18, life: 2.4, size: 12 + random() * 6, color: '#cbbbe8' });
@@ -1164,7 +1174,8 @@ export function bootCats({ seed } = {}) {
     return {
       playing: W.playing, vibe: W.vibe, day: dayRhythm(new Date().getHours()), others, reduced: reduced(), calm: W.calm,
       cursor: !!W.pointer && !W.overUI && clock() - W.pointer.t < 15000,
-      cursorDwell: W.pointer && !W.overUI ? (clock() - (W.pointer.stillSince ?? clock())) / 1000 : 0,
+      // A still cursor is an invitation only near Bean, not anywhere on the page.
+      cursorDwell: W.pointer && !W.overUI && Math.hypot(W.pointer.x - cat.body.x, W.pointer.y - cat.body.gy) < 380 * S() ? (clock() - (W.pointer.stillSince ?? clock())) / 1000 : 0,
       invitedPlay: W.time < W.invitedUntil, laser: W.laser && !!W.pointer,
       treat: !!W.treat && !W.treat.eaten, critter: !!W.critter && !W.critter.flee, shelves: W.ledges.length > 0,
       hideouts: W.solids.some(l => l.rect.height > 150 && onScreen(l.rect)), toys: W.toys.length > 0,
@@ -1358,7 +1369,7 @@ export function bootCats({ seed } = {}) {
     W.pointer = { x, y, t: now, inputAt, speed: dist / dtm,
       stillSince: steady ? prev.stillSince : now, anchorX: steady ? prev.anchorX : x, anchorY: steady ? prev.anchorY : y };
     W.overUI = overUI;
-    if (W.drag) { e.preventDefault?.(); return; }
+    if (W.drag) return; // passive listener: dragging needs no preventDefault
     if (W.press && Math.hypot(x - W.press.x, y - W.press.y) > 8 && W.press.cat) { startCarry(W.press.cat); W.press = null; return; }
     const hovered = !W.overUI && !e.target?.closest?.('dialog') ? catAt(x, y) : null;
     if (hovered !== W.hovered) { W.hovered = hovered; W.petDist = 0; document.documentElement.classList.toggle('cat-hover', !!hovered); }
@@ -1431,11 +1442,13 @@ export function bootCats({ seed } = {}) {
     return true;
   }
   function setCalm(on) {
+    const waking = W.calm && !on;
     W.calm = on;
     for (const id of ['cat-calm-btn', 'cat-calm-dock']) { const el = $(id); if (el) { el.setAttribute('aria-pressed', String(on)); el.textContent = on ? 'Wake Bean' : 'Calm Bean'; } }
     if (on && W.laser) setLaser(false);
     for (const c of cats) if (c.prio < PRIORITY.carried && (on || c.at.kind !== 'away')) { unstick(c); c.body.stop(); c.plan = null; c.prio = 0; }
-    if (!on) for (const c of cats) {
+    // Only Wake Bean ends a nap; starting up uncalm keeps a drowsy Bean drowsy.
+    if (waking) for (const c of cats) {
       c.mind.drives.sleepy = Math.min(c.mind.drives.sleepy, 15);
       if (c.body.face === 'sleep') { c.body.face = 'open'; c.body.set({ eyes: .88 }); }
     }
@@ -1508,7 +1521,7 @@ export function bootCats({ seed } = {}) {
     for (const c of cats) { if (c.at.kind === 'floor') c.body.x = clamp(c.body.x, 20, W.w - 20); c.target = null; }
   }
   function place(c, i) {
-    const spot = findSpot(c, { where: i % 2 ? 'ledge' : 'floor', near: W.w * (.12 + i * .25), spread: 300 });
+    const spot = findSpot(c, { where: (i + (random() < .5 ? 1 : 0)) % 2 ? 'ledge' : 'floor', near: W.w * (.12 + i * .25 + random() * .6), spread: 300 });
     c.body.x = spot.x; c.body.z = spot.z ?? 0;
     if (spot.surface === FLOOR) { c.at = { kind: 'floor' }; c.body.gy = floorY(c.body.z); c.body.k = floorK(c.body.z); }
     else { land(c, spot.surface); c.body.gy = spot.surface.y(spot.x); c.body.k = S() * LEDGE_K; }
@@ -1565,12 +1578,14 @@ export function bootCats({ seed } = {}) {
     if (!bug) {
       W.nextCritter -= dt;
       if (W.nextCritter <= 0 && !W.calm && !reduced()) {
-        W.nextCritter = (W.aquarium ? 40 : 70) + random() * 90;
+        W.nextCritter = (W.aquarium ? 40 : 180) + random() * 180;
         const fromLeft = random() < .5;
         W.critter = { x: fromLeft ? -20 : W.w + 20, y: W.h * (.25 + random() * .5), dir: fromLeft ? 1 : -1, t: 0, flap: 0, hue: pick(['#f2c78d', '#c3acf0', '#8fd3b5', '#f29bb0']), flee: false, gone: false, life: 25 + random() * 15 };
         log('A butterfly drifted in.');
         // The curious notice first.
-        for (const c of cats) if (c.prio < PRIORITY.social && c.at.kind !== 'away' && c.mind.canStart('hunt', context(c)) && random() < c.mind.t.curiosity * .7 && !['sleep', 'cuddle'].includes(c.mind.activity)) { unstick(c); c.mind.begin('hunt'); c.plan = A.hunt(c); c.prio = PRIORITY.normal + 5; }
+        for (const c of cats) if (c.prio < PRIORITY.social && c.at.kind !== 'away' && c.mind.canStart('hunt', context(c)) && random() < c.mind.t.curiosity * .7 && !['sleep', 'cuddle'].includes(c.mind.activity)
+          // A loafing cat mostly just follows it with its eyes.
+          && (c.mind.activity !== 'loaf' || random() < .3)) { unstick(c); c.mind.begin('hunt'); c.plan = A.hunt(c); c.prio = PRIORITY.normal + 5; }
       }
       return;
     }
@@ -1836,7 +1851,11 @@ export function bootCats({ seed } = {}) {
       host.mind.begin('greet'); host.prio = PRIORITY.react;
       host.plan = A.greet(host, key);
       if (firstVisit) log('You met Bean.'); else log(`You came back after ${Math.round(sinceLast / 3600)} hours. ${host.name} noticed.`);
-    } else if (!journal.length) log('Bean is settling in.');
+    } else {
+      // No performance on load: Bean is found where it was, napping or loafing.
+      if (!W.playing && !W.calm) { const nap = random() < .65; host.mind.begin(nap ? 'sleep' : 'loaf'); host.plan = nap ? A.sleep(host, true) : A.loaf(host); }
+      if (!journal.length) log('Bean is settling in.');
+    }
   }
   runtime.start(frame);
   if (document.hidden) suspend();

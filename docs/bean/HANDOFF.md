@@ -1,5 +1,52 @@
 # Current handoff — 2026-10-03
 
+## Latest checkpoint: calm pacing and browser checks (Claude, afternoon)
+
+Bean 1.0.0-rc.1 reached `main` and therefore youple.tv: every merge to `main`
+deploys automatically. From now on, each increment goes through a pull request.
+
+**Calm by default**, restored from Konstantin's feedback (see VISION.md):
+
+- `cast.pacing.calm`: Bean starts drowsy; without an invitation, energy and
+  curiosity build slowly, sleep drains slowly, rests last about twice as long
+  and screen-crossing activities (wander, zoomies, stalk, hunt, glass, knock)
+  score half as much. Zoomies at most every 20 minutes, exploring every 2.5.
+- A fresh page finds Bean asleep or loafing in place, never walking. Starting up
+  no longer applies Wake Bean's sleep cap, which used to wake him at once.
+- After a rest, Bean usually dozes off where he is instead of walking to a
+  new spot. A still cursor counts as an invitation only within about 400 px.
+- Butterflies come every 3 to 6 minutes instead of every 1 to 3. A loafing Bean
+  usually just follows one with his eyes.
+- Removed a `preventDefault` in the passive pointermove listener that logged a
+  console error on every drag.
+- Simulated idle hour: about 8% of the time moving (was 28%), about 16 unprompted
+  trips per hour (was about 73). Tests in `cat-pacing.test.js` and
+  `cats-world.test.js` guard this.
+
+**Browser checks** (Playwright with Chromium against `npm run preview`, 1440×900):
+
+- Home, first and returning visits; room with a playing video; Hello sequence
+  (notice, approach, sniff, paw, settle; a repeat is refused); pet, boop, carry
+  and drop, treat, laser, Calm and Wake, aquarium; hidden tab (time freezes and
+  resumes without a jump); resize and scroll while exploring; reduced motion;
+  phone fallback. No page errors.
+- Bean never rested on a real control. Room playback: Bean watches or sleeps
+  below the player, and the player controls stay clear.
+- Cost: about 0.5 ms of script per frame; no long tasks.
+
+**Next small tasks**, in this order:
+
+1. The butterfly hunt runs the full width of the screen twice. Make it shorter,
+   for example a few steps, a crouch and one pounce.
+2. Going to sleep after an activity can still walk far. Prefer a spot near Bean.
+3. Bean sometimes sits on the cat's own links ("Pet Bean", "Drop a treat").
+   Treat that row like other controls.
+4. Then continue with roadmap stage 2 (quiet motion: breathing, ear and tail life
+   while resting).
+
+The checkpoint notes below are from Codex's 1.0 candidate and remain accurate
+except where this section updates them.
+
 ## User direction and boundary
 
 One exceptional, cozy black mascot developed as a continuing character engine.
@@ -63,24 +110,17 @@ must not duplicate the loop. Real video controls should remain usable.
 
 ## Remaining release gates
 
-Browser UI access to localhost was explicitly blocked by the computer-use tool
-in this session. **Do not route around it with another browser or indirect page
-execution.** Full-page visual QA and real browser performance remain unverified.
-Tests and direct rig frames do not substitute for those checks.
-
-Before calling this shipped 1.0, verify home, active room and wallpaper layouts;
-perching near controls; greeting, pet/boop/carry/drop, treat and laser; scrolling
-and resizing during travel; sleep/wake; reduced motion; hidden-tab resume; and
-long playback performance. Fix demonstrated issues before production deployment;
-the current authorization covers GitHub publication only. Local preview is
-intended at `http://127.0.0.1:8787/`.
+Most browser checks listed here before were run in the afternoon checkpoint
+above, in a separate session with browser access. Still open: a play session
+longer than a few minutes for performance, and a visual pass on a real monitor
+(the checks ran headless).
 
 ## Continuing the engine
 
 Read VISION.md and ARCHITECTURE.md. Extend one bounded capability at a time;
 retain the new invitation as a regression scenario. The strongest next work is
 real-page geometry/perch resilience with a single staged fourth-wall action,
-after the release checks above. Give agents separate file ownership.
+after the small tasks in the latest checkpoint. Give agents separate file ownership.
 
 Known limits: no full foot IK during sharp turns; no action-scoped cancellation
 of every old delayed effect; memory needs validation/versioning before expansion;
