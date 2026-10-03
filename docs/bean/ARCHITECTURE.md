@@ -250,7 +250,9 @@ pick": the room's last record, else one for the window's weather, else one for
 the time of day. `followScene()` repaints when the window changes. The sleeve
 carries `data-suggested`, and in Aquarium the mind's `ctx.record` cue lets Bean
 walk over and paw it now and then (`pick`, cooldown 300 s, blocked by playback,
-Calm and reduced motion).
+Calm and reduced motion). While a record plays, quiet playback reads it too: lo-fi and
+jazz keep Bean awake and gently swaying toward the turntable, while ambient,
+piano and sleep records make him doze (`playingRecord()`, `restForRecord()`).
 `music-shelf.js` owns the record catalog (Ambient, Lo-fi, Piano, Jazz and
 Sleep, each with up to three recorded mixes) and a small client controller.
 The first video of a record that plays is used. When the player reports an

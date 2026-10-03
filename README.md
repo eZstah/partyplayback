@@ -246,7 +246,8 @@ wake him). His trust and counters are saved in `localStorage`, per browser.
 cat tree, a sofa, a window whose sky follows your time of day and drifting
 weather, a TV, and a turntable with five records (Ambient, Lo-fi, Piano, Jazz,
 Sleep) that play on the TV. One record glows as Bean's pick for the hour and
-weather, and Bean sometimes paws it. In a watch room the player sits on that
+weather, and Bean sometimes paws it. While a record plays he listens: he
+sways a little to lo-fi and jazz, and dozes off to piano or sleep music. In a watch room the player sits on that
 TV, with fullscreen still available. Bean climbs, naps and watches from the
 furniture, and stays quiet while a video plays. **Back to site** or **Back to
 room** leaves it, and so does narrowing the window to phone width.

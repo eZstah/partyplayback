@@ -2148,7 +2148,11 @@ export function bootCats({ seed } = {}) {
       b.stop();
       while (W.playing) {
         const choice = cat.mind.choose({ ...context(cat), treat: false, laser: false });
-        const type = ['sleep', 'watch', 'sit', 'loaf'].includes(choice.type) ? choice.type : 'watch';
+        let type = ['sleep', 'watch', 'sit', 'loaf'].includes(choice.type) ? choice.type : 'watch';
+        // A record on the turntable sets the mood: piano and sleep records make
+        // him drowsy, lo-fi and jazz keep him up and listening.
+        const record = playingRecord();
+        if (record && !W.calm) type = restForRecord(type, record.mood, cat);
         cat.mind.begin(type);
         // In his own room Bean lives around the TV: now and then, after settling
         // where the video found him, he wanders somewhere cozy first.
@@ -2171,9 +2175,50 @@ export function bootCats({ seed } = {}) {
         b.face = type === 'sleep' ? 'sleep' : 'open';
         const stage = stageCenter(); b.look = type === 'watch' && stage ? { ...stage, behind: true } : null;
         let t = 0; const duration = 90 + random() * 120;
-        while (W.playing && t < duration) t += yield;
+        if (record && type !== 'sleep') {
+          cat.phase = `listening to ${record.label}`;
+          const deck = turntableCenter(); if (deck) b.look = deck;
+        } else if (record) cat.phase = `dozing to ${record.label}`;
+        let cue = 4 + random() * 8;
+        while (W.playing && t < duration) {
+          t += yield;
+          if (!record || W.calm || type === 'sleep' || t < cue) continue;
+          cue = t + 14 + random() * 18;
+          if (record.mood === 'groove' && !reduced()) {
+            // A few bars of slow head sway with the tail tapping along.
+            b.set({ tailWag: .1 }); b.slowBlink(1.5);
+            let s = 0, side = random() < .5 ? -1 : 1; const bars = 5 + random() * 5;
+            while (W.playing && s < bars) {
+              b.set({ headRoll: side * .11 }); side = -side;
+              let beat = 0; while (W.playing && beat < .8) { const dt = yield; beat += dt; s += dt; t += dt; }
+            }
+            b.set({ headRoll: 0, tailWag: .025 });
+          } else if (record.mood !== 'groove' && random() < .4) {
+            // Drowsy music: his eyes close and he curls up where he is.
+            b.slowBlink(2); type = 'sleep'; cat.mind.begin('sleep'); cat.phase = `dozing to ${record.label}`;
+            b.look = null; b.reset({ curl: 1, eyes: 0, tailWrap: 1, tailWag: .02 }); b.face = 'sleep';
+          } else b.slowBlink(1.6);
+        }
       }
     } finally { cat.phase = null; }
+  }
+  // How Bean takes each record on the shelf.
+  const RECORD_MOOD = { lofi: 'groove', jazz: 'groove', ambient: 'drowsy', piano: 'drowsy', sleep: 'sleepy' };
+  function playingRecord() {
+    const shelf = document.querySelector('.music-shelf[data-spinning="true"]'), key = shelf?.dataset.record;
+    if (!key || !RECORD_MOOD[key]) return null;
+    const label = shelf.querySelector(`[data-music-mix="${key}"] .record-label`)?.textContent || key;
+    return { key, label, mood: RECORD_MOOD[key] };
+  }
+  function restForRecord(type, mood, cat) {
+    if (mood === 'sleepy') return random() < .7 ? 'sleep' : 'loaf';
+    if (mood === 'drowsy') return type === 'watch' || type === 'sit' ? (random() < .35 ? 'sleep' : 'loaf') : type;
+    return type === 'sleep' && cat.mind.drives.sleepy < 70 ? 'loaf' : type;
+  }
+  function turntableCenter() {
+    const el = document.querySelector('.music-shelf .turntable'); if (!el) return null;
+    const r = rectOf(el);
+    return r.width > 0 && onScreen(r) ? { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 } : null;
   }
   function settleForPlayback(cat) {
     if (W.drag?.cat === cat) return;
