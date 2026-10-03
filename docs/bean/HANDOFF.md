@@ -31,6 +31,18 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## Records with backups (Claude)
+
+Konstantin agreed to 15 record slots: five moods with up to three videos each.
+The shelf now has Ambient, Lo-fi, Piano, Jazz and Sleep with 11 videos. Four are
+confirmed to embed (`checked` in `music-shelf.js`); the other seven were found
+by search and could not be checked from the cloud environment, which blocks
+YouTube. Run `npm run check:records` on a normal network and replace any video
+it reports. If a video fails at runtime, the shelf moves on to the next backup
+on its own (tested with a stand-in player that fails two Lo-fi videos). Next:
+a turntable and record crate instead of the tall cabinet, and Bean nudging a
+suggested record that fits the window's time of day and weather.
+
 ## Neon Aquarium and the music shelf (Codex)
 
 Konstantin requested a cozy neon room in the site's tones and confirmed that

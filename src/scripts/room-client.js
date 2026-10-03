@@ -646,7 +646,8 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
         onError() {
           if (player !== youtubePlayer) return;
           playback.failed();
-          if (music.state().selected) music.fail("This mix couldn't load. Try another record.");
+          // A record that can't play moves on to one of its backups.
+          if (music.unavailable()) return;
           toast("Video unavailable or embedding blocked. Try another video or use Next.");
         },
       },

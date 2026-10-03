@@ -243,8 +243,14 @@ the window without turning the room into a bright daytime scene.
 The right cabinet is now a music shelf. Its decorative solid/shelf surfaces
 stay in the habitat, while the accessible buttons are a sibling `.music-shelf`
 above the room layout (otherwise `.room-shell` intercepts the top record).
-`music-shelf.js` owns the recorded Ambient, Lo-fi and Piano catalog and a small
-client controller. It uses the existing room `add` and `select` messages, waits
+`music-shelf.js` owns the record catalog (Ambient, Lo-fi, Piano, Jazz and
+Sleep, each with up to three recorded mixes) and a small client controller.
+The first video of a record that plays is used. When the player reports an
+error for a record, the viewer who picked it marks that video broken for the
+visit, adds and selects the next backup, and removes the broken item from the
+playlist once the backup plays. Other viewers only show a short status, so a
+full room adds one backup, not one each. `npm run check:records` asks YouTube's
+oEmbed endpoint whether each video still exists and allows embedding. It uses the existing room `add` and `select` messages, waits
 for the server's item ID, reuses an existing mix, and reads selection/pause state
 from the shared room. Pending requests time out or cancel on disconnect; stale
 responses cannot select a mix after cancellation. No new audio player or server
@@ -252,7 +258,7 @@ protocol is involved. The homepage shelf creates a guest room with a validated
 `mix` query parameter that is consumed and removed on the first room state.
 YouTube may require the existing Join playback button. Keep these recordings
 seekable; live radios do not share the same bounded timeline. Replace a catalog
-video if its creator removes it or disables embedding.
+video if `check:records` reports it removed or blocked.
 
 The room has depth. Furniture stands against the back at 87vh (`--floor: 13vh`),
 which is the aquarium floor's `zBehind` line in `floor()`. Bean walks in front
