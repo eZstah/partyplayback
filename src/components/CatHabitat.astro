@@ -27,32 +27,32 @@ const bulbs = Array.from({ length: 24 }, (_, i) => { const x = (i + .5) * 1000 /
     </div>
     <div class="window-glass"></div>
     <div class="window-curtain left"></div><div class="window-curtain right"></div>
-    <div class="window-sill" data-perch="shelf"><span class="sill-pot"></span></div>
+    <div class="window-sill" data-perch="shelf" data-nap><span class="sill-pot"></span></div>
   </div>
   <div class="prop wall-shelf" data-perch="shelf"><span class="shelf-lamp"></span><span class="wall-shelf-cup"></span></div>
 
   <div class="prop prop-tree">
     <div class="tree-post"></div>
-    <div class="tree-cubby" data-perch="solid"><span class="cubby-hole"></span></div>
+    <div class="tree-cubby" data-perch="solid" data-nap><span class="cubby-hole"></span></div>
     <div class="tree-deck deck-low" data-perch="shelf"></div>
     <div class="tree-deck deck-mid" data-perch="shelf"><span class="deck-pompom"></span></div>
-    <div class="tree-bed" data-perch="shelf"></div>
+    <div class="tree-bed" data-perch="shelf" data-nap></div>
   </div>
 
   <svg class="habitat-plant" viewBox="0 0 150 280"><g fill="none" stroke="#aca0bf" stroke-width="4" stroke-linecap="round"><path d="M78 215Q63 150 89 50M77 191Q103 135 128 122M76 164Q39 129 23 93"/></g><g fill="#8f9f91"><ellipse cx="88" cy="63" rx="14" ry="36" transform="rotate(16 88 63)"/><ellipse cx="35" cy="109" rx="14" ry="35" transform="rotate(-40 35 109)"/><ellipse cx="112" cy="140" rx="14" ry="35" transform="rotate(38 112 140)"/></g><path d="m48 210 9 63h46l11-63Z" fill="#c69f9e"/><ellipse cx="81" cy="210" rx="33" ry="7" fill="#dbb3b0"/></svg>
 
   <div class="prop prop-sofa">
-    <div class="sofa-back" data-perch="solid"></div>
-    <div class="sofa-seat" data-perch="solid"><span class="sofa-cushion"></span><span class="sofa-cushion"></span></div>
+    <div class="sofa-back" data-perch="solid" data-view></div>
+    <div class="sofa-seat" data-perch="solid" data-nap data-view><span class="sofa-cushion"></span><span class="sofa-cushion"></span></div>
     <div class="sofa-arm left"></div><div class="sofa-arm right"></div>
     <span class="sofa-blanket"></span>
   </div>
 
-  <div class="prop prop-box" data-perch="solid"><span class="box-flap left"></span><span class="box-flap right"></span><span class="box-label">BEAN · this side up</span></div>
+  <div class="prop prop-box" data-perch="solid" data-nap data-view><span class="box-flap left"></span><span class="box-flap right"></span><span class="box-label">BEAN · this side up</span></div>
   <span class="prop yarn" data-toy></span>
 
   <!-- The TV hangs over a low console. In a room, the player is placed over .tv-screen. -->
-  <div class="prop console" data-perch="shelf"><span class="drawer"></span><span class="drawer"></span><span class="console-speaker"></span></div>
+  <div class="prop console" data-perch="shelf" data-view><span class="drawer"></span><span class="drawer"></span><span class="console-speaker"></span></div>
   <div class="prop tv" data-perch="solid"><div class="tv-screen"><span>youple.tv</span></div><span class="tv-led"></span></div>
 
   <div class="prop prop-books" data-perch="solid">

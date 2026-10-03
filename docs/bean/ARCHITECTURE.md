@@ -251,6 +251,13 @@ day. Add a new state by adding it to the lists there and styling it; nothing
 else needs to know. `?scene=night,rain` pins a state for screenshots.
 Animations only run in Aquarium and stop under reduced motion.
 
+While a video plays, `quietPlayback()` keeps Bean resting where he is. In
+Aquarium it also lets him move now and then: after settling once, each new
+rest has a 45% chance to start with a calm trip to a spot from `cozySpot()`.
+Furniture marked `data-nap` is where he sleeps and `data-view` (plus the rug in
+front of the TV) is where he watches. Trips only go to spots he can reach
+without leaving the screen, and landings make no dust while a video plays.
+
 ## Where to add an improvement
 
 - **Look or proportions:** extend the Bean definition and `CatBody`. Preserve

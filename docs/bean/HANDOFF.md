@@ -41,6 +41,10 @@ console, and a window whose sky follows the visitor's time of day and drifts
 between clear, cloudy and rainy (`habitat-scene.js`). In a room, the player
 sits on the TV screen with a compact control strip, and fullscreen works as
 before. The floating `#stage` is no longer a separate surface; the TV is.
+While a video plays in Aquarium, Bean now lives around the room: now and then
+he quietly moves to the sofa, the rug in front of the TV, the box or the sill,
+grooms and settles (`cozySpot()` in world.js, `data-nap` and `data-view` in
+the markup). Outside Aquarium playback stays as still as before.
 Checked at 1280×720, 1440×900, 1920×1080 and 1280×1024, home and room, plus
 fullscreen in and out. Next steps for the room are in ROADMAP.md under 4c.
 
