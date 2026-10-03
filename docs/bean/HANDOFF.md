@@ -31,6 +31,38 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## Calm idle pacing and browser checks (Claude, pull request on rc.2)
+
+Konstantin's standing direction (see VISION.md): Bean is calm by default. Real
+cats rest most of the day, so the idle page should not feel busy either.
+
+- `cast.pacing.calm`: Bean starts drowsy; without an invitation, energy and
+  curiosity build slowly, sleep drains slowly, rests last about twice as long
+  and screen-crossing activities (wander, zoomies, stalk, hunt, glass, knock)
+  score half as much. Zoomies at most every 20 minutes, exploring every 2.5.
+- A fresh page finds Bean asleep or loafing in place, never walking. Starting up
+  no longer applies Wake Bean's sleep cap, which used to wake him at once.
+- After a rest, Bean usually dozes off where he is instead of walking to a
+  new spot. A still cursor counts as an invitation only within about 400 px.
+- Idle butterflies come every 3 to 6 minutes instead of every 1 to 3. A loafing
+  Bean usually just follows one with his eyes.
+- The passive pointermove listener no longer calls `preventDefault` while
+  dragging (it only logged a console error).
+- Simulated idle hour: about 8% of the time moving (was 28%), about 16 unprompted
+  trips per hour (was about 73). Guarded in `cat-pacing.test.js` and
+  `cats-world.test.js`.
+
+Browser checks on rc.1 (Playwright, Chromium, `npm run preview`, 1440×900):
+home first and returning visits, room playback, the Hello sequence and its
+repeat guard, pet, boop, carry and drop, treat, laser, Calm and Wake, aquarium,
+hidden tab, resize and scroll during travel, reduced motion and the phone
+fallback. No page errors; Bean never rested on a real control; about 0.5 ms of
+script per frame. On rc.1 an idle returning visit had Bean moving 43% of the
+time, with zoomies on load; with this change a 5-minute session measured 9%.
+
+Next small tasks: shorten the butterfly hunt (it runs the full width twice);
+prefer a nearby spot when going to sleep after an activity.
+
 ## New increment: 1.0.0-rc.2, release checkpoint
 
 - Fixed seated sliding during/after pursuit. The shared walking command releases

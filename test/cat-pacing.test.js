@@ -145,3 +145,24 @@ test('decision inspection explains suppressed actions and cannot mutate the mind
   mind.choose({ playing: false });
   assert.match(mind.inspect().decision.candidates.find(candidate => candidate.type === 'glass').reason, /Recovering/);
 });
+
+test('left alone on an idle page, Bean mostly rests and rarely crosses the screen', () => {
+  const crossing = new Set(['wander', 'explore', 'zoomies', 'stalk', 'hunt', 'glass', 'knock']);
+  for (const seed of [1, 7, 23]) {
+    const { events, quiet, elapsed } = session({ aquarium: false }, seed, 3600);
+    assert.ok(quiet / elapsed > .6, `seed ${seed}: quiet ${Math.round(100 * quiet / elapsed)}%`);
+    const starts = events.filter(event => crossing.has(event.type)).length;
+    assert.ok(starts <= 25, `seed ${seed}: ${starts} screen-crossing starts in an hour`);
+    assert.ok(events.filter(event => event.type === 'zoomies').length <= 3, `seed ${seed}: zoomies stay rare`);
+    assert.ok(['sleep', 'loaf'].includes(events[0].type), `seed ${seed}: a fresh Bean starts drowsy, not with ${events[0].type}`);
+  }
+});
+
+test('invited play is not slowed down by calm pacing', () => {
+  const ctx = { shelves: true, toys: true, cursor: true, cursorDwell: 3, invitedPlay: true };
+  const plain = new Mind('black', {}, rng(4)), calm = new Mind('black', {}, rng(4));
+  plain.choose(ctx); calm.choose({ ...ctx, invitedPlay: false });
+  const invited = Object.fromEntries(plain.inspect().decision.candidates.map(c => [c.type, c.score]));
+  const alone = Object.fromEntries(calm.inspect().decision.candidates.map(c => [c.type, c.score]));
+  assert.ok(invited.stalk > 0 && invited.stalk > alone.stalk, 'an invitation keeps the cursor game lively');
+});

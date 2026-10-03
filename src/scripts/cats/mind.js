@@ -48,6 +48,9 @@ const MOTION_PLAY = new Set(['glass', 'knock', 'dance', 'zoomies', 'stalk', 'cha
 const PLAYBACK_REST = new Set(['sleep', 'watch', 'sit', 'loaf']);
 const cursorDwell = ctx => Math.max(0, Number(ctx.cursorDwell ?? (ctx.cursor ? 1.4 : 0)) || 0);
 const quietVideo = ctx => !!ctx.playing;
+// Unsolicited activities that carry Bean across the screen; calm pacing makes them rare.
+// Dancing happens in place and exploring ends on a perch, so those keep their weight.
+const SCREEN_CROSSING = ['wander', 'zoomies', 'stalk', 'hunt', 'glass', 'knock'];
 
 export class Mind {
   constructor(kind, memory = {}, random = Math.random) {
@@ -55,6 +58,9 @@ export class Mind {
     const r = () => random() * 30;
     // Drives: 0 = satisfied, 100 = urgent.
     this.drives = { sleepy: 20 + r(), playful: 30 + r(), lonely: 20 + r(), curious: 30 + r(), hungry: 15 + r() };
+    const calm = this.cast.pacing?.calm;
+    // A calm cat is usually found drowsy, with little pent-up energy.
+    if (calm) Object.assign(this.drives, { sleepy: calm.startSleepy + r(), playful: 10 + r() * .6, curious: 15 + r() * .6 });
     this.mood = { joy: .3, annoyance: 0, fear: 0 };
     this.trust = memory.trust ?? 30 + this.t.affection * 30;
     this.bonds = { ...defaultBonds(kind), ...(memory.bonds || {}) };
@@ -85,15 +91,16 @@ export class Mind {
     const resting = a === 'sleep' || a === 'cuddle', lazing = a === 'loaf' || a === 'sit' || a === 'watch';
     const active = ['zoomies', 'chase', 'flee', 'laser', 'hunt', 'dance', 'wrestle', 'stalk'].includes(a);
     const pacing = this.cast.pacing, company = pacing && ctx.playing && lazing;
+    const calm = pacing?.calm && !ctx.invitedPlay ? pacing.calm : null, drift = calm ? calm.drift : 1;
     this.elapsed += dt;
     this.handling.pressure *= Math.exp(-dt / 6);
     if (pacing && !active && !pacing.attentionCost[a]) {
       this.attention = Math.min(1, this.attention + dt / (ctx.playing ? pacing.videoRecovery : pacing.idleRecovery));
     }
-    d.sleepy += dt * (resting ? -2.2 : (active ? .9 : lazing ? .12 : .3) * (.55 + t.lazy) * day.sleepy);
-    d.playful += dt * (active ? -2.4 : resting ? .05 : .45 * (.3 + t.energy) * day.playful * (company ? .45 : 1));
+    d.sleepy += dt * (resting ? -2.2 * (calm ? calm.restDrain : 1) : (active ? .9 : lazing ? .12 : .3) * (.55 + t.lazy) * day.sleepy);
+    d.playful += dt * (active ? -2.4 : resting ? .05 : .45 * (.3 + t.energy) * day.playful * (company ? .45 : 1) * drift);
     d.lonely += dt * (ctx.nearFriend || ['cuddle', 'visit', 'glass', 'approach', 'stare'].includes(a) ? -1.5 : company ? -.22 : .35 * t.sociable);
-    d.curious += dt * (['explore', 'wander', 'hunt', 'leave', 'hide', 'knock'].includes(a) ? -1.8 : company && a === 'watch' ? -.18 : .4 * (.25 + t.curiosity));
+    d.curious += dt * (['explore', 'wander', 'hunt', 'leave', 'hide', 'knock'].includes(a) ? -1.8 : company && a === 'watch' ? -.18 : .4 * (.25 + t.curiosity) * drift);
     d.hungry += dt * .05;
     for (const k in d) d[k] = clamp(d[k], 0, 100);
     const m = this.mood, decay = Math.exp(-dt / 9);
@@ -149,6 +156,8 @@ export class Mind {
         scores.watch += 12 + (ctx.vibe === 'talk' ? 25 : ctx.vibe === 'chill' ? 9 : 0);
         scores.loaf += 12; scores.sit += 6;
       }
+      const pace = this.cast.pacing.calm;
+      if (pace && !ctx.invitedPlay) for (const key of SCREEN_CROSSING) scores[key] *= pace.busy;
       if (!calm && ctx.treat) scores.treat = 1000;
       else if (!calm && ctx.laser) scores.laser = 950;
     }
