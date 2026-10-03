@@ -2252,6 +2252,10 @@ export function bootCats({ seed } = {}) {
   listen($('cat-treat-btn'), 'click', menuAction(() => dropTreat()));
   listen($('cat-laser-btn'), 'click', menuAction(() => setLaser(!W.laser)));
   listen($('cat-aquarium-btn'), 'click', () => setAquarium(!W.aquarium));
+  // The dock hides at phone width, so a window narrowed that far would be stuck in
+  // Aquarium with the page inert. Leave Aquarium instead.
+  const phoneQuery = matchMedia(PHONE);
+  listen(phoneQuery, 'change', () => { if (phoneQuery.matches && W.aquarium) setAquarium(false); });
   listen($('cat-calm-dock'), 'click', menuAction(() => setCalm(!W.calm)));
   listen(document.querySelector('.create-room-button'), 'pointerenter', () => { const c = companion; if (c.prio < PRIORITY.react && drawn(c)) { c.body.look = { x: W.pointer?.x ?? W.w / 2, y: W.pointer?.y ?? 200 }; say(c, 'createHover', .6); } });
   listen($('url-in'), 'focus', () => say(companion, 'newVideo', .4));
