@@ -86,7 +86,7 @@ export function bootCats({ seed } = {}) {
   const journal = Array.isArray(saved.journal) ? saved.journal.slice(-12) : [];
 
   // ---------- world state ----------
-  const W = { w: innerWidth, h: innerHeight, dpr: 1, aquarium: false, calm: !!saved.calm, laser: false, time: 0,
+  const W = { w: innerWidth, h: innerHeight, dpr: 1, aquarium: false, calm: !!saved.calm, off: saved.off === true, laser: false, time: 0,
     pointer: null, overUI: false, idleSince: clock(), controls: [], text: [], solids: [], ledges: [], toys: [], rectsAt: -1,
     treat: null, critter: null, nextCritter: 60 + random() * 90, particles: [], glass: [], speechAt: 0,
     playing: false, title: '', vibe: 'unknown', users: null, hovered: null, press: null, drag: null, petDist: 0,
@@ -1471,7 +1471,7 @@ export function bootCats({ seed } = {}) {
 
   // ---------- speech, thoughts, particles ----------
   function say(cat, key, chance = 1, force = false) {
-    if (W.playing && !force) return false;
+    if (W.off || (W.playing && !force)) return false;
     if (random() > chance) return false;
     if (!force && W.time < W.speechAt) return false;
     if (cat.at.kind === 'away' && !cat.peek) return false;
@@ -1481,7 +1481,7 @@ export function bootCats({ seed } = {}) {
     cat.body.set({ mouth: .5 }); runtime.delay(() => { cat.body.goal.mouth = 0; }, 220);
     return true;
   }
-  function think(cat, glyph, seconds = 1.6) { cat.bubble = { text: glyph, until: W.time + seconds, think: true }; }
+  function think(cat, glyph, seconds = 1.6) { if (W.off) return; cat.bubble = { text: glyph, until: W.time + seconds, think: true }; }
   function particle(glyph, x, y, { color = '#fff', size = 16, rise = 34, life = 1.4, vx = 0 } = {}) {
     W.particles.push({ glyph, x, y, color, size, rise, life, age: 0, vx: vx || (random() - .5) * 12 });
     if (W.particles.length > 80) W.particles.shift();
@@ -1522,6 +1522,7 @@ export function bootCats({ seed } = {}) {
   const drawn = cat => !(cat.at.kind === 'away' && !cat.peek);
   const masked = cat => cat.forceMask || cat.at.kind === 'behind' || (cat.at.kind === 'floor' && cat.body.z < floor().zBehind && !cat.closeup);
   function catAt(x, y) {
+    if (W.off) return null;
     const order = drawOrder().reverse();
     return order.find(c => {
       if (!drawn(c)) return false;
@@ -1802,7 +1803,9 @@ export function bootCats({ seed } = {}) {
     setPanel(false);
     if (W.drag) drop(W.drag.cat, false);
     W.aquarium = on; document.body.classList.toggle('cat-wallpaper', on);
-    const btn = $('cat-aquarium-btn'); if (btn) { btn.setAttribute('aria-pressed', String(on)); btn.textContent = on ? (room ? 'Back to room' : 'Back to site') : 'Aquarium'; }
+    const btn = $('cat-aquarium-btn'); if (btn) { btn.setAttribute('aria-pressed', String(on)); btn.textContent = on ? (room ? 'Back to room' : 'Back to site') : 'Screensaver'; }
+    syncFullscreen();
+    if (!on && document.fullscreenElement === document.documentElement) document.exitFullscreen?.().catch(() => {});
     const url = new URL(location.href); if (on) url.searchParams.set('wallpaper', '1'); else url.searchParams.delete('wallpaper'); history.replaceState(history.state, '', url);
     for (const el of document.querySelectorAll(room ? '.room-nav,.playlist-column' : '.home-main,.site-footer')) {
       if (!inertBefore.has(el)) inertBefore.set(el, el.inert);
@@ -1817,6 +1820,39 @@ export function bootCats({ seed } = {}) {
       c.body.x = clamp(c.body.x, 40, W.w - 40);
       c.plan = null; c.prio = 0;
     }
+  }
+
+  // The Screensaver can fill the whole screen (not just the player).
+  const fullscreenBtn = $('cat-fullscreen-btn');
+  function syncFullscreen() {
+    if (!fullscreenBtn) return;
+    const full = document.fullscreenElement === document.documentElement;
+    fullscreenBtn.hidden = !W.aquarium || !document.fullscreenEnabled;
+    fullscreenBtn.setAttribute('aria-pressed', String(full));
+    fullscreenBtn.textContent = full ? 'Exit full screen' : 'Full screen';
+  }
+  function toggleFullscreen() {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  }
+  // Bean off: the world stops and he is not drawn until he is brought back.
+  function setOff(on) {
+    W.off = on;
+    universe.classList.toggle('cat-off', on);
+    const btn = $('cat-off-btn'); if (btn) btn.textContent = on ? 'Bring Bean back' : 'Hide Bean';
+    for (const id of ['cat-hello-btn', 'cat-treat-btn', 'cat-laser-btn', 'cat-calm-dock']) if ($(id)) $(id).disabled = on;
+    if (on) {
+      if (W.laser) setLaser(false);
+      if (W.drag) drop(W.drag.cat, false);
+      W.press = null; W.hovered = null; W.treat = null; W.critter = null; W.particles = []; W.glass = [];
+      document.documentElement.classList.remove('cat-hover');
+      for (const c of cats) { c.bubble = null; c.closeup = null; }
+      runtime.pause();
+    } else if (!document.hidden) {
+      if (W.playing) cats.forEach(settleForPlayback);
+      runtime.resume();
+    }
+    save();
   }
 
   // ---------- Bean's context menu ----------
@@ -1846,7 +1882,7 @@ export function bootCats({ seed } = {}) {
   // ---------- persistence ----------
   function save() {
     try {
-      localStorage.setItem(STORE, JSON.stringify({ visits, lastSeen: Date.now(), calm: W.calm, cats: { ...saved.cats, ...Object.fromEntries(cats.map(c => [c.kind, c.mind.memory()])) }, journal: journal.slice(-12) }));
+      localStorage.setItem(STORE, JSON.stringify({ visits, lastSeen: Date.now(), calm: W.calm, off: W.off, cats: { ...saved.cats, ...Object.fromEntries(cats.map(c => [c.kind, c.mind.memory()])) }, journal: journal.slice(-12) }));
     } catch {}
   }
 
@@ -2296,6 +2332,7 @@ export function bootCats({ seed } = {}) {
   }
   function resume() {
     if (runtime.disposed || document.hidden) return;
+    if (W.off) { hiddenAt = null; return; }
     const away = hiddenAt === null ? 0 : Math.max(0, (Date.now() - hiddenAt) / 1000);
     hiddenAt = null;
     runtime.resume();
@@ -2325,6 +2362,9 @@ export function bootCats({ seed } = {}) {
   const phoneQuery = matchMedia(PHONE);
   listen(phoneQuery, 'change', () => { if (phoneQuery.matches && W.aquarium) setAquarium(false); });
   listen($('cat-calm-dock'), 'click', menuAction(() => setCalm(!W.calm)));
+  listen($('cat-off-btn'), 'click', menuAction(() => setOff(!W.off)));
+  listen(fullscreenBtn, 'click', toggleFullscreen);
+  listen(document, 'fullscreenchange', syncFullscreen);
   listen(document.querySelector('.create-room-button'), 'pointerenter', () => { const c = companion; if (c.prio < PRIORITY.react && drawn(c)) { c.body.look = { x: W.pointer?.x ?? W.w / 2, y: W.pointer?.y ?? 200 }; say(c, 'createHover', .6); } });
   listen($('url-in'), 'focus', () => say(companion, 'newVideo', .4));
 
@@ -2350,12 +2390,13 @@ export function bootCats({ seed } = {}) {
   }
   runtime.start(frame);
   if (document.hidden) suspend();
+  if (W.off) setOff(true);
 
   active = {
     cats, world: W,
     snapshot() {
       return { seed: runtime.seed, time: runtime.time, paused: runtime.paused, disposed: runtime.disposed,
-        context: { playing: W.playing, vibe: W.vibe, calm: W.calm, aquarium: W.aquarium },
+        context: { playing: W.playing, vibe: W.vibe, calm: W.calm, off: W.off, aquarium: W.aquarium },
         cats: cats.map(c => ({ name: c.name, activity: c.mind.activity, phase: c.phase || null, location: c.at.kind,
           trust: c.mind.trust, drives: { ...c.mind.drives }, mood: { ...c.mind.mood },
           position: { x: c.body.x, y: c.body.gy, z: c.body.z }, thought: c.thought, director: c.mind.inspect() })) };
@@ -2377,9 +2418,10 @@ export function bootCats({ seed } = {}) {
     },
     linkError(message) { if (!runtime.disposed && message) say(companion, 'linkError', 1, true); },
     inviteCopied() { if (!runtime.disposed) say(companion, 'invite', 1, true); },
-    greet() { return !runtime.disposed && inviteBean(); },
-    treat(...args) { if (!runtime.disposed) dropTreat(...args); },
-    laser(on) { if (!runtime.disposed) setLaser(on); },
+    greet() { return !runtime.disposed && !W.off && inviteBean(); },
+    treat(...args) { if (!runtime.disposed && !W.off) dropTreat(...args); },
+    laser(on) { if (!runtime.disposed && !W.off) setLaser(on); },
+    off(on) { if (!runtime.disposed) setOff(on); },
     aquarium(on) { if (!runtime.disposed) setAquarium(on); },
     calm(on) { if (!runtime.disposed) setCalm(on); },
     destroy() {
@@ -2396,7 +2438,10 @@ export function bootCats({ seed } = {}) {
         panelBtn.setAttribute('aria-expanded', 'false');
         $('cat-laser-btn')?.setAttribute('aria-checked', 'false');
         $('cat-aquarium-btn')?.setAttribute('aria-pressed', 'false');
-        if ($('cat-aquarium-btn')) $('cat-aquarium-btn').textContent = 'Aquarium';
+        if ($('cat-aquarium-btn')) $('cat-aquarium-btn').textContent = 'Screensaver';
+        if (fullscreenBtn) fullscreenBtn.hidden = true;
+        universe.classList.remove('cat-off');
+        for (const id of ['cat-hello-btn', 'cat-treat-btn', 'cat-laser-btn', 'cat-calm-dock']) if ($(id)) $(id).disabled = false;
         legacy.forEach(el => { el.removeAttribute('tabindex'); el.setAttribute('aria-hidden', 'true'); });
         if (window.youpleCats === active) delete window.youpleCats;
         active = null;

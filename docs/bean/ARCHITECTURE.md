@@ -42,7 +42,13 @@ migrate their callers explicitly when evolving this boundary.
 
 `CatUniverse.astro` provides a compact menu opened by right-clicking Bean or the
 small paw fallback button. It supports arrow/Home/End navigation, Escape/Tab,
-outside dismissal and viewport clamping. Aquarium is a separate dock button.
+outside dismissal and viewport clamping. Aquarium is a separate dock button,
+labelled **Screensaver** on the site; while it is on, a **Full screen** button
+fullscreens the whole page (`document.documentElement`), and leaving the
+Screensaver exits it. **Hide Bean** in the menu sets `W.off` (saved with the
+memory): the runtime pauses, `#cat-universe.cat-off` hides the canvas, hit
+tests, speech and the other menu actions are off, and returning to the tab
+does not resume him until **Bring Bean back**.
 The former profile, diary and home playbar are no longer rendered; existing
 memory remains compatible.
 

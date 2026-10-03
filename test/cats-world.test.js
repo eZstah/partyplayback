@@ -665,9 +665,42 @@ test('Bean context menu is targeted, keyboard navigable and dismissible; Aquariu
     assert.equal(menu.hidden, true); assert.equal(world.world.aquarium, true);
     assert.equal(fixture.get('cat-aquarium-btn').getAttribute('aria-pressed'), 'true');
     assert.equal(fixture.get('cat-aquarium-btn').textContent, 'Back to site');
+    assert.equal(fixture.get('cat-fullscreen-btn').hidden, true, 'no full screen button without the Fullscreen API');
     fixture.get('cat-aquarium-btn').emit('click');
     assert.equal(world.world.aquarium, false);
+    assert.equal(fixture.get('cat-aquarium-btn').textContent, 'Screensaver');
     trigger.emit('click'); fixture.visibility(true); assert.equal(menu.hidden, true);
+  } finally { world.destroy(); }
+});
+
+test('Bean can be turned off from his menu, stays off on the next visit, and comes back', t => {
+  const fixture = habitat(t, { visits: 2 });
+  let world = bootCats({ seed: 3 });
+  try {
+    fixture.advance(100);
+    fixture.get('cat-off-btn').emit('click');
+    assert.equal(world.world.off, true);
+    assert.equal(world.snapshot().paused, true, 'his world stops');
+    assert.ok(fixture.get('cat-universe').classList.contains('cat-off'), 'and he is not drawn');
+    assert.equal(fixture.get('cat-off-btn').textContent, 'Bring Bean back');
+    for (const id of ['cat-hello-btn', 'cat-treat-btn', 'cat-laser-btn', 'cat-calm-dock']) assert.equal(fixture.get(id).disabled, true, id);
+    assert.equal(world.greet(), false, 'no greeting while off');
+    world.inviteCopied(); assert.equal(world.cats[0].bubble, null, 'and no speech');
+    fixture.visibility(true); fixture.visibility(false);
+    assert.equal(world.snapshot().paused, true, 'returning to the tab does not wake him');
+    assert.equal(fixture.memory().off, true, 'the choice is saved');
+  } finally { world.destroy(); }
+  world = bootCats({ seed: 3 });
+  try {
+    assert.equal(world.world.off, true, 'still off on the next visit');
+    assert.equal(world.snapshot().paused, true);
+    fixture.get('cat-off-btn').emit('click');
+    assert.equal(world.world.off, false);
+    assert.equal(world.snapshot().paused, false, 'he comes back to life');
+    assert.ok(!fixture.get('cat-universe').classList.contains('cat-off'));
+    assert.equal(fixture.get('cat-off-btn').textContent, 'Hide Bean');
+    assert.equal(fixture.get('cat-hello-btn').disabled, false);
+    assert.equal(fixture.memory().off, false);
   } finally { world.destroy(); }
 });
 

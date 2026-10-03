@@ -91,7 +91,7 @@ playlist stays paused until someone presses Play. Browser Stop sharing, leaving
 the room, and losing the room connection release capture and peer connections.
 Viewers may need **Join shared tab** for autoplay, or **Reconnect** after a network
 failure. The sharer's preview is muted to avoid echo; viewers control their own
-sound with the shared video's controls. Aquarium sharing and remote scrolling
+sound with the shared video's controls. Screensaver sharing and remote scrolling
 are outside this first version. Sharing captures the selected surface, including
 any other content shown there; this app does not record it.
 
@@ -252,19 +252,21 @@ the zoomies, stalk the cursor, hunt butterflies and knock decorations around.
 In rooms he watches the video and responds to playback and title hints.
 
 Stroke Bean with the cursor to pet him, click to boop, drag to pick him up or
-double-click empty space to drop a treat. The small **Bean** menu has four
-actions: come say hi, give a treat, the laser pointer, and let Bean sleep (or
-wake him). His trust and counters are saved in `localStorage`, per browser.
+double-click empty space to drop a treat. The small **Bean** menu has five
+actions: come say hi, give a treat, the laser pointer, let Bean sleep (or wake
+him), and **Hide Bean**, which turns the cat off until **Bring Bean back**. His
+trust, counters and that choice are saved in `localStorage`, per browser.
 
-**Aquarium** (`?wallpaper=1`) is Bean's own cozy room: fairy lights, a lamp, a
+**Screensaver** (`?wallpaper=1`, called Aquarium in the code) is Bean's own cozy room: fairy lights, a lamp, a
 cat tree, a sofa, a window whose sky follows your time of day and drifting
 weather, a TV, and a turntable with five records (Ambient, Lo-fi, Piano, Jazz,
 Sleep) that play on the TV. One record glows as Bean's pick for the hour and
 weather, and Bean sometimes paws it. While a record plays he listens: he
 sways a little to lo-fi and jazz, and dozes off to piano or sleep music. In a watch room the player sits on that
 TV, with fullscreen still available. Bean climbs, naps and watches from the
-furniture, and stays quiet while a video plays. **Back to site** or **Back to
-room** leaves it, and so does narrowing the window to phone width.
+furniture, and stays quiet while a video plays. **Full screen** fills the whole
+screen with the room. **Back to site** or **Back to room** leaves it, and so
+does narrowing the window to phone width.
 
 The roaming cat is desktop only. Phones and touch-first screens show one
 static black cat instead.

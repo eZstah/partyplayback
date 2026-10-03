@@ -31,6 +31,16 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## Screensaver, full screen and Hide Bean (Claude)
+
+Konstantin asked to rename Aquarium to Screensaver, to add a full screen button
+there, and to add a button that turns the cat off. The dock button now reads
+Screensaver (code, URL and docs keep the `aquarium` name). While it is on, a Full
+screen button fullscreens the whole page; leaving the Screensaver exits full
+screen. Bean's menu gains Hide Bean / Bring Bean back: it stops his world, hides
+him and disables the other actions, and the choice survives reloads. Covered in
+`cats-world.test.js`; checked in Chromium.
+
 ## Bean listens to the records (Claude)
 
 Konstantin chose "Bean listens" next. While a shelf record plays, Bean's quiet
