@@ -141,6 +141,22 @@ test('narrowing the window to phone width leaves Aquarium and frees the page', t
   } finally { world.destroy(); }
 });
 
+test('corrupt saved memory still boots Bean and is repaired on the next save', t => {
+  for (const saved of [['not', 'an object'], { visits: 'lots', lastSeen: 'yesterday', cats: 'black' }, { visits: 2, cats: { black: null, mint: { trust: 31 } } }]) {
+    const fixture = habitat(t, saved);
+    const world = bootCats();
+    try {
+      assert.deepEqual(world.cats.map(cat => cat.name), ['Bean']);
+      assert.ok(Number.isFinite(world.cats[0].mind.trust));
+      fixture.advance(500);
+    } finally { world.destroy(); }
+    const memory = fixture.memory();
+    assert.ok(Number.isInteger(memory.visits) && memory.visits >= 1);
+    assert.ok(Number.isFinite(memory.cats.black.trust));
+    if (saved.cats?.mint) assert.equal(memory.cats.mint.trust, 31, 'other valid memories are kept');
+  }
+});
+
 test('a returning visitor finds Bean resting where it was, not walking across the page', t => {
   for (const seed of [1, 2, 3, 4, 5, 6]) {
     const fixture = habitat(t, { visits: 3, lastSeen: Date.now() - 60e3 });

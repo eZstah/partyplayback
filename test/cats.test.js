@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CAST, KINDS, ACTIVE_KINDS, traitWords } from '../src/scripts/cats/cast.js';
-import { Mind, awaySummary, dayRhythm, defaultBonds, rng, videoVibe } from '../src/scripts/cats/mind.js';
+import { Mind, awaySummary, dayRhythm, defaultBonds, normalizeMemory, rng, videoVibe } from '../src/scripts/cats/mind.js';
 import { CatBody, headBasis, tint, visibility, wrap } from '../src/scripts/cats/body.js';
 
 const count = (kind, ctx, runs = 300, seed = 7) => {
@@ -185,4 +185,28 @@ test('a cat hanging off a ledge drops its paws and lets the tail hang', () => {
   assert.ok(body.pose.overEdge > .9 && body.pose.tailHang > .9, JSON.stringify(body.pose));
   assert.match(tint('#000000', .5), /^#[0-9a-f]{6}$/i);
   assert.equal(tint('#ffffff', .5).toLowerCase(), '#ffffff');
+});
+
+test('broken saved memory is cleaned up instead of crashing Bean or poisoning trust', () => {
+  for (const memory of [null, undefined, 'oops', 42, [], { trust: 'bad' }, { trust: NaN }, { trust: Infinity }]) {
+    const mind = new Mind('black', memory, rng(3));
+    assert.ok(Number.isFinite(mind.trust), `finite trust from ${JSON.stringify(memory)}`);
+    mind.pet(); mind.ate(); mind.startle();
+    assert.ok(Number.isFinite(mind.trust) && mind.trust >= 0 && mind.trust <= 100);
+    assert.ok(Number.isFinite(mind.memory().trust));
+  }
+  const mind = new Mind('black', { trust: 250, bonds: { mint: 9, pink: 'x' }, stats: { pets: 12.7, boops: -3, treats: 'many', carried: 4 } }, rng(3));
+  assert.equal(mind.trust, 100);
+  assert.equal(mind.bonds.mint, 1);
+  assert.equal(mind.bonds.pink, defaultBonds('black').pink);
+  assert.deepEqual(mind.stats, { pets: 12, boops: 0, carried: 4, treats: 0 });
+  assert.deepEqual(new Mind('black', { bonds: [1, 2], stats: 'x' }, rng(3)).stats, { pets: 0, boops: 0, carried: 0, treats: 0 });
+});
+
+test('valid older memory loads unchanged', () => {
+  const memory = { trust: 72.4, bonds: { mint: .3 }, stats: { pets: 5, boops: 2, carried: 1, treats: 3 } };
+  assert.deepEqual(normalizeMemory(memory), memory);
+  const mind = new Mind('black', memory, rng(3));
+  assert.equal(mind.trust, 72.4);
+  assert.deepEqual(mind.memory(), { trust: 72.4, bonds: { ...defaultBonds('black'), mint: .3 }, stats: memory.stats });
 });

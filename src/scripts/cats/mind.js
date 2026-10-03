@@ -57,8 +57,19 @@ const SCREEN_CROSSING = ['wander', 'zoomies', 'stalk', 'hunt', 'glass', 'knock']
 export const ACROBATICS = ['leap', 'highjump'];
 const ACROBATIC_ELSEWHERE = .5;
 
+// Saved memory comes from localStorage, so it can be old, hand-edited or broken.
+// Keep what is valid (finite trust, bonds and counters) and drop the rest.
+const record = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+export function normalizeMemory(memory) {
+  const saved = record(memory), bonds = {}, stats = {};
+  for (const [kind, bond] of Object.entries(record(saved.bonds))) if (Number.isFinite(bond)) bonds[kind] = clamp(bond, -1, 1);
+  for (const [name, count] of Object.entries(record(saved.stats))) if (Number.isFinite(count) && count >= 0) stats[name] = Math.floor(count);
+  return { trust: Number.isFinite(saved.trust) ? clamp(saved.trust, 0, 100) : undefined, bonds, stats };
+}
+
 export class Mind {
   constructor(kind, memory = {}, random = Math.random) {
+    memory = normalizeMemory(memory);
     this.kind = kind; this.cast = CAST[kind]; this.t = this.cast.traits; this.random = random;
     const r = () => random() * 30;
     // Drives: 0 = satisfied, 100 = urgent.
@@ -68,8 +79,8 @@ export class Mind {
     if (calm) Object.assign(this.drives, { sleepy: calm.startSleepy + r(), playful: 10 + r() * .6, curious: 15 + r() * .6 });
     this.mood = { joy: .3, annoyance: 0, fear: 0 };
     this.trust = memory.trust ?? 30 + this.t.affection * 30;
-    this.bonds = { ...defaultBonds(kind), ...(memory.bonds || {}) };
-    this.stats = { pets: 0, boops: 0, carried: 0, treats: 0, ...(memory.stats || {}) };
+    this.bonds = { ...defaultBonds(kind), ...memory.bonds };
+    this.stats = { pets: 0, boops: 0, carried: 0, treats: 0, ...memory.stats };
     this.activity = 'sit'; this.partner = null; this.since = 0; this.last = []; this.petStreak = 0; this.lastSaid = '';
     this.elapsed = 0; this.cooldowns = {}; this.attention = 1; this.decision = null;
     // Handling history is session-only. A little personal space is a preference,
