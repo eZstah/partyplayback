@@ -54,10 +54,21 @@ function idle() {
   short.setAttribute("aria-label", short.title);
 }
 
-// The Like/Share column of the Short that's playing, in the layouts known so far.
+// The Like/Share column of the Short on screen. YouTube renames its containers often, so start
+// from the Like button that's fully in view and climb to the widest ancestor that's still a
+// narrow column.
+const LIKE_BUTTONS = "like-button-view-model, ytd-like-button-renderer, #like-button";
 function shortsActions() {
-  const reel = document.querySelector("ytd-reel-video-renderer[is-active]");
-  return reel?.querySelector("reel-action-bar-view-model, #actions") || null;
+  for (const like of document.querySelectorAll(LIKE_BUTTONS)) {
+    const box = like.getBoundingClientRect();
+    if (!box.width || box.top < 0 || box.bottom > innerHeight) continue;
+    let column = like;
+    while (column.parentElement && column.parentElement !== document.body && column.parentElement.getBoundingClientRect().width < 140) {
+      column = column.parentElement;
+    }
+    if (column !== like && column.childElementCount >= 3) return column;
+  }
+  return null;
 }
 
 function place() {
@@ -179,5 +190,11 @@ new MutationObserver(() => {
   requestAnimationFrame(() => { queued = false; place(); });
 }).observe(document.documentElement, { childList: true, subtree: true });
 document.addEventListener("yt-navigate-finish", place);
+// Shorts swap the playing video as you scroll.
+document.addEventListener("scroll", () => {
+  if (queued) return;
+  queued = true;
+  requestAnimationFrame(() => { queued = false; place(); });
+}, { capture: true, passive: true });
 idle();
 place();
