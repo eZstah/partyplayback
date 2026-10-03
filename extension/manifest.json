@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "youple.tv: Send to room",
   "short_name": "youple.tv",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Send the YouTube video you're on to your youple.tv room, without copying the link.",
   "homepage_url": "https://youple.tv/",
   "icons": {
@@ -12,11 +12,12 @@
     "128": "icons/128.png"
   },
   "action": {
-    "default_title": "Open a youple.tv room first",
+    "default_title": "Send to youple.tv",
     "default_icon": {
       "16": "icons/16.png",
       "32": "icons/32.png"
-    }
+    },
+    "default_popup": "popup.html"
   },
   "background": {
     "service_worker": "background.js",
@@ -46,7 +47,7 @@
       "suggested_key": {
         "default": "Alt+Shift+Y"
       },
-      "description": "Send this video to your youple.tv room"
+      "description": "Open youple.tv: Send to room"
     }
   },
   "permissions": [
