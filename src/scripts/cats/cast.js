@@ -6,8 +6,8 @@ export const CAST = {
     traits: { energy: .5, curiosity: .5, sociable: .95, bold: .3, mischief: .1, grumpy: .05, affection: .9, lazy: .45 },
     look: {
       size: 1, fur: '#F6EEDC', shade: '#E6D7BE', belly: '#FFFAF0', stripe: null, ear: '#F2B5BE', nose: '#E98A9B',
-      iris: '#7FC8A9', collar: '#8FD3B5', tag: '#F2C46D', bodyR: 18.5, legLen: 13, legW: 9.5, headR: 21, tailLen: 40, tailW: 9,
-      spine: 15, fluffy: true, earSize: 1, eyeSize: 1.08, cheeks: 1.12,
+      iris: '#7FC8A9', collar: '#8FD3B5', tag: '#F2C46D', bodyR: 18, legLen: 9, legW: 11.5, headR: 26, tailLen: 42, tailW: 10,
+      spine: 13, fluffy: true, earSize: 1, eyeSize: 1.12, cheeks: 1.12,
     },
     gait: 1, voice: {
       greet: ['oh! hello.', 'you’re here :)', 'welcome in.', 'hi friend.'],
@@ -22,6 +22,8 @@ export const CAST = {
       cursorFast: ['gentle cursor, please.', 'eek.'], annoyed: ['okay, okay.'], zoomies: ['wheee!'], shelf: ['nice view up here.'],
       createHover: ['our next adventure?'], linkError: ['that link needs help.'], invite: ['summon the group chat.'],
       night: ['it’s late, you know.'], idle: ['all paws accounted for.', 'cozy.', 'everyone okay?'],
+      peek: ['peekaboo.', 'just checking on you.', 'hello again.'], back: ['i’m back. did you miss me?', 'back from my rounds.'],
+      glass: ['hello in there.', 'is this a window?', 'you look cozy in there.'], hidden: ['you can’t see me.'], climb: ['up we go.'],
     },
   },
   pink: {
@@ -29,8 +31,8 @@ export const CAST = {
     traits: { energy: .95, curiosity: .85, sociable: .6, bold: .95, mischief: .95, grumpy: .2, affection: .55, lazy: .1 },
     look: {
       size: .98, fur: '#F0B48C', shade: '#DE9970', belly: '#FCE5D2', stripe: '#D27F55', ear: '#F2A6A9', nose: '#DB7486',
-      iris: '#E7C15A', collar: '#F28DA5', tag: '#F7E08A', bodyR: 15.5, legLen: 18, legW: 8, headR: 19.5, tailLen: 58, tailW: 7,
-      spine: 18, earSize: 1.12, eyeSize: .98, cheeks: 1,
+      iris: '#E7C15A', collar: '#F28DA5', tag: '#F7E08A', bodyR: 15.5, legLen: 13, legW: 9.5, headR: 24, tailLen: 58, tailW: 8,
+      spine: 16, earSize: 1.12, eyeSize: 1.02, cheeks: 1,
     },
     gait: 1.35, voice: {
       greet: ['oh it’s you.', 'new toy?', 'finally.'], returnLong: ['you left. rude.', 'i ruled while you were gone.'],
@@ -44,6 +46,9 @@ export const CAST = {
       stare: ['let me out.', 'what are YOU looking at?'], cursorStill: ['don’t. move.'], zoomies: ['ZOOM.', 'can’t stop.'],
       shelf: ['king of the website.', 'load-bearing? let’s see.'], annoyed: ['fine.'], createHover: ['press it. press it.'],
       linkError: ['that link’s broken.'], invite: ['more humans.'], night: ['night = hunting time.'], idle: ['bored.', 'what now.'],
+      peek: ['boo.', 'miss me?', 'you didn’t see me.'], back: ['i’m back. chaos resumes.', 'did someone say snacks?'],
+      glass: ['let me OUT.', 'what’s this button do?', 'tap tap tap.'], hidden: ['shhh. hiding.'], knock: ['oops.', 'gravity check.', 'it was like that.'],
+      climb: ['parkour!'],
     },
   },
   purple: {
@@ -51,8 +56,8 @@ export const CAST = {
     traits: { energy: .3, curiosity: .45, sociable: .3, bold: .6, mischief: .3, grumpy: .9, affection: .3, lazy: .85 },
     look: {
       size: 1.12, fur: '#BDB0DC', shade: '#A497C6', belly: '#E5DDF3', stripe: '#A090C8', ear: '#E8B4C8', nose: '#C9849D',
-      iris: '#F0B860', collar: '#F2C46D', tag: '#8FD3B5', bodyR: 21, legLen: 11, legW: 10, headR: 21, tailLen: 38, tailW: 10,
-      spine: 14, earSize: .82, eyeSize: .95, cheeks: 1.2, lidded: .38,
+      iris: '#F0B860', collar: '#F2C46D', tag: '#8FD3B5', bodyR: 20, legLen: 8, legW: 12, headR: 26, tailLen: 40, tailW: 11,
+      spine: 13, earSize: .85, eyeSize: 1, cheeks: 1.22, lidded: .38,
     },
     gait: .75, voice: {
       greet: ['oh. it’s you.', 'hm.', 'you may stay.'], returnLong: ['i didn’t notice you were gone.', 'took you long enough.'],
@@ -65,6 +70,8 @@ export const CAST = {
       visit: ['move.', 'you’re in my spot.'], hiss: ['HSSS.', 'back. off.'], stare: ['are you watching me?', 'blink first.'],
       shelf: ['the high ground.'], annoyed: ['ugh.'], createHover: ['make it a good one.'], linkError: ['tragic link.'],
       invite: ['must we?'], night: ['go to bed.'], idle: ['…', 'i supervise.', 'waiting aggressively.'],
+      peek: ['i see you.', 'still here.', 'don’t mind me.'], back: ['the outside was overrated.', 'i have returned.'],
+      glass: ['your screen is filthy.', 'i see everything.', 'clean this.'], hidden: ['i am not hiding.'], climb: ['ugh. stairs.'],
     },
   },
   black: {
@@ -72,8 +79,8 @@ export const CAST = {
     traits: { energy: .85, curiosity: 1, sociable: 1, bold: .55, mischief: .6, grumpy: 0, affection: .8, lazy: .3 },
     look: {
       size: .7, fur: '#3E3749', shade: '#2E2836', belly: '#F7F1E6', stripe: null, ear: '#E9A7B4', nose: '#E98A9B',
-      iris: '#9FD47F', collar: '#7FB8F0', tag: '#F2C46D', bodyR: 15, legLen: 11, legW: 7.5, headR: 23, tailLen: 34, tailW: 6,
-      spine: 12, earSize: 1.15, eyeSize: 1.3, cheeks: 1, tuxedo: true, outline: '#1F1A26',
+      iris: '#9FD47F', collar: '#7FB8F0', tag: '#F2C46D', bodyR: 13.5, legLen: 7.5, legW: 9, headR: 24, tailLen: 34, tailW: 7,
+      spine: 10, earSize: 1.12, eyeSize: 1.3, cheeks: 1, tuxedo: true, outline: '#1F1A26',
     },
     gait: 1.15, voice: {
       greet: ['hi hi hi!', 'a human!!', 'hello!!'], returnLong: ['YOU’RE BACK!', 'i grew. probably.'],
@@ -84,6 +91,9 @@ export const CAST = {
       laser: ['what IS it?!'], visit: ['play with me!', 'wait for me!'], stare: ['hello in there!', 'peekaboo.'],
       zoomies: ['zoom zoom!'], shelf: ['i’m so tall!'], createHover: ['press it!'], linkError: ['uh oh.'], invite: ['more friends!'],
       night: ['not sleepy!'], idle: ['what’s that?', 'hehe.'],
+      peek: ['peekaboo!!', 'find me!', 'hi hi!'], back: ['i’m back!!', 'i found a bug outside!'],
+      glass: ['hello?? HELLO?', 'can i come in?', 'boop the glass!'], hidden: ['you’ll never find me!'], knock: ['uh oh.'],
+      climb: ['so high!!'],
     },
   },
 };
