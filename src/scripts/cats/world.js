@@ -77,8 +77,12 @@ export function bootCats({ seed } = {}) {
   // ---------- memory ----------
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch {}
-  const firstVisit = !saved.visits, sinceLast = saved.lastSeen ? (Date.now() - saved.lastSeen) / 1000 : 0;
-  const visits = (saved.visits || 0) + 1;
+  // Parsed JSON is not yet trusted: each cat's memory is checked by the Mind.
+  if (typeof saved !== 'object' || Array.isArray(saved)) saved = {};
+  if (!saved.cats || typeof saved.cats !== 'object' || Array.isArray(saved.cats)) saved.cats = {};
+  const count = value => Number.isFinite(value) && value > 0 ? value : 0;
+  const firstVisit = !count(saved.visits), sinceLast = count(saved.lastSeen) ? Math.max(0, (Date.now() - saved.lastSeen) / 1000) : 0;
+  const visits = Math.floor(count(saved.visits)) + 1;
   const journal = Array.isArray(saved.journal) ? saved.journal.slice(-12) : [];
 
   // ---------- world state ----------
