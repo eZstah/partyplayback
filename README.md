@@ -167,47 +167,40 @@ being suppressed for a fixed number of milliseconds.
 
 ## The cats
 
-Four cats live on youple.tv: Miso (cream, the caretaker), Mochi (ginger tabby, the
-instigator), Pixel (lavender, the critic) and Bean (tuxedo kitten, the apprentice).
-Each has its own body shape, gait, voice and personality traits, and its own mind:
-drives (sleepy, playful, lonely, curious, hungry) rise and fall with what it does
-and the time of day, and a weighted choice picks what it wants next. Nothing runs
-on a script.
+Bean is an ongoing character-engine project. Start with the
+[project guide](docs/bean/README.md) for its vision, architecture, roadmap and
+current agent handoff. The page integration boundary is `cats/index.js`.
 
-The page is their world. They walk a perspective floor along the bottom of the
-screen (smaller and slower further back), jump onto cards, headings, icon tiles
-and even the letters of the wordmark, climb the sides of the create card or the
-player, and hide behind the big panels so only their head and paws show over the
-edge. They peek in from the sides and top of the screen, leave and come back
-later, press their faces against the glass (leaving paw prints and fog), and knock
-the little page decorations around. Routes are planned over the floor and every
-ledge, so a cat that wants a high spot finds a way up or leaves the screen and
-drops in from above.
+Bean, a curious black tuxedo kitten, is the only resident on youple.tv. His
+sleepy, playful, lonely, curious and hungry drives rise and fall with what he
+does and the time of day. Weighted choices decide what he wants to do next.
 
-What else they do: loaf, groom, stretch and yawn, nap (turning around before
-lying down), cuddle up to friends, visit and boop noses, chase and play-fight,
-hiss at someone they don't like, get the zoomies, stalk and pounce on a still
-cursor, hunt butterflies, race for treats and follow each other around. In a room
-they sit with their backs to you to watch the video, dance to music titles and
-turn around when it pauses.
+The page is his world. Bean walks a perspective floor, jumps onto cards and
+headings, climbs panels, hides behind them, peeks around screen edges, leaves
+and returns, and presses his face against the glass. He can groom, nap, get
+the zoomies, stalk the cursor, hunt butterflies and knock decorations around.
+In rooms he watches the video and responds to playback and title hints.
 
-Viewers can stroke a cat with the cursor to pet it, click to boop, drag to pick it
-up (and drop it onto a ledge), double-click empty space to drop a treat, or turn on
-the laser pointer from the **Cats** panel. The panel shows what each cat is doing,
-how it feels, how much it likes you and who its friends are, plus a short diary.
-Trust, friendships and the diary are kept in `localStorage`, so the cats remember
-returning visitors and notice long absences. **Aquarium** (`?wallpaper=1`) gives them
-the whole screen with a deep floor to walk around on.
+Stroke Bean with the cursor to pet him, click to boop, drag to pick him up,
+double-click empty space to drop a treat, or use the laser in the **Bean** panel.
+The panel shows his activity, mood, trust and diary. His memory is saved in
+`localStorage`. **Aquarium** (`?wallpaper=1`) gives him the whole screen.
 
-The living cats are desktop only. Phones and touch-first screens keep the static
-mascots.
+The roaming cat is desktop only. Phones and touch-first screens show one
+static black cat instead. The wordmark stays plain on every screen.
 
 Video context comes from the current title and playback state only. It does not
 listen to audio or inspect frames. Cat interactions are local to each viewer.
 
 ### Architecture
 
-- `cats/cast.js`: looks, traits and voice lines for each cat.
+- `cats/index.js`: versioned page facade for mounting Bean, context, controls,
+  detached debug snapshots and disposal.
+- `cats/runtime.js`: one clock and frame loop, seeded randomness, simulated-time
+  effects and lifecycle cleanup, tested in `test/cat-runtime.test.js`.
+
+- `cats/cast.js`: character definitions and `ACTIVE_KINDS`, which limits the
+  world and panel to Bean. Dormant definitions preserve older saved memories.
 - `cats/mind.js`: DOM-free drives, moods, trust, friendships and the weighted
   choice of what to do next. Tested in `test/cats.test.js`.
 - `cats/body.js`: a small 3D rig (spheres, sticks, a lagging tail chain and face
@@ -222,6 +215,8 @@ listen to audio or inspect frames. Cat interactions are local to each viewer.
 Cats never take clicks from the page: the canvas ignores pointer events, cat
 interactions are ignored over links, buttons, inputs and the player, cats avoid
 resting over text and controls. Reduced
-motion rules out zoomies, chases and pounces; **Calm cats** puts everyone to sleep.
-Add `?catdebug` to expose `window.youpleCats` for local testing.
+motion rules out zoomies, chases and pounces; **Calm Bean** puts him to sleep.
+Add `?catdebug&catseed=42` to expose `window.youpleCats` with a fixed random seed
+for local testing. `youpleCats.snapshot()` reports current runtime and character
+state. Full browser replay is not yet implemented.
 

@@ -8,6 +8,8 @@
 }
 .mascot.pink { --fur: #edba9b; --fur-line: #c18b74; --bib: #fff0d9; --stripe: #cc9276; --collar: #e9a7bc; }
 .mascot.purple { --fur: #bcb0d9; --fur-line: #8e80b0; --bib: #e7dff3; --stripe: #9683bd; --collar: #c2dcae; }
+.mascot.black { --fur: #3e3749; --fur-line: #71647e; --bib: #f7f1e6; --stripe: #4e435f; --inner-ear: #e9a7b4; --collar: #7fb8f0; }
+.mascot.black .cat-eye-white { fill: #cde5b9; }
 .mascot-rig { position: absolute; display: block; inset: 0; transform-origin: 50% 85%; }
 .cat-art { display: block; width: 100%; height: 100%; overflow: visible; user-select: none; }
 .cat-ground { fill: #0e0b18; opacity: .3; }

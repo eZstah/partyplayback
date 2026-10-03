@@ -75,30 +75,42 @@ export const CAST = {
     },
   },
   black: {
-    name: 'Bean', role: 'The apprentice', bio: 'Tiny tuxedo kitten. Copies Mochi, adores Miso, fears nothing yet.',
-    traits: { energy: .85, curiosity: 1, sociable: 1, bold: .55, mischief: .6, grumpy: 0, affection: .8, lazy: .3 },
+    name: 'Bean', role: 'The resident', bio: 'A curious little shadow. Soft paws, warm company, occasional mischief.',
+    traits: { energy: .62, curiosity: .9, sociable: .85, bold: .48, mischief: .38, grumpy: 0, affection: .92, lazy: .52 },
+    // Seconds between starts, plus the attention each unsolicited spectacle costs.
+    // Recovery happens during quieter activities, so antics have breathing room.
+    pacing: {
+      cooldowns: { glass: 210, leave: 240, hide: 100, knock: 110, dance: 100, zoomies: 135,
+        stalk: 55, approach: 40, stare: 60, explore: 40, hunt: 70 },
+      attentionCost: { glass: 1, leave: .9, hide: .6, knock: .7, dance: .65,
+        zoomies: .85, stalk: .55, hunt: .65, explore: .2 },
+      videoRecovery: 120, idleRecovery: 35,
+    },
     look: {
       size: .7, fur: '#3E3749', shade: '#2E2836', belly: '#F7F1E6', stripe: null, ear: '#E9A7B4', nose: '#E98A9B',
       iris: '#9FD47F', collar: '#7FB8F0', tag: '#F2C46D', bodyR: 13.5, legLen: 7.5, legW: 9, headR: 24, tailLen: 34, tailW: 7,
       spine: 10, earSize: 1.12, eyeSize: 1.3, cheeks: 1, tuxedo: true, outline: '#1F1A26',
     },
-    gait: 1.15, voice: {
-      greet: ['hi hi hi!', 'a human!!', 'hello!!'], returnLong: ['YOU’RE BACK!', 'i grew. probably.'],
-      pet: ['eee!', 'again!', 'best day.'], boop: ['boop!', 'hehehe.', 'my nose!'], carried: ['i can fly!', 'wheee!'],
-      landed: ['again again!', 'did you see?'], treat: ['is it for me??', 'yum yum.'], sleep: ['five more minutes.'],
-      wake: ['i’m up!'], watch: ['what’s happening?', 'wow.'], pause: ['is it broken?'], music: ['dance!!'],
-      newVideo: ['ooh ooh!'], newcomer: ['a new friend!!'], hunt: ['i can do it!'], miss: ['aww.'], caught: ['i did it!!'],
+    gait: .96, voice: {
+      greet: ['oh, hello.', 'a friend :)', 'room for one more?'], returnLong: ['there you are.', 'saved you a spot.'],
+      pet: ['prrr.', 'that’s the spot.', 'stay a little.'], boop: ['boop!', 'hehe.', 'my nose.'], carried: ['oh, up we go.', 'a new view.'],
+      landed: ['soft landing.', 'thank you.'], treat: ['for me?', 'a little snack.'], sleep: ['five more minutes.'],
+      wake: ['just stretching.'], watch: ['ooh, this bit.', 'i’m watching too.'], pause: ['little break?'], music: ['tiny dance.'],
+      newVideo: ['ooh, a new one.'], newcomer: ['a new friend!!'], hunt: ['just a closer look.'], miss: ['nearly.'], caught: ['did you see?'],
       laser: ['what IS it?!'], visit: ['play with me!', 'wait for me!'], stare: ['hello in there!', 'peekaboo.'],
-      zoomies: ['zoom zoom!'], shelf: ['i’m so tall!'], createHover: ['press it!'], linkError: ['uh oh.'], invite: ['more friends!'],
-      night: ['not sleepy!'], idle: ['what’s that?', 'hehe.'],
-      peek: ['peekaboo!!', 'find me!', 'hi hi!'], back: ['i’m back!!', 'i found a bug outside!'],
-      glass: ['hello?? HELLO?', 'can i come in?', 'boop the glass!'], hidden: ['you’ll never find me!'], knock: ['uh oh.'],
-      climb: ['so high!!'],
+      zoomies: ['little burst!'], shelf: ['a good spot.'], createHover: ['coming with you.'], linkError: ['uh oh.'], invite: ['more friends!'],
+      night: ['getting cozy.'], idle: ['what’s that?', 'nice here.'],
+      peek: ['peek.', 'still here.', 'found you.'], back: ['back again.', 'quite nice out there.'],
+      glass: ['hello in there.', 'a little closer?', 'nose to nose.'], hidden: ['my little nook.'], knock: ['uh oh.'],
+      climb: ['one paw at a time.'],
     },
   },
 };
 
 export const KINDS = Object.keys(CAST);
+// Only these residents are created or shown on the site. Keep the character
+// catalog separate so older saved memories and rig definitions remain valid.
+export const ACTIVE_KINDS = ['black'];
 
 // Words for the "meet the cats" panel. Picks the strongest traits.
 const TRAIT_WORDS = {

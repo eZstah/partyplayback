@@ -1,11 +1,12 @@
-// The habitat: one canvas over the whole page, four cats with their own minds.
+// The habitat: one canvas over the whole page, with Bean as its sole resident.
 // The page is their furniture. Cards are boxes they climb, sit on, hide behind
 // and peek over; big words are ledges; the screen edges are doorways to
 // somewhere else; and the glass between them and you is something to tap on.
 // The canvas never takes pointer events, so everything under a cat still works.
 import { CatBody } from './body.js';
-import { CAST, KINDS, traitWords } from './cast.js';
-import { Mind, awaySummary, clamp, dayRhythm, pick, videoVibe } from './mind.js';
+import { createRuntime } from './runtime.js';
+import { CAST, ACTIVE_KINDS, traitWords } from './cast.js';
+import { Mind, awaySummary, clamp, dayRhythm, pick as sample, videoVibe } from './mind.js';
 
 const STORE = 'youple-cats-v1';
 const UI = 'a,button,input,select,textarea,label,summary,iframe,video,dialog,[role=button],[role=switch],[contenteditable=true],.cat-dock,#player-wrap,.control-bar';
@@ -28,12 +29,17 @@ const ease = (cur, target, rate, dt) => target + (cur - target) * Math.exp(-rate
 
 let active = null;
 // Phones get the static mascots; the living cats need a big screen and a mouse.
-const STUB = { cats: [], observe() {}, linkError() {}, inviteCopied() {}, treat() {}, laser() {}, aquarium() {}, calm() {}, destroy() {} };
+const STUB = { cats: [], snapshot: () => ({ disabled: true, cats: [] }), observe() {}, linkError() {}, inviteCopied() {}, greet() {}, treat() {}, laser() {}, aquarium() {}, calm() {}, destroy() {} };
 
-export function bootCats() {
+export function bootCats({ seed } = {}) {
   if (active) return active;
   const universe = document.getElementById('cat-universe');
   if (!universe || matchMedia(PHONE).matches) return STUB;
+  const params = new URLSearchParams(location.search);
+  const debug = params.has('catdebug');
+  const requestedSeed = seed ?? (debug && params.has('catseed') ? Number(params.get('catseed')) : undefined);
+  const runtime = createRuntime({ seed: Number.isFinite(requestedSeed) ? requestedSeed : undefined });
+  const random = runtime.random, pick = list => sample(list, random), clock = () => runtime.time * 1000;
   universe.hidden = false;
   document.body.classList.add('cat-simulation');
   const legacy = [...document.querySelectorAll('.mascot-cast .mascot,.room-pal .mascot')];
@@ -46,8 +52,20 @@ export function bootCats() {
   const room = document.body.classList.contains('room-page');
   const reducedQuery = matchMedia('(prefers-reduced-motion: reduce)');
   const font = getComputedStyle(document.body).fontFamily || 'sans-serif';
-  const disposers = [];
-  const listen = (el, type, fn, opts) => { if (!el) return; el.addEventListener(type, fn, opts); disposers.push(() => el.removeEventListener(type, fn, opts)); };
+  const effects = new Map(), knocked = new Set(), inertBefore = new Map();
+  const listen = runtime.listen;
+
+  // Every decoration effect belongs to this mount, including its restoration.
+  function animate(el, frames, options) {
+    const animation = el.animate(frames, options);
+    const release = () => { effects.get(animation)?.(); effects.delete(animation); };
+    effects.set(animation, runtime.own(() => { animation.onfinish = null; animation.cancel(); effects.delete(animation); }));
+    animation.addEventListener('cancel', release, { once: true });
+    animation.addEventListener('finish', () => { if (!['forwards', 'both'].includes(options?.fill)) release(); }, { once: true });
+    if (runtime.paused) animation.pause();
+    return animation;
+  }
+  function restoreToy(el) { delete el.dataset.catKnocked; knocked.delete(el); }
 
   // ---------- memory ----------
   let saved = {};
@@ -58,17 +76,21 @@ export function bootCats() {
 
   // ---------- world state ----------
   const W = { w: innerWidth, h: innerHeight, dpr: 1, aquarium: false, calm: !!saved.calm, laser: false, time: 0,
-    pointer: null, overUI: false, idleSince: performance.now(), controls: [], text: [], solids: [], ledges: [], toys: [], rectsAt: -1,
-    treat: null, critter: null, nextCritter: 25 + Math.random() * 40, particles: [], glass: [], speechAt: 0,
-    playing: false, title: '', vibe: 'unknown', users: null, hovered: null, press: null, drag: null, petDist: 0 };
+    pointer: null, overUI: false, idleSince: clock(), controls: [], text: [], solids: [], ledges: [], toys: [], rectsAt: -1,
+    treat: null, critter: null, nextCritter: 25 + random() * 40, particles: [], glass: [], speechAt: 0,
+    playing: false, title: '', vibe: 'unknown', users: null, hovered: null, press: null, drag: null, petDist: 0,
+    invitedUntil: 0, attentionReadyAt: 8 };
 
-  const cats = KINDS.map((kind, i) => {
-    const mind = new Mind(kind, saved.cats?.[kind]);
-    const body = new CatBody(CAST[kind].look);
-    return { kind, i, name: CAST[kind].name, cast: CAST[kind], mind, body, plan: null, prio: 0, at: { kind: 'floor' }, target: null,
+  const cats = ACTIVE_KINDS.map((kind, i) => {
+    const mind = new Mind(kind, saved.cats?.[kind], random);
+    const body = new CatBody(CAST[kind].look, random);
+    const cat = { kind, i, name: CAST[kind].name, cast: CAST[kind], mind, body, plan: null, prio: 0, at: { kind: 'floor' }, target: null,
       bubble: null, nextGlance: 0, thought: '', xf: null, peek: null, closeup: null, forceMask: false, edgePaws: null, offAt: 0 };
+    runtime.own(() => cancelPlan(cat));
+    return cat;
   });
   const byKind = Object.fromEntries(cats.map(c => [c.kind, c]));
+  const companion = byKind.black;
 
   // ---------- geometry ----------
   const S = () => clamp(Math.min(W.w / 1440, W.h / 900), .75, 1.3) * 1.05;
@@ -184,17 +206,17 @@ export function bootCats() {
     const f = floor(), ledges = W.ledges.filter(l => onScreen(l.rect));
     for (let i = 0; i < 50; i++) {
       let spot;
-      const wantLedge = ledges.length && (where === 'ledge' || where === 'high' || (where === 'any' && Math.random() < .6));
+      const wantLedge = ledges.length && (where === 'ledge' || where === 'high' || (where === 'any' && random() < .6));
       if (wantLedge) {
         let pool = ledges;
         if (where === 'high') pool = ledges.filter(l => l.top < W.h * .55).concat(ledges.filter(l => l.top < W.h * .3));
         if (near !== null) pool = pool.filter(l => l.right > near - spread && l.left < near + spread);
         if (!pool.length) pool = ledges;
         const l = pick(pool);
-        spot = { surface: l, x: near !== null ? clamp(near + (Math.random() - .5) * spread * .5, l.left, l.right) : lerp(l.left, l.right, Math.random()), z: 0 };
+        spot = { surface: l, x: near !== null ? clamp(near + (random() - .5) * spread * .5, l.left, l.right) : lerp(l.left, l.right, random()), z: 0 };
       } else {
-        const zz = z ?? (Math.random() < .25 ? lerp(f.zMin, f.zBehind, Math.random()) : lerp(-45, 35, Math.random()));
-        spot = { surface: FLOOR, x: clamp((near ?? Math.random() * W.w) + (near !== null ? (Math.random() - .5) * spread : 0), 50, W.w - 50), z: clamp(zz, f.zMin, f.zMax) };
+        const zz = z ?? (random() < .25 ? lerp(f.zMin, f.zBehind, random()) : lerp(-45, 35, random()));
+        spot = { surface: FLOOR, x: clamp((near ?? random() * W.w) + (near !== null ? (random() - .5) * spread : 0), 50, W.w - 50), z: clamp(zz, f.zMin, f.zMax) };
       }
       const k = kAt(spot.surface, spot.z), y = yAt(spot.surface, spot.x, spot.z), tall = y < 150 ? 75 : 115;
       if (y - tall * k < 4) continue;
@@ -204,7 +226,7 @@ export function bootCats() {
       if (i < 35 && overText(box, spot.surface === FLOOR ? null : spot.surface)) continue;
       return spot;
     }
-    return { surface: FLOOR, x: 60 + Math.random() * (W.w - 120), z: 0 };
+    return { surface: FLOOR, x: 60 + random() * (W.w - 120), z: 0 };
   }
 
   // ---------- route planning: walk, jump, climb, or leave and come back ----------
@@ -306,7 +328,7 @@ export function bootCats() {
     const r = ledge.rect, wallX = side < 0 ? r.left : r.right, angle = side * Math.PI / 2;
     b.faceYaw(side < 0 ? 0 : Math.PI); b.reset({ tailUp: .8 }); b.look = null;
     yield* wait(.35);
-    if (Math.random() < .3) say(cat, 'climb', .6);
+    if (random() < .3) say(cat, 'climb', .6);
     b.set({ crouch: 1 }); yield* wait(.2); b.set({ crouch: 0 });
     const startY = Math.min(r.bottom - 6, floorY(0) - 50 * S());
     b.noShadow = true;
@@ -333,10 +355,10 @@ export function bootCats() {
     if (cat.at.kind === 'behind') yield* popOut(cat);
     if (cat.at.kind === 'ledge') {
       const l = cat.at.ledge;
-      if (l.top < 220 && Math.random() < .5 && !reduced()) {
+      if (l.top < 220 && random() < .5 && !reduced()) {
         // Straight up and out of the top of the screen.
         b.reset({ crouch: 1 }); yield* wait(.3);
-        yield* leapTo(cat, b.x + (Math.random() - .5) * 80, -260 * S(), S(), 120, .55);
+        yield* leapTo(cat, b.x + (random() - .5) * 80, -260 * S(), S(), 120, .55);
         cat.at = { kind: 'away', side: 'top' }; return;
       }
       const link = hop(l, FLOOR, b.x);
@@ -352,10 +374,10 @@ export function bootCats() {
   function* enter(cat, spot, speed = walkSpeed(cat)) {
     const b = cat.body; cat.xf = null; cat.peek = null;
     b.stop(); b.jump = null; b.reset({ tailUp: .8 }); b.face = 'open';
-    if (spot.surface !== FLOOR && Math.random() < .65 && !reduced()) {
+    if (spot.surface !== FLOOR && random() < .65 && !reduced()) {
       // Drop in from above.
       const l = refresh(spot.surface), x = clamp(spot.x, l.left, l.right);
-      b.x = x; b.gy = -200 * S(); b.k = S() * LEDGE_K; b.yaw = Math.random() < .5 ? 0 : Math.PI;
+      b.x = x; b.gy = -200 * S(); b.k = S() * LEDGE_K; b.yaw = random() < .5 ? 0 : Math.PI;
       b.reset({ tailUp: 1, earsBack: .4 }); b.face = 'wide';
       yield* leapTo(cat, x, l.y(x), S() * LEDGE_K, 0, clamp(Math.sqrt(Math.max(0, l.y(x) + 200)) / 30, .45, .9));
       land(cat, l); puff(b.x, b.gy, 5); b.bounce(1.4); b.face = 'open'; b.reset({ crouch: .5 }); yield* wait(.3); b.reset({ sit: 1 });
@@ -370,7 +392,7 @@ export function bootCats() {
   function* popOut(cat) {
     const b = cat.body, l = cat.at.solid; cat.peek = null; refresh(l);
     const x = clamp(b.x, l.left, l.right);
-    cat.forceMask = true; b.reset({ tailUp: .9 }); b.yaw = Math.random() < .5 ? 0 : Math.PI;
+    cat.forceMask = true; b.reset({ tailUp: .9 }); b.yaw = random() < .5 ? 0 : Math.PI;
     yield* leapTo(cat, x, l.rect.top, S() * LEDGE_K, 60 * S(), .45);
     cat.forceMask = false; land(cat, l); b.bounce(.8);
   }
@@ -379,7 +401,7 @@ export function bootCats() {
     const b = cat.body; refresh(l);
     const k = S() * BEHIND_K, need = (b.headLift + CAST[cat.kind].look.headR * 2.1) * k;
     if (l.rect.height < need + 10) return false;
-    const x = clamp(b.x + (Math.random() - .5) * 60, l.rect.left + 40 * k, l.rect.right - 40 * k);
+    const x = clamp(b.x + (random() - .5) * 60, l.rect.left + 40 * k, l.rect.right - 40 * k);
     b.reset({ crouch: 1 }); yield* wait(.25); b.set({ crouch: 0 });
     cat.forceMask = true;
     yield* leapTo(cat, x, l.rect.top + need + 4, k, 40 * S(), .42);
@@ -394,12 +416,17 @@ export function bootCats() {
       const b = cat.body;
       if (cat.at.kind === 'away') { yield* enter(cat, spot, speed); return; }
       if (cat.at.kind === 'behind') yield* popOut(cat);
+      // A recovery landing can take longer than eight route attempts.
+      if (cat.at.kind === 'air' && cat.at.then) {
+        while (b.jump) yield;
+        if (cat.at.kind === 'air') land(cat, cat.at.then);
+      }
       if (cat.at.kind === 'air' || cat.at.kind === 'wall') { yield; continue; }
       const here = surfaceOf(cat);
       if ((here === FLOOR && spot.surface === FLOOR) || sameLedge(here, spot.surface)) { yield* walkTo(cat, spot.x, spot.z ?? null, speed); return; }
       const steps = route(here, b.x, spot.surface);
       if (!steps?.length) {
-        if (Math.random() < .5 || here !== FLOOR) { yield* exit(cat, speed * 1.2); yield* wait(.8 + Math.random() * 1.6); yield* enter(cat, spot, speed); }
+        if (random() < .5 || here !== FLOOR) { yield* exit(cat, speed * 1.2); yield* wait(.8 + random() * 1.6); yield* enter(cat, spot, speed); }
         return;
       }
       const st = steps[0];
@@ -411,25 +438,25 @@ export function bootCats() {
 
   // ---------- peeking: over or around cards, and in from the screen edges ----------
   // A peek is an edge and an outward direction; amt runs from -.4 (hidden) through 0 (ear tips) to 1 (whole head, paws on the edge).
-  function* peek(cat, spec, hold = 2 + Math.random() * 3) {
+  function* peek(cat, spec, hold = 2 + random() * 3) {
     const b = cat.body;
     cat.peek = { ...spec, amt: -.45, goal: 0 };
     b.reset({ sit: 1, earsBack: 0 }); b.yaw = Math.PI / 2; b.face = 'open'; b.look = 'viewer';
-    yield* wait(.5 + Math.random() * .8);
-    cat.peek.goal = Math.random() < .3 ? .55 : 1;
+    yield* wait(.5 + random() * .8);
+    cat.peek.goal = random() < .3 ? .55 : 1;
     let t = 0;
     while (t < hold) {
       const dt = yield; t += dt;
       const p = W.pointer, head = peekHead(cat);
-      if (p && head && performance.now() - p.t < 3000) {
+      if (p && head && clock() - p.t < 3000) {
         b.look = { x: p.x, y: p.y };
         // Too close: duck!
         if (Math.hypot(p.x - head.x, p.y - head.y) < 70 * S() && cat.peek.goal > 0) {
-          cat.peek.goal = -.45; cat.peek.fast = true; think(cat, '!', .8); yield* wait(1.2 + Math.random());
+          cat.peek.goal = -.45; cat.peek.fast = true; think(cat, '!', .8); yield* wait(1.2 + random());
           cat.peek.fast = false; cat.peek.goal = .55; t = Math.max(t, hold - 1.5);
         }
-      } else if (Math.random() < dt * .4) b.look = Math.random() < .5 ? 'viewer' : null;
-      if (Math.random() < dt * .25) b.set({ headRoll: (Math.random() - .5) * .5 });
+      } else if (random() < dt * .4) b.look = random() < .5 ? 'viewer' : null;
+      if (random() < dt * .25) b.set({ headRoll: (random() - .5) * .5 });
     }
     cat.peek.goal = -.45; yield* wait(.6);
     cat.peek = null; cat.xf = null; cat.edgePaws = null; b.set({ headRoll: 0 });
@@ -471,7 +498,7 @@ export function bootCats() {
     const edges = ['left', 'right', 'bottom', 'bottom', 'top'];
     for (let i = 0; i < 20; i++) {
       const edge = pick(edges), k = S() * (edge === 'bottom' ? 1.55 : 1.15), hr = CAST[cat.kind].look.headR * k;
-      const u = edge === 'left' || edge === 'right' ? lerp(W.h * .22, W.h * .82, Math.random()) : lerp(W.w * .1, W.w * .9, Math.random());
+      const u = edge === 'left' || edge === 'right' ? lerp(W.h * .22, W.h * .82, random()) : lerp(W.w * .1, W.w * .9, random());
       const box = edge === 'left' ? { left: 0, right: hr * 2.6, top: u - hr * 2, bottom: u + hr * 1.6 }
         : edge === 'right' ? { left: W.w - hr * 2.6, right: W.w, top: u - hr * 2, bottom: u + hr * 1.6 }
         : edge === 'top' ? { left: u - hr * 1.6, right: u + hr * 1.6, top: 0, bottom: hr * 2.6 }
@@ -491,16 +518,19 @@ export function bootCats() {
   function fidget(cat) {
     const b = cat.body;
     if (W.time > cat.nextGlance) {
-      cat.nextGlance = W.time + 1.4 + Math.random() * 3.5;
+      cat.nextGlance = W.time + 4 + random() * 5;
       const others = cats.filter(o => o !== cat && o.at.kind !== 'away');
-      const r = Math.random();
+      const r = random();
       if (W.pointer && !W.overUI && r < .35 + cat.mind.t.curiosity * .2) b.look = { x: W.pointer.x, y: W.pointer.y };
       else if (r < .55 && others.length) { const o = pick(others); b.look = { x: o.body.x, y: o.body.gy - 40 }; }
       else if (r < .72) b.look = 'viewer';
       else if (r < .82 && room) { const s = stageCenter(); if (s) b.look = { ...s, behind: true }; }
       else b.look = null;
-      if (Math.random() < .25) { b.goal.earsBack = .5; setTimeout(() => { b.goal.earsBack = 0; }, 160); }
-      b.goal.tailWag = Math.random() < .2 ? .5 + Math.random() * .4 : .1;
+      if (random() < .2) { b.goal.earsBack = .16; runtime.delay(() => { if (b.goal.earsBack === .16) b.goal.earsBack = 0; }, 260); }
+      if (b.look === 'viewer' && cat.mind.trust > 45 && W.time > (cat.blinkAt || 0)) {
+        b.slowBlink(1.35); cat.blinkAt = W.time + 12 + random() * 12;
+      }
+      b.goal.tailWag = random() < .15 ? .22 : .07;
     }
   }
   function stageCenter() {
@@ -511,59 +541,66 @@ export function bootCats() {
   // Settle on arrival: on a card's top edge, legs and tail hang over the front.
   function restPose(cat, base = 'sit') {
     const b = cat.body, l = cat.at.kind === 'ledge' ? cat.at.ledge : null;
-    if (l && Math.random() < .7) b.faceYaw(Math.PI / 2 + (Math.random() - .5) * 1.4);
+    if (l && random() < .7) b.faceYaw(Math.PI / 2 + (random() - .5) * 1.4);
     if (l && l.top < 150 && base === 'sit') base = 'loaf';
-    else if (l && l.kind !== 'word' && base !== 'curl' && Math.random() < .55) { b.reset({ sit: .85, overEdge: 1, tailHang: 1 }); b.faceYaw(Math.PI / 2 + (Math.random() - .5) * .5); return; }
+    else if (l && l.kind !== 'word' && base !== 'curl' && random() < .55) { b.reset({ sit: .85, overEdge: 1, tailHang: 1 }); b.faceYaw(Math.PI / 2 + (random() - .5) * .5); return; }
     b.reset({ [base]: 1, tailWrap: base === 'sit' ? 1 : .5, ...(l && l.kind !== 'word' && base === 'loaf' ? { tailHang: 1 } : {}) });
   }
 
   // ----- activities -----
   const A = {
-    *sit(cat, seconds = 5 + Math.random() * 8) {
-      restPose(cat, 'sit'); let t = 0;
-      if (Math.random() < .25) say(cat, 'idle', .15);
-      while (t < seconds) { const dt = yield; t += dt; fidget(cat); if (Math.random() < .002) cat.body.set({ knead: cat.body.goal.knead ? 0 : 1 }); }
+    *greet(cat, key = 'greet') {
+      const b = cat.body;
+      b.face = 'open';
+      restPose(cat, 'sit'); b.set({ eyes: .86, pupil: .66, tailWag: .08 });
+      b.look = 'viewer'; yield* wait(.65);
+      b.slowBlink(1.4); say(cat, key, .65);
+      yield* wait(2.5); b.set({ headRoll: .08 }); yield* wait(1.2);
+      b.set({ headRoll: 0 });
+    },
+    *sit(cat, seconds = 9 + random() * 12) {
+      restPose(cat, 'sit'); cat.body.set({ eyes: .88, pupil: .68 }); let t = 0;
+      while (t < seconds) { const dt = yield; t += dt; fidget(cat); }
     },
     *loaf(cat) {
-      restPose(cat, 'loaf'); cat.body.set({ eyes: .55 }); let t = 0; const seconds = 10 + Math.random() * 14;
+      restPose(cat, 'loaf'); cat.body.set({ eyes: .65, pupil: .65, tailWag: .06 }); let t = 0; const seconds = 18 + random() * 18;
       while (t < seconds) {
         const dt = yield; t += dt; fidget(cat);
-        // Slow blink at the viewer: cat for "I trust you".
-        if (cat.body.look === 'viewer' && cat.mind.trust > 45 && Math.random() < dt * .4) { cat.body.goal.eyes = 0; yield* wait(.9); cat.body.goal.eyes = .55; think(cat, '♥', 1.4); }
+        // Quiet eye contact uses the rig's slow blink instead of a bubble.
       }
     },
     *sleep(cat) {
-      if (Math.random() < .2 && W.solids.length) { if (yield* A.hide(cat, true)) return; }
-      const spot = findSpot(cat, { where: Math.random() < .55 ? 'ledge' : 'floor' });
+      if (random() < .2 && W.solids.length) { if (yield* A.hide(cat, true)) return; }
+      const spot = findSpot(cat, { where: random() < .55 ? 'ledge' : 'floor' });
       yield* travel(cat, spot, walkSpeed(cat) * .8);
       yield* settleToSleep(cat);
-      let t = 0; const max = 25 + Math.random() * 60;
-      while (t < max && (cat.mind.drives.sleepy > 6 || W.calm)) {
+      let t = 0; const max = 25 + random() * 60;
+      while (W.calm || (t < max && cat.mind.drives.sleepy > 6)) {
         const dt = yield; t += dt;
-        if (Math.random() < dt * .35) particle('z', cat.body.top.x + 8, cat.body.top.y + 6, { rise: 18, life: 2.4, size: 12 + Math.random() * 6, color: '#cbbbe8' });
-        if (Math.random() < dt * .05) cat.body.goal.tailWag = cat.body.goal.tailWag ? 0 : .2;
+        if (random() < dt * .35) particle('z', cat.body.top.x + 8, cat.body.top.y + 6, { rise: 18, life: 2.4, size: 12 + random() * 6, color: '#cbbbe8' });
+        if (random() < dt * .05) cat.body.goal.tailWag = cat.body.goal.tailWag ? 0 : .2;
       }
       yield* wake(cat);
     },
     *cuddle(cat, partnerKind) {
       const p = byKind[partnerKind];
       if (!p || !['sleep', 'cuddle'].includes(p.mind.activity) || !surfaceOf(p)) return;
-      const side = Math.random() < .5 ? -1 : 1, s = surfaceOf(p);
+      const side = random() < .5 ? -1 : 1, s = surfaceOf(p);
       yield* travel(cat, { surface: s, x: p.body.x + side * 50 * p.body.k, z: p.body.z }, walkSpeed(cat) * .8);
       cat.body.faceYaw(side > 0 ? Math.PI : 0); yield* wait(.6);
       yield* settleToSleep(cat);
       cat.mind.bond(partnerKind, .08); p.mind.bond(cat.kind, .05);
       particle('♥', (cat.body.top.x + p.body.top.x) / 2, Math.min(cat.body.top.y, p.body.top.y), { color: '#f29bb0', size: 16 });
       log(`${cat.name} curled up next to ${p.name}.`);
-      let t = 0; while (t < 40 && (cat.mind.drives.sleepy > 5 || W.calm)) { const dt = yield; t += dt; if (Math.random() < dt * .3) particle('z', cat.body.top.x, cat.body.top.y, { rise: 18, life: 2.4, size: 12, color: '#cbbbe8' }); }
+      let t = 0; while (t < 40 && (cat.mind.drives.sleepy > 5 || W.calm)) { const dt = yield; t += dt; if (random() < dt * .3) particle('z', cat.body.top.x, cat.body.top.y, { rise: 18, life: 2.4, size: 12, color: '#cbbbe8' }); }
       yield* wake(cat);
     },
     *groom(cat) {
       const b = cat.body; restPose(cat, 'sit'); b.set({ overEdge: 0 }); b.look = null;
-      for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) {
+      for (let i = 0; i < 2 + Math.floor(random() * 3); i++) {
         b.set({ groom: 1, headPitch: -.25, eyes: .3, headYaw: .35 }); b.face = 'open';
-        yield* wait(1.2 + Math.random());
-        b.set({ groom: 0, eyes: 1 }); yield* wait(.4 + Math.random() * .6);
+        yield* wait(1.2 + random());
+        b.set({ groom: 0, eyes: 1 }); yield* wait(.4 + random() * .6);
       }
       b.face = 'open'; b.set({ groom: 0 });
     },
@@ -574,17 +611,17 @@ export function bootCats() {
     },
     *wander(cat) {
       const b = cat.body; b.reset({ tailUp: .5 + cat.mind.t.bold * .4 }); b.look = null;
-      yield* travel(cat, findSpot(cat, { where: 'any', near: Math.random() < .4 ? b.x : null }), walkSpeed(cat));
+      yield* travel(cat, findSpot(cat, { where: 'any', near: random() < .4 ? b.x : null }), walkSpeed(cat));
       // Sniff around on arrival.
-      b.set({ crouch: .3 }); b.goal.headPitch = -.3; yield* wait(.8 + Math.random()); b.set({ crouch: 0 });
-      yield* A.sit(cat, 2 + Math.random() * 4);
+      b.set({ crouch: .3 }); b.goal.headPitch = -.3; yield* wait(.8 + random()); b.set({ crouch: 0 });
+      yield* A.sit(cat, 2 + random() * 4);
     },
     *explore(cat) {
       const b = cat.body; b.reset({ tailUp: .7 });
       yield* travel(cat, findSpot(cat, { where: 'high' }), walkSpeed(cat) * 1.15);
       if (cat.at.kind === 'ledge') { say(cat, 'shelf', .4); cat.mind.drives.curious -= 30; }
-      restPose(cat, Math.random() < .5 ? 'loaf' : 'sit'); b.look = null;
-      let t = 0; const seconds = 10 + Math.random() * 16;
+      restPose(cat, random() < .5 ? 'loaf' : 'sit'); b.look = null;
+      let t = 0; const seconds = 10 + random() * 16;
       while (t < seconds) { const dt = yield; t += dt; fidget(cat); }
     },
     // Hide behind a card and play peekaboo. With nap = true, just sleep back there.
@@ -594,40 +631,40 @@ export function bootCats() {
       if (!hideouts.length) { yield* A.sit(cat); return false; }
       const l = pick(hideouts);
       let hx = lerp(l.left, l.right, .5);
-      for (let i = 0; i < 20; i++) { const x = lerp(l.left, l.right, .1 + Math.random() * .8); const box = restBox(x, l.top, S() * LEDGE_K * .7); if (clearOf(box) && !overText(box, l)) { hx = x; break; } }
+      for (let i = 0; i < 20; i++) { const x = lerp(l.left, l.right, .1 + random() * .8); const box = restBox(x, l.top, S() * LEDGE_K * .7); if (clearOf(box) && !overText(box, l)) { hx = x; break; } }
       yield* travel(cat, { surface: l, x: hx, z: 0 }, walkSpeed(cat) * 1.2);
       if (!sameLedge(surfaceOf(cat), l)) return false;
       if (!(yield* dive(cat, l))) { yield* A.sit(cat); return false; }
       if (!nap) say(cat, 'hidden', .4);
       // Settle near a side so the tail gives the game away.
-      const r = refresh(l).rect, side = Math.random() < .5 ? -1 : 1;
+      const r = refresh(l).rect, side = random() < .5 ? -1 : 1;
       cat.at.dx = side < 0 ? 34 * b.k : r.width - 34 * b.k; b.x = r.left + cat.at.dx;
       b.yaw = side < 0 ? 0 : Math.PI;
       b.reset({ sit: 1, tailUp: .5, tailWag: .45 });
       if (nap) {
         b.reset({ curl: 1, eyes: 0, tailWrap: 0, tailUp: .3, tailWag: .1 }); b.face = 'sleep';
-        let t = 0; while (t < 60 && (cat.mind.drives.sleepy > 6 || W.calm)) t += yield;
+        let t = 0; while (W.calm || (t < 60 && cat.mind.drives.sleepy > 6)) t += yield;
         b.face = 'open'; yield* popOut(cat); return true;
       }
-      let t = 0; const seconds = 18 + Math.random() * 26;
+      let t = 0; const seconds = 18 + random() * 26;
       while (t < seconds) {
-        t += yield* waitT(1.5 + Math.random() * 3.5);
+        t += yield* waitT(1.5 + random() * 3.5);
         refresh(l);
-        const tall = l.rect.height > 260 * S(), mode = tall && Math.random() < .45 ? 'side' : 'over';
+        const tall = l.rect.height > 260 * S(), mode = tall && random() < .45 ? 'side' : 'over';
         const spec = mode === 'over'
-          ? { mode, solid: l, u: lerp(l.rect.width * .1, l.rect.width * .9, Math.random()) }
-          : { mode, solid: l, side: Math.random() < .5 ? -1 : 1, v: lerp(110 * S(), Math.min(l.rect.height - 40, 300 * S()), Math.random()) };
+          ? { mode, solid: l, u: lerp(l.rect.width * .1, l.rect.width * .9, random()) }
+          : { mode, solid: l, side: random() < .5 ? -1 : 1, v: lerp(110 * S(), Math.min(l.rect.height - 40, 300 * S()), random()) };
         if (mode === 'over') {
           const x = l.rect.left + spec.u, hr = b.L.headR * b.k;
           const box = { left: x - hr * 1.6, right: x + hr * 1.6, top: l.rect.top - hr * 2.4, bottom: l.rect.top };
           if (!clearOf(box) || overText(box, l)) continue;
         }
-        if (Math.random() < .3) say(cat, 'peek', .6);
-        const before = performance.now();
-        yield* peek(cat, spec, 1.5 + Math.random() * 3);
-        t += (performance.now() - before) / 1000;
+        if (random() < .3) say(cat, 'peek', .6);
+        const before = clock();
+        yield* peek(cat, spec, 1.5 + random() * 3);
+        t += (clock() - before) / 1000;
         // Out of sight: sneak to the other side.
-        if (cat.at.kind === 'behind') { cat.at.dx = Math.random() < .5 ? 34 * b.k : l.rect.width - 34 * b.k; b.yaw = cat.at.dx < l.rect.width / 2 ? 0 : Math.PI; }
+        if (cat.at.kind === 'behind') { cat.at.dx = random() < .5 ? 34 * b.k : l.rect.width - 34 * b.k; b.yaw = cat.at.dx < l.rect.width / 2 ? 0 : Math.PI; }
       }
       if (cat.at.kind === 'behind') { yield* popOut(cat); say(cat, 'peek', .5); restPose(cat, 'sit'); yield* wait(2); }
       return true;
@@ -635,15 +672,15 @@ export function bootCats() {
     // Leave the screen for a while; maybe peek back in; then come home.
     *leave(cat) {
       const b = cat.body;
-      if (Math.random() < .3) say(cat, 'idle', .4);
+      if (random() < .3) say(cat, 'idle', .4);
       yield* exit(cat, walkSpeed(cat) * 1.3);
       log(`${cat.name} went off-screen to explore.`);
-      let t = 0; const seconds = 15 + Math.random() * 40 + cat.mind.t.curiosity * 20;
+      let t = 0; const seconds = 15 + random() * 40 + cat.mind.t.curiosity * 20;
       while (t < seconds) {
-        t += yield* waitT(4 + Math.random() * 8);
-        if (Math.random() < .5 && !W.calm) {
+        t += yield* waitT(4 + random() * 8);
+        if (random() < .5 && !W.calm) {
           const spec = screenPeekSpec(cat);
-          if (spec) { if (Math.random() < .35) say(cat, 'peek', 1); yield* peek(cat, spec, 2 + Math.random() * 3); t += 3; }
+          if (spec) { if (random() < .35) say(cat, 'peek', 1); yield* peek(cat, spec, 2 + random() * 3); t += 3; }
         }
       }
       yield* enter(cat, findSpot(cat, { where: 'any' }), walkSpeed(cat) * 1.2);
@@ -655,7 +692,7 @@ export function bootCats() {
       const b = cat.body, s = S(), kc = s * 3.1, hr = b.L.headR * kc;
       let x = null;
       for (let i = 0; i < 24 && x === null; i++) {
-        const cx = lerp(W.w * .12, W.w * .88, Math.random());
+        const cx = lerp(W.w * .12, W.w * .88, random());
         if (clearOf({ left: cx - hr * 2, right: cx + hr * 2, top: W.h - hr * 3.2, bottom: W.h })) x = cx;
       }
       if (x === null) { yield* A.stare(cat); return; }
@@ -666,35 +703,35 @@ export function bootCats() {
       yield* wait(1.4);
       say(cat, 'glass', .8);
       // Sniff the glass.
-      for (let i = 0; i < 3; i++) { b.set({ headPitch: .15, eyes: .6 }); particle('sniff', b.headPos[0] + (Math.random() - .5) * 40, b.headPos[1] + hr * .3, { color: '#e6d8f5', size: 13, rise: 20 }); yield* wait(.28); b.set({ headPitch: 0, eyes: 1 }); yield* wait(.2); }
+      for (let i = 0; i < 3; i++) { b.set({ headPitch: .15, eyes: .6 }); particle('sniff', b.headPos[0] + (random() - .5) * 40, b.headPos[1] + hr * .3, { color: '#e6d8f5', size: 13, rise: 20 }); yield* wait(.28); b.set({ headPitch: 0, eyes: 1 }); yield* wait(.2); }
       glassMark('fog', b.headPos[0], b.headPos[1] + hr * .35, hr * .9);
       let taps = 0, t = 0;
-      while (t < 7 + Math.random() * 5) {
+      while (t < 7 + random() * 5) {
         const dt = yield; t += dt;
         const p = W.pointer;
-        if (p && performance.now() - p.t < 2500) b.look = { x: p.x, y: p.y };
+        if (p && clock() - p.t < 2500) b.look = { x: p.x, y: p.y };
         // Tap the glass, at your cursor if it's near.
-        if (Math.random() < dt * .9 && taps < 6) {
+        if (random() < dt * .9 && taps < 6) {
           taps++;
           b.set({ rear: .25, pawsUp: 0, swat: 1 }); yield* wait(.13);
-          const paw = b.paws[0]?.s; if (paw) { glassMark('paw', paw[0], paw[1], b.L.legW * b.k * .9, { a: (Math.random() - .5) * .4 }); puffGlass(paw[0], paw[1]); }
+          const paw = b.paws[0]?.s; if (paw) { glassMark('paw', paw[0], paw[1], b.L.legW * b.k * .9, { a: (random() - .5) * .4 }); puffGlass(paw[0], paw[1]); }
           yield* wait(.15); b.set({ swat: 0, rear: 0 }); yield* wait(.25);
         }
-        if (Math.random() < dt * .12) {
+        if (random() < dt * .12) {
           // A lick.
           b.set({ mouth: .6 }); b.face = 'happy'; yield* wait(.25);
           glassMark('lick', b.headPos[0], b.headPos[1] + hr * .55, hr * .5); yield* wait(.25); b.set({ mouth: 0 }); b.face = 'open';
         }
-        if (Math.random() < dt * .1 && cat.mind.trust > 45) { b.goal.eyes = 0; yield* wait(.9); b.goal.eyes = 1; think(cat, '♥', 1.4); }
+        if (random() < dt * .1 && cat.mind.trust > 45) { b.goal.eyes = 0; yield* wait(.9); b.goal.eyes = 1; think(cat, '♥', 1.4); }
       }
       if (!cat.mind.stats.glass) log(`${cat.name} pressed against the glass to look at you.`);
       cat.mind.stats.glass = (cat.mind.stats.glass || 0) + 1;
       // Turn around (a very large back view) and walk back into the room.
       b.look = null; b.faceYaw(-Math.PI / 2); yield* wait(.9);
       cat.closeup.goal = 0; b.reset({ tailUp: 1 });
-      b.goTo(b.x + (Math.random() - .5) * 200, -60, walkSpeed(cat) * .8);
+      b.goTo(b.x + (random() - .5) * 200, -60, walkSpeed(cat) * .8);
       yield* wait(1.6); cat.closeup = null;
-      yield* A.sit(cat, 2 + Math.random() * 3);
+      yield* A.sit(cat, 2 + random() * 3);
     },
     // Swat a decoration and watch it wobble (or fall).
     *knock(cat) {
@@ -705,7 +742,7 @@ export function bootCats() {
       // Find the ledge the toy sits on, or the floor below it.
       measure(true);
       const under = W.ledges.filter(l => l.el !== toy.el && l.left < tx + 60 && l.right > tx - 60 && l.top >= r.bottom - 30 && l.top - r.bottom < 220).sort((p, q) => p.top - q.top)[0];
-      const surface = under || FLOOR, side = Math.random() < .5 ? -1 : 1;
+      const surface = under || FLOOR, side = random() < .5 ? -1 : 1;
       const own = W.ledges.find(l => l.el === toy.el);
       yield* travel(cat, own ? { surface: own, x: tx, z: 0 } : { surface, x: tx + side * (r.width / 2 + 34 * S()), z: 0 }, walkSpeed(cat));
       const head = b.headPos ? applyXf(cat, b.headPos[0], b.headPos[1]) : { x: b.x, y: b.gy };
@@ -716,7 +753,7 @@ export function bootCats() {
       b.set({ rear: own ? 0 : .5, swat: 1 }); yield* wait(.22); b.set({ swat: 0 }); yield* wait(.3);
       b.set({ swat: 1 }); yield* wait(.22); b.set({ swat: 0, rear: 0 });
       // Page icons only wobble; loose decorations can go over the edge.
-      const fall = !own && !toy.el.matches('.step-symbol') && floorY(0) - r.bottom > 60 && Math.random() < .45 && cat.mind.t.mischief > .5;
+      const fall = !own && !toy.el.matches('.step-symbol') && floorY(0) - r.bottom > 60 && random() < .45 && cat.mind.t.mischief > .5;
       wobble(toy.el, fall ? floorY(0) - r.bottom : 0, tx > b.x ? 1 : -1);
       say(cat, 'knock', .9);
       if (fall) log(`${cat.name} knocked something off the page.`);
@@ -728,43 +765,43 @@ export function bootCats() {
       const r = s.rect;
       let spot = null;
       for (let i = 0; i < 25 && !spot; i++) {
-        const cand = { surface: FLOOR, x: r.left + 40 + Math.random() * Math.max(20, r.width - 80), z: lerp(-35, 20, Math.random()) };
+        const cand = { surface: FLOOR, x: r.left + 40 + random() * Math.max(20, r.width - 80), z: lerp(-35, 20, random()) };
         if (clearOf(restBox(cand.x, floorY(cand.z), floorK(cand.z))) && !crowded(cat, cand)) spot = cand;
       }
       yield* travel(cat, spot || findSpot(cat, { where: 'floor' }), walkSpeed(cat));
       if (cat.at.kind !== 'floor') { yield* A.sit(cat); return; }
       cat.body.reset({ sit: 1, tailWrap: 1 }); cat.body.look = { x: s.x, y: s.y, behind: true };
       cat.body.faceYaw(Math.atan2(-220, s.x - cat.body.x));
-      if (Math.random() < .3) say(cat, 'watch', .25);
+      if (random() < .3) say(cat, 'watch', .25);
       let t = 0;
-      while (W.playing && t < 40 + Math.random() * 40) {
+      while (W.playing && t < 40 + random() * 40) {
         const dt = yield; t += dt;
         const c = stageCenter(); if (c) cat.body.look = { x: c.x, y: c.y, behind: true };
-        cat.body.goal.bob = W.vibe === 'music' ? .5 : 0;
-        if (Math.random() < dt * .04) cat.body.goal.tailWag = .6; else if (Math.random() < dt * .1) cat.body.goal.tailWag = .12;
+        cat.body.goal.bob = W.vibe === 'music' && !reduced() ? .12 : 0;
+        if (random() < dt * .04) cat.body.goal.tailWag = .6; else if (random() < dt * .1) cat.body.goal.tailWag = .12;
         // Now and then, glance back at the viewer.
-        if (Math.random() < dt * .03) { cat.body.look = 'viewer'; yield* wait(1.5); }
+        if (random() < dt * .03) { cat.body.look = 'viewer'; yield* wait(1.5); }
       }
       cat.body.goal.bob = 0;
     },
     *dance(cat) {
       const b = cat.body;
-      yield* travel(cat, findSpot(cat, { where: Math.random() < .5 ? 'ledge' : 'floor' }), walkSpeed(cat) * 1.2);
+      yield* travel(cat, findSpot(cat, { where: random() < .5 ? 'ledge' : 'floor' }), walkSpeed(cat) * 1.2);
       say(cat, 'music', .6); b.look = 'viewer';
-      let t = 0; const seconds = 8 + Math.random() * 6;
+      let t = 0; const seconds = 8 + random() * 6;
       while (t < seconds && W.playing) {
         b.reset({ rear: reduced() ? 0 : .9, pawsUp: 1, bob: 1, tailWag: .8, tailUp: .9 }); b.face = 'happy';
         yield* wait(1.3); t += 1.3;
-        if (!reduced() && Math.random() < .6) { b.faceYaw(b.yaw + Math.PI * (Math.random() < .5 ? 1 : -1)); particle('♪', b.top.x, b.top.y, { color: '#c3acf0' }); }
-        if (!reduced() && Math.random() < .3) { b.reset({ crouch: .5 }); yield* wait(.2); b.leap(b.x, b.gy, b.z, 26, .4); b.jump.k0 = b.jump.k1 = b.k; while (b.jump) yield; t += .6; }
+        if (!reduced() && random() < .6) { b.faceYaw(b.yaw + Math.PI * (random() < .5 ? 1 : -1)); particle('♪', b.top.x, b.top.y, { color: '#c3acf0' }); }
+        if (!reduced() && random() < .3) { b.reset({ crouch: .5 }); yield* wait(.2); b.leap(b.x, b.gy, b.z, 26, .4); b.jump.k0 = b.jump.k1 = b.k; while (b.jump) yield; t += .6; }
       }
       b.face = 'open'; b.reset();
     },
     *zoomies(cat) {
       const b = cat.body; say(cat, 'zoomies', .5);
       b.reset({ earsBack: .6, tailPuff: .5, tailUp: .3, pupil: 1.2 }); b.face = 'wide';
-      for (let i = 0; i < 4 + Math.floor(Math.random() * 3); i++) {
-        if (cat.at.kind === 'floor' && Math.random() < .25) {
+      for (let i = 0; i < 4 + Math.floor(random() * 3); i++) {
+        if (cat.at.kind === 'floor' && random() < .25) {
           // Off one side of the screen and straight back in from the other.
           const dir = b.x < W.w / 2 ? -1 : 1;
           yield* walkTo(cat, dir < 0 ? -120 * S() : W.w + 120 * S(), clamp(b.z, -20, 20), runSpeed(cat) * 1.3);
@@ -772,8 +809,8 @@ export function bootCats() {
           yield* walkTo(cat, dir < 0 ? W.w * .6 : W.w * .4, null, runSpeed(cat) * 1.3);
           continue;
         }
-        yield* travel(cat, findSpot(cat, { where: Math.random() < .5 ? 'ledge' : 'floor' }), runSpeed(cat) * 1.25);
-        if (Math.random() < .3) { b.set({ crouch: .4 }); yield* wait(.15); b.leap(b.x, b.gy, b.z, 34, .42); b.jump.k0 = b.jump.k1 = b.k; while (b.jump) yield; b.set({ crouch: 0 }); }
+        yield* travel(cat, findSpot(cat, { where: random() < .5 ? 'ledge' : 'floor' }), runSpeed(cat) * 1.25);
+        if (random() < .3) { b.set({ crouch: .4 }); yield* wait(.15); b.leap(b.x, b.gy, b.z, 34, .42); b.jump.k0 = b.jump.k1 = b.k; while (b.jump) yield; b.set({ crouch: 0 }); }
       }
       cat.mind.drives.playful = Math.max(0, cat.mind.drives.playful - 50);
       b.face = 'open'; restPose(cat, 'sit'); yield* wait(1.5);
@@ -789,14 +826,14 @@ export function bootCats() {
       b.reset({ crouch: 1, pupil: 1.25, tailUp: -.2, tailWag: .5 }); b.face = 'focus'; think(cat, '!', 1.2);
       while (t < 12) {
         const dt = yield; t += dt;
-        const p = W.pointer; if (!p || W.overUI || performance.now() - p.t > 6000) break;
+        const p = W.pointer; if (!p || W.overUI || clock() - p.t > 6000) break;
         b.look = { x: p.x, y: p.y };
         const dist = Math.abs(p.x - b.x), s = surfaceOf(cat); if (!s) break;
         if (dist > 70 * b.k) { b.goTo(clamp(p.x - Math.sign(p.x - b.x) * 50 * b.k, s.left, s === FLOOR ? W.w - 30 : s.right), b.z, walkSpeed(cat) * .55); still = 0; }
         else { b.stop(); still += dt; }
         if (p.speed > .6) still = 0;
         if (still > .9 && b.gy - p.y < 280 && b.gy > p.y - 30) {
-          b.set({ wiggle: 1 }); if (Math.random() < .5) say(cat, 'cursorStill', .5); yield* wait(.7); b.set({ wiggle: 0, crouch: .2 });
+          b.set({ wiggle: 1 }); if (random() < .5) say(cat, 'cursorStill', .5); yield* wait(.7); b.set({ wiggle: 0, crouch: .2 });
           const target = W.pointer || p, lift = clamp(b.gy - target.y, 20, 260);
           const lx = s === FLOOR ? clamp(target.x, 30, W.w - 30) : clamp(target.x, s.left, s.right);
           b.leap(lx, b.gy, b.z, lift + 18, .55); b.jump.k0 = b.jump.k1 = b.k; b.goal.swat = 1;
@@ -813,21 +850,38 @@ export function bootCats() {
       b.face = 'open'; restPose(cat, 'sit'); yield* wait(1.2);
     },
     *approach(cat) {
-      const b = cat.body, p = W.pointer;
-      const x = p && !W.overUI ? p.x : W.w * (.3 + Math.random() * .4);
-      yield* travel(cat, findSpot(cat, { where: 'floor', near: x, spread: 200, z: 30 + Math.random() * 20 }), walkSpeed(cat) * 1.1);
-      b.reset({ sit: 1, tailUp: .9, tailCurl: .9, tailWrap: 0 }); b.look = 'viewer';
-      b.set({ mouth: .6 }); yield* wait(.35); b.set({ mouth: 0 });
-      say(cat, cat.mind.trust > 60 ? 'greet' : 'idle', .6);
-      let t = 0; while (t < 6) { const dt = yield; t += dt; if (W.pointer && Math.random() < dt) b.look = { x: W.pointer.x, y: W.pointer.y }; }
+      const b = cat.body, p = W.pointer && !W.overUI ? { ...W.pointer } : null;
+      const x = p ? p.x + (b.x < p.x ? -70 : 70) * S() : W.w * .46;
+      try {
+        // Notice first, then stand up and commit to one destination.
+        cat.phase = 'noticing'; b.face = 'open'; b.look = p || 'viewer';
+        b.set({ eyes: .94, headRoll: .13, earsBack: 0, pupil: .75 }); yield* wait(.65);
+        b.set({ headRoll: 0 }); b.reset({ tailUp: .8, tailCurl: .6, eyes: .9 }); yield* wait(.4);
+        cat.phase = 'approaching';
+        yield* travel(cat, findSpot(cat, { where: 'floor', near: x, spread: 100, z: 5 }), walkSpeed(cat) * .78);
+        b.stop(); b.faceYaw(Math.PI / 2); b.look = p || 'viewer';
+        cat.phase = 'sniffing'; b.look = null; b.reset({ sit: .55, tailUp: .9, tailCurl: .8, eyes: .85 });
+        yield* wait(.65);
+        b.set({ headPitch: -.12, headRoll: -.08 }); yield* wait(.45);
+        b.set({ headPitch: .08, headRoll: .08 }); yield* wait(.45);
+        cat.phase = 'offering a paw'; b.set({ sit: 1, headRoll: 0, offerPaw: reduced() ? 0 : 1 });
+        yield* wait(1); b.set({ offerPaw: 0 }); b.look = 'viewer'; b.slowBlink(1.4);
+        if (W.time < W.invitedUntil) say(cat, 'pet', .3);
+        yield* wait(1.5);
+        cat.phase = 'settling';
+        b.set({ eyes: .7, knead: reduced() ? 0 : .3 }); yield* wait(1.3);
+        b.set({ knead: 0, sit: .3, loaf: 1, tailWrap: .8, tailWag: .05 });
+        yield* wait(1.2); cat.phase = 'keeping you company';
+        let t = 0; while (t < 8) { t += yield; fidget(cat); }
+      } finally { cat.phase = null; b.set({ offerPaw: 0, knead: 0, headRoll: 0, headPitch: 0 }); }
     },
     *stare(cat) {
       const b = cat.body;
       yield* travel(cat, findSpot(cat, { where: 'any', z: 40 }), walkSpeed(cat));
       b.reset({ sit: 1 }); b.look = 'viewer'; yield* wait(1);
-      b.set({ headRoll: (Math.random() < .5 ? -1 : 1) * .3 }); think(cat, '?', 1.5); yield* wait(1.5);
+      b.set({ headRoll: (random() < .5 ? -1 : 1) * .3 }); think(cat, '?', 1.5); yield* wait(1.5);
       say(cat, 'stare', .4);
-      yield* wait(2 + Math.random() * 3); b.set({ headRoll: 0 });
+      yield* wait(2 + random() * 3); b.set({ headRoll: 0 });
     },
     *visit(cat, partnerKind) {
       const p = byKind[partnerKind]; if (!p || !surfaceOf(p)) return;
@@ -854,11 +908,11 @@ export function bootCats() {
       yield* wait(.7); b.stop();
       particle('♥', (b.top.x + p.body.top.x) / 2, Math.min(b.top.y, p.body.top.y) - 4, { color: '#f29bb0', size: 18 });
       b.face = 'happy'; b.set({ headRoll: .3, eyes: .2 }); yield* wait(1.2);
-      if (Math.random() < .5) { b.set({ sit: 1, groom: 1 }); b.face = 'open'; yield* wait(2); b.set({ groom: 0 }); }
+      if (random() < .5) { b.set({ sit: 1, groom: 1 }); b.face = 'open'; yield* wait(2); b.set({ groom: 0 }); }
       cat.mind.bond(p.kind, .05); p.mind.bond(cat.kind, .03); cat.mind.drives.lonely = 0;
       b.face = 'open'; b.reset({ sit: 1 });
-      if (Math.random() < .3) log(`${cat.name} booped noses with ${p.name}.`);
-      yield* A.sit(cat, 3 + Math.random() * 4);
+      if (random() < .3) log(`${cat.name} booped noses with ${p.name}.`);
+      yield* A.sit(cat, 3 + random() * 4);
     },
     *chase(cat, partnerKind) {
       const p = byKind[partnerKind]; if (!p || !surfaceOf(p)) return;
@@ -887,7 +941,7 @@ export function bootCats() {
       b.reset({ tailUp: .8, earsBack: .4 }); b.face = 'happy';
       for (let i = 0; i < 3; i++) {
         const away = b.x < from.body.x ? -1 : 1;
-        yield* travel(cat, findSpot(cat, { where: Math.random() < .5 ? 'any' : 'floor', near: clamp(b.x + away * 320, 50, W.w - 50), spread: 260 }), runSpeed(cat) * .9);
+        yield* travel(cat, findSpot(cat, { where: random() < .5 ? 'any' : 'floor', near: clamp(b.x + away * 320, 50, W.w - 50), spread: 260 }), runSpeed(cat) * .9);
       }
       b.face = 'open';
     },
@@ -897,13 +951,13 @@ export function bootCats() {
       for (let i = 0; i < 4; i++) {
         b.look = { x: p.body.x, y: p.body.gy - 30 }; b.faceYaw(Math.atan2(p.body.z - b.z, p.body.x - b.x));
         b.reset({ crouch: .5, earsBack: .5, tailPuff: .4, tailWag: 1 }); b.face = 'focus';
-        yield* wait(.25 + Math.random() * .3);
+        yield* wait(.25 + random() * .3);
         b.set({ swat: 1, rear: reduced() ? 0 : .35 }); puff((b.x + p.body.x) / 2, b.gy, 2); yield* wait(.25); b.set({ swat: 0, rear: 0 });
       }
       cat.mind.drives.playful = Math.max(0, cat.mind.drives.playful - 45); cat.mind.bond(partnerKind, .03);
       b.face = 'open'; b.reset({ sit: 1 });
       if (cat.i < p.i) log(`${cat.name} and ${p.name} had a play fight.`);
-      yield* wait(1 + Math.random());
+      yield* wait(1 + random());
       yield* A.groom(cat);
     },
     *hunt(cat) {
@@ -919,26 +973,31 @@ export function bootCats() {
         const lo = s === FLOOR ? 30 : s.left, hi = s === FLOOR ? W.w - 30 : s.right;
         if (Math.abs(bug.x - b.x) > 60) b.goTo(clamp(bug.x, lo, hi), b.z, walkSpeed(cat) * (Math.abs(bug.x - b.x) > 250 ? 2.2 : .8));
         else b.stop();
-        if (Math.abs(bug.x - b.x) < 80 && b.gy - bug.y < 250 && b.gy > bug.y && Math.random() < dt * 1.2) {
+        if (Math.abs(bug.x - b.x) < 80 && b.gy - bug.y < 250 && b.gy > bug.y && random() < dt * 1.2) {
           b.set({ wiggle: 1 }); yield* wait(.5); b.set({ wiggle: 0, crouch: .2 });
           b.leap(clamp(bug.x, lo, hi), b.gy, b.z, clamp(b.gy - bug.y, 30, 260), .55); b.jump.k0 = b.jump.k1 = b.k; b.goal.swat = 1; b.goal.rear = .3;
           while (b.jump) yield;
           if (s !== FLOOR) cat.at.dx = b.x - s.rect.left;
           b.set({ swat: 0, rear: 0 });
-          if (Math.random() < .35 + cat.mind.t.bold * .2) { bug.flee = true; say(cat, 'caught', 1); particle('✦', bug.x, bug.y, { color: '#f2c78d', size: 22 }); log(`${cat.name} nearly caught a butterfly.`); }
+          if (random() < .35 + cat.mind.t.bold * .2) { bug.flee = true; say(cat, 'caught', 1); particle('✦', bug.x, bug.y, { color: '#f2c78d', size: 22 }); log(`${cat.name} nearly caught a butterfly.`); }
           else say(cat, 'miss', .4);
           b.reset({ crouch: .7, pupil: 1.2 });
           cat.mind.drives.playful = Math.max(0, cat.mind.drives.playful - 25);
           if (bug.flee) break;
         }
-        if (Math.abs(bug.x - b.x) > 300 && Math.random() < dt * .5) yield* travel(cat, surfaceUnder(bug.x, bug.y, cat), runSpeed(cat) * .7);
+        if (Math.abs(bug.x - b.x) > 300 && random() < dt * .5) yield* travel(cat, surfaceUnder(bug.x, bug.y, cat), runSpeed(cat) * .7);
       }
       b.face = 'open'; restPose(cat, 'sit'); b.look = null; yield* wait(1);
     },
     *laser(cat) {
       const b = cat.body;
-      if (cat.mind.t.grumpy > .7 && Math.random() < .6) { say(cat, 'laser', 1); b.reset({ loaf: 1, eyes: .5 }); b.look = W.pointer; yield* wait(6); return; }
-      if (Math.random() < .5) say(cat, 'laser', .5);
+      if (reduced()) {
+        restPose(cat, 'sit'); b.face = 'open'; b.set({ eyes: .9 });
+        let t = 0; while (W.laser && !W.calm && t < 15) { t += yield; if (W.pointer && !W.overUI) b.look = { x: W.pointer.x, y: W.pointer.y }; }
+        return;
+      }
+      if (cat.mind.t.grumpy > .7 && random() < .6) { say(cat, 'laser', 1); b.reset({ loaf: 1, eyes: .5 }); b.look = W.pointer; yield* wait(6); return; }
+      if (random() < .5) say(cat, 'laser', .5);
       b.reset({ crouch: .7, pupil: 1.35, tailWag: .9, tailUp: .1 }); b.face = 'focus';
       let still = 0, t = 0, moveAt = 0;
       while (W.laser && t < 30) {
@@ -953,16 +1012,16 @@ export function bootCats() {
         }
         const lo = s === FLOOR ? 20 : s.left, hi = s === FLOOR ? W.w - 20 : s.right;
         const near = Math.abs(p.x - b.x) < 50 * b.k;
-        if (!near) { b.goTo(clamp(p.x, lo, hi), s === FLOOR ? clamp(b.z + (Math.random() - .5) * 4, floor().zBehind, 30) : 0, runSpeed(cat) * (Math.abs(p.x - b.x) > 200 ? 1.1 : .6)); still = 0; b.set({ crouch: .4 }); }
+        if (!near) { b.goTo(clamp(p.x, lo, hi), s === FLOOR ? clamp(b.z + (random() - .5) * 4, floor().zBehind, 30) : 0, runSpeed(cat) * (Math.abs(p.x - b.x) > 200 ? 1.1 : .6)); still = 0; b.set({ crouch: .4 }); }
         else { b.stop(); still += dt; b.set({ crouch: 1 }); }
-        if (still > .45 + Math.random() * .4 && !b.jump && p.y < b.gy + 10) {
+        if (still > .45 + random() * .4 && !b.jump && p.y < b.gy + 10) {
           b.set({ wiggle: 1 }); yield* wait(.35); b.set({ wiggle: 0 });
           const q = W.pointer || p;
           b.leap(clamp(q.x, lo, hi), b.gy, b.z, clamp(b.gy - q.y, 15, 240) + 10, .45); b.jump.k0 = b.jump.k1 = b.k; b.goal.swat = 1;
           while (b.jump) yield;
           if (s !== FLOOR) cat.at.dx = b.x - s.rect.left;
           b.goal.swat = 0; still = 0; puff(b.x, b.gy, 2);
-          if (Math.random() < .2) particle('?', b.top.x, b.top.y, { color: '#f2c78d', size: 18 });
+          if (random() < .2) particle('?', b.top.x, b.top.y, { color: '#f2c78d', size: 18 });
         }
       }
       cat.mind.drives.playful = Math.max(0, cat.mind.drives.playful - 40);
@@ -975,12 +1034,12 @@ export function bootCats() {
       if (tr.eaten) { b.face = 'open'; return; }
       yield* travel(cat, { surface: tr.surface, x: tr.x + (tr.x > b.x ? -28 : 28) * b.k, z: tr.z }, runSpeed(cat) * (.6 + cat.mind.drives.hungry / 200));
       if (tr.eaten && tr.eater !== cat) {
-        const off = (b.x < tr.x ? -1 : 1) * (60 + Math.random() * 50) * b.k;
+        const off = (b.x < tr.x ? -1 : 1) * (60 + random() * 50) * b.k;
         yield* walkTo(cat, tr.x + off, null, walkSpeed(cat));
         // Too slow. Somebody else got it.
         b.face = 'grumpy'; b.reset({ sit: 1, earsBack: .5 }); b.look = tr.eater ? { x: tr.eater.body.x, y: tr.eater.body.gy - 30 } : null;
         if (tr.eater) cat.mind.bond(tr.eater.kind, -.04);
-        if (Math.random() < .5) say(cat, 'annoyed', .5);
+        if (random() < .5) say(cat, 'annoyed', .5);
         yield* wait(2.5); b.face = 'open'; return;
       }
       if (Math.abs(b.x - tr.x) > 90 * b.k) { b.face = 'open'; return; }
@@ -995,7 +1054,7 @@ export function bootCats() {
     *follow(cat, partnerKind) {
       const p = byKind[partnerKind]; if (!p) return;
       const b = cat.body; b.reset({ tailUp: 1 });
-      let t = 0; const seconds = 10 + Math.random() * 10;
+      let t = 0; const seconds = 10 + random() * 10;
       while (t < seconds) {
         const dt = yield; t += dt;
         const ps = surfaceOf(p); if (!ps) continue;
@@ -1006,10 +1065,10 @@ export function bootCats() {
         else if (!b.move) {
           // Copy whatever the hero is doing.
           const pp = p.body.goal; b.set({ sit: pp.sit, loaf: pp.loaf, crouch: pp.crouch * .8, rear: pp.rear, pawsUp: pp.pawsUp });
-          b.look = Math.random() < .02 ? 'viewer' : { x: p.body.x, y: p.body.gy - 30 };
+          b.look = random() < .02 ? 'viewer' : { x: p.body.x, y: p.body.gy - 30 };
         }
       }
-      if (Math.random() < .3) log(`${cat.name} followed ${p.name} around.`);
+      if (random() < .3) log(`${cat.name} followed ${p.name} around.`);
     },
   };
   function* waitT(seconds) { yield* wait(seconds); return seconds; }
@@ -1034,7 +1093,7 @@ export function bootCats() {
   function* wake(cat) {
     const b = cat.body; b.face = 'open'; b.reset({ loaf: 1, eyes: .4 }); yield* wait(.7);
     yield* A.stretch(cat); cat.mind.drives.sleepy = Math.min(cat.mind.drives.sleepy, 10);
-    if (Math.random() < .3) say(cat, 'wake', .3);
+    if (random() < .3) say(cat, 'wake', .3);
   }
 
   // A cat responds to another starting something with them.
@@ -1043,7 +1102,7 @@ export function bootCats() {
     if (cat.at.kind === 'away' || cat.at.kind === 'behind' || cat.closeup) return 'busy';
     const bond = cat.mind.bonds[from.kind] ?? 0, grumpy = cat.mind.t.grumpy;
     if (['sleep', 'cuddle'].includes(cat.mind.activity) && kind === 'chase') return 'hiss';
-    if (bond + (1 - grumpy) * .5 + Math.random() * .4 < .45) {
+    if (bond + (1 - grumpy) * .5 + random() * .4 < .45) {
       interrupt(cat, (function* () {
         const b = cat.body; b.look = { x: from.body.x, y: from.body.gy - 30 };
         b.reset({ earsBack: 1, tailPuff: 1, tailUp: .9, crouch: .3, mouth: .8 }); b.face = 'wide'; say(cat, 'hiss', 1) || say(cat, 'annoyed', 1);
@@ -1063,16 +1122,31 @@ export function bootCats() {
   }
 
   // ---------- plan control ----------
+  function cancelPlan(cat) {
+    const plan = cat.plan;
+    cat.plan = null;
+    plan?.return();
+  }
   // Interrupting mid-peek or mid-climb: put the cat somewhere sensible first.
   function unstick(cat) {
+    cancelPlan(cat);
     const b = cat.body;
+    b.stop();
     cat.peek = null; cat.edgePaws = null; cat.forceMask = false; b.drive = null; b.noShadow = false;
     if (cat.closeup) cat.closeup.goal = 0;
     if (cat.at.kind === 'wall') { cat.xf = null; const l = cat.at.ledge; b.x += cat.at.side * 30; b.gy = l.rect.top + cat.at.dy; cat.at = { kind: 'air' }; fallToFloor(cat); }
-    else if (cat.at.kind !== 'away') cat.xf = null;
+    else if (cat.at.kind !== 'away') {
+      cat.xf = null;
+      // Closing a leap also closes its future land() call. Recovery owns its
+      // landing independently, so the next action cannot leave Bean floating.
+      if (cat.at.kind === 'air') fallToFloor(cat);
+    }
   }
   function fallToFloor(cat) {
     const b = cat.body, z = clamp(b.z, -30, 20);
+    // Leap height is drawn above gy; preserve the visible position when a
+    // cancelled jump becomes a recovery fall.
+    b.gy -= b.h; b.h = 0;
     b.leap(clamp(b.x, 30, W.w - 30), floorY(z), z, 10, clamp(Math.sqrt(Math.max(0, floorY(z) - b.gy) / 1400), .2, .8));
     b.jump.k0 = b.k; b.jump.k1 = floorK(z); cat.at = { kind: 'air', then: FLOOR };
   }
@@ -1081,19 +1155,20 @@ export function bootCats() {
     if (cat.at.kind === 'away' && prio < PRIORITY.treat) return false;
     unstick(cat);
     cat.plan = gen; cat.prio = prio; cat.body.stop();
-    cat.body.set({ rear: 0, pawsUp: 0, swat: 0, wiggle: 0, groom: 0, bob: 0, knead: 0 }); if (cat.body.face !== 'sleep') cat.body.face = 'open';
+    cat.body.set({ rear: 0, pawsUp: 0, swat: 0, offerPaw: 0, wiggle: 0, groom: 0, bob: 0, knead: 0 }); if (cat.body.face !== 'sleep') cat.body.face = 'open';
     if (type !== 'react' || cat.mind.activity === 'carried') cat.mind.begin(type, partner);
     return true;
   }
   function context(cat) {
     const others = cats.filter(o => o !== cat).map(o => ({ kind: o.kind, activity: o.mind.activity, playful: o.mind.drives.playful }));
-    const idle = (performance.now() - W.idleSince) / 1000;
     return {
       playing: W.playing, vibe: W.vibe, day: dayRhythm(new Date().getHours()), others, reduced: reduced(), calm: W.calm,
-      cursor: !!W.pointer && !W.overUI && performance.now() - W.pointer.t < 4000, laser: W.laser && !!W.pointer,
+      cursor: !!W.pointer && !W.overUI && clock() - W.pointer.t < 15000,
+      cursorDwell: W.pointer && !W.overUI ? (clock() - (W.pointer.stillSince ?? clock())) / 1000 : 0,
+      invitedPlay: W.time < W.invitedUntil, laser: W.laser && !!W.pointer,
       treat: !!W.treat && !W.treat.eaten, critter: !!W.critter && !W.critter.flee, shelves: W.ledges.length > 0,
       hideouts: W.solids.some(l => l.rect.height > 150 && onScreen(l.rect)), toys: W.toys.length > 0,
-      aquarium: W.aquarium || idle > 60,
+      aquarium: W.aquarium,
     };
   }
   function next(cat) {
@@ -1106,7 +1181,7 @@ export function bootCats() {
     cat.mind.begin(type, choice.partner);
     cat.prio = type === 'treat' ? PRIORITY.treat : type === 'laser' ? PRIORITY.laser : PRIORITY.normal;
     if (choice.partner && byKind[choice.partner]) cat.prio = Math.max(cat.prio, PRIORITY.social - 5);
-    cat.plan = A[type](cat, choice.partner);
+    cat.plan = A[type](cat, choice.partner ?? undefined);
   }
   function step(cat, dt) {
     if (!cat.plan) {
@@ -1128,22 +1203,22 @@ export function bootCats() {
 
   // ---------- speech, thoughts, particles ----------
   function say(cat, key, chance = 1, force = false) {
-    if (Math.random() > chance) return false;
+    if (random() > chance) return false;
     if (!force && W.time < W.speechAt) return false;
     if (cat.at.kind === 'away' && !cat.peek) return false;
     const text = cat.mind.line(key); if (!text) return false;
     cat.bubble = { text, until: W.time + 2.6 + text.length * .05, think: false };
-    cat.thought = text; W.speechAt = W.time + 5 + Math.random() * 5;
-    cat.body.set({ mouth: .5 }); setTimeout(() => { cat.body.goal.mouth = 0; }, 220);
+    cat.thought = text; W.speechAt = W.time + 5 + random() * 5;
+    cat.body.set({ mouth: .5 }); runtime.delay(() => { cat.body.goal.mouth = 0; }, 220);
     return true;
   }
   function think(cat, glyph, seconds = 1.6) { cat.bubble = { text: glyph, until: W.time + seconds, think: true }; }
   function particle(glyph, x, y, { color = '#fff', size = 16, rise = 34, life = 1.4, vx = 0 } = {}) {
-    W.particles.push({ glyph, x, y, color, size, rise, life, age: 0, vx: vx || (Math.random() - .5) * 12 });
+    W.particles.push({ glyph, x, y, color, size, rise, life, age: 0, vx: vx || (random() - .5) * 12 });
     if (W.particles.length > 80) W.particles.shift();
   }
-  function puff(x, y, n = 3) { for (let i = 0; i < n; i++) W.particles.push({ glyph: 'dust', x: x + (Math.random() - .5) * 30, y: y - 4, color: '#d6c8e6', size: 6 + Math.random() * 6, rise: 8, life: .6, age: 0, vx: (Math.random() - .5) * 60 }); }
-  function puffGlass(x, y) { for (let i = 0; i < 2; i++) particle('tap', x + (Math.random() - .5) * 30, y - 20, { color: '#f1eaf7', size: 12, rise: 24, life: .8 }); }
+  function puff(x, y, n = 3) { for (let i = 0; i < n; i++) W.particles.push({ glyph: 'dust', x: x + (random() - .5) * 30, y: y - 4, color: '#d6c8e6', size: 6 + random() * 6, rise: 8, life: .6, age: 0, vx: (random() - .5) * 60 }); }
+  function puffGlass(x, y) { for (let i = 0; i < 2; i++) particle('tap', x + (random() - .5) * 30, y - 20, { color: '#f1eaf7', size: 12, rise: 24, life: .8 }); }
   function log(text) {
     const at = new Date(); journal.push({ t: at.getTime(), text }); if (journal.length > 30) journal.shift();
     renderJournal();
@@ -1151,16 +1226,17 @@ export function bootCats() {
   // Nudge a page decoration as if a paw hit it; drop distance > 0 knocks it off.
   function wobble(el, drop, dir) {
     if (!el.animate) return;
+    knocked.add(el);
     el.dataset.catKnocked = '1';
     if (drop > 0) {
       // Transform adds to the element's own animation; opacity must replace, or 1 + 0 stays visible.
-      const a = el.animate([{ transform: 'none' }, { transform: `translate(${dir * 30}px, -14px) rotate(${dir * 25}deg)`, offset: .18 }, { transform: `translate(${dir * 80}px, ${drop}px) rotate(${dir * 200}deg)`, offset: .85 }, { transform: `translate(${dir * 86}px, ${drop}px) rotate(${dir * 215}deg)` }], { duration: 1100, easing: 'cubic-bezier(.4,0,.9,.6)', fill: 'forwards', composite: 'add' });
-      const gone = el.animate([{ opacity: 1, offset: .85 }, { opacity: 0 }], { duration: 1100, fill: 'forwards' });
-      a.onfinish = () => { setTimeout(() => { a.cancel(); gone.cancel(); el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600 }); el.animate([{ transform: 'scale(.6)' }, { transform: 'none' }], { duration: 600, composite: 'add' }).onfinish = () => delete el.dataset.catKnocked; }, 25000); };
-      setTimeout(() => puff(el.getBoundingClientRect().left + dir * 80, floorY(0), 5), 950);
+      const a = animate(el, [{ transform: 'none' }, { transform: `translate(${dir * 30}px, -14px) rotate(${dir * 25}deg)`, offset: .18 }, { transform: `translate(${dir * 80}px, ${drop}px) rotate(${dir * 200}deg)`, offset: .85 }, { transform: `translate(${dir * 86}px, ${drop}px) rotate(${dir * 215}deg)` }], { duration: 1100, easing: 'cubic-bezier(.4,0,.9,.6)', fill: 'forwards', composite: 'add' });
+      const gone = animate(el, [{ opacity: 1, offset: .85 }, { opacity: 0 }], { duration: 1100, fill: 'forwards' });
+      a.onfinish = () => { runtime.delay(() => { a.cancel(); gone.cancel(); animate(el, [{ opacity: 0 }, { opacity: 1 }], { duration: 600 }); animate(el, [{ transform: 'scale(.6)' }, { transform: 'none' }], { duration: 600, composite: 'add' }).onfinish = () => restoreToy(el); }, 25000); };
+      runtime.delay(() => puff(el.getBoundingClientRect().left + dir * 80, floorY(0), 5), 950);
     } else {
-      el.animate([{ transform: 'none' }, { transform: `rotate(${dir * 14}deg) translateX(${dir * 6}px)` }, { transform: `rotate(${-dir * 7}deg)` }, { transform: `rotate(${dir * 3}deg)` }, { transform: 'none' }], { duration: 800, easing: 'ease-out', composite: 'add' })
-        .onfinish = () => setTimeout(() => delete el.dataset.catKnocked, 8000);
+      animate(el, [{ transform: 'none' }, { transform: `rotate(${dir * 14}deg) translateX(${dir * 6}px)` }, { transform: `rotate(${-dir * 7}deg)` }, { transform: `rotate(${dir * 3}deg)` }, { transform: 'none' }], { duration: 800, easing: 'ease-out', composite: 'add' })
+        .onfinish = () => runtime.delay(() => restoreToy(el), 8000);
     }
   }
 
@@ -1186,6 +1262,8 @@ export function bootCats() {
     }) || null;
   }
   function onPet(cat) {
+    if (W.time < (cat.petReadyAt || 0)) return;
+    cat.petReadyAt = W.time + .85; W.invitedUntil = W.time + 16;
     const r = cat.mind.pet(), b = cat.body;
     const stay = !!cat.peek || !!cat.closeup;
     if (r === 'enough') {
@@ -1198,28 +1276,31 @@ export function bootCats() {
       return;
     }
     const top = applyXf(cat, b.top.x, b.top.y);
-    particle('♥', top.x + (Math.random() - .5) * 20, top.y, { color: '#f29bb0', size: 14 + Math.random() * 6 });
+    particle('♥', top.x + (random() - .5) * 20, top.y, { color: '#f29bb0', size: 14 + random() * 6 });
     if (stay || cat.mind.activity === 'sleep' || cat.mind.activity === 'cuddle' || cat.at.kind === 'behind') {
-      particle('prr', top.x, top.y + 10, { color: '#e6d8f5', size: 11 }); b.face = cat.mind.activity === 'sleep' ? 'sleep' : 'happy'; setTimeout(() => { if (b.face === 'happy') b.face = 'open'; }, 900); return;
+      b.face = cat.mind.activity === 'sleep' ? 'sleep' : 'happy'; b.slowBlink(1.3);
+      runtime.delay(() => { if (b.face === 'happy') b.face = 'open'; }, 1200); return;
     }
     interrupt(cat, (function* () {
-      b.reset({ sit: 1, tailUp: 1, tailCurl: .9, eyes: 0, headRoll: (Math.random() < .5 ? -1 : 1) * .25 }); b.face = 'happy'; b.look = null;
-      if (cat.mind.stats.pets % 4 === 1) say(cat, 'pet', 1, true);
-      let t = 0; while (t < 1.6) { const dt = yield; t += dt; if (Math.random() < dt * 4) particle('prr', b.top.x + (Math.random() - .5) * 30, b.top.y + 14, { color: '#e6d8f5', size: 10, rise: 16, life: 1 }); }
-      b.face = 'open'; b.set({ eyes: 1, headRoll: 0 });
+      b.reset({ sit: 1, tailUp: .8, tailCurl: .9, eyes: .85, headRoll: (random() < .5 ? -1 : 1) * .15 }); b.face = 'happy'; b.look = null; b.slowBlink(1.4);
+      if (cat.mind.stats.pets % 5 === 1) say(cat, 'pet', .7);
+      yield* wait(1.8);
+      b.face = 'open'; b.set({ eyes: .88, headRoll: 0 });
     })(), PRIORITY.react, 'react');
     if (cat.mind.stats.pets === 1 || cat.mind.stats.pets % 15 === 0) log(`You petted ${cat.name}${cat.mind.stats.pets > 1 ? ` (${cat.mind.stats.pets} times so far)` : ''}.`);
   }
   function onBoop(cat) {
+    if (W.time < (cat.boopReadyAt || 0)) return;
+    cat.boopReadyAt = W.time + .7; W.invitedUntil = W.time + 16;
     const r = cat.mind.boop(), b = cat.body;
     if (cat.peek) {
       // Booped while peeking: duck, then pop up somewhere else.
       cat.peek.goal = -.45; cat.peek.fast = true; say(cat, 'boop', 1, true); return;
     }
-    if (cat.closeup) { b.bounce(1); b.face = 'wide'; say(cat, 'boop', 1, true); setTimeout(() => { b.face = 'open'; }, 700); return; }
+    if (cat.closeup) { b.bounce(1); b.face = 'wide'; say(cat, 'boop', 1, true); runtime.delay(() => { b.face = 'open'; }, 700); return; }
     interrupt(cat, (function* () {
       b.look = 'viewer'; b.bounce(.8);
-      if (cat.kind === 'black' && Math.random() < .5 && cat.at.kind === 'floor') {
+      if (!reduced() && cat.kind === 'black' && random() < .18 && cat.at.kind === 'floor') {
         // Bean falls over from the sheer force of the boop.
         b.reset({ loaf: 1, curl: .6, eyes: 0 }); b.face = 'happy'; say(cat, 'boop', 1, true); yield* wait(1.2); b.reset({ sit: 1 }); b.face = 'open'; yield* wait(.8); return;
       }
@@ -1230,6 +1311,8 @@ export function bootCats() {
     })(), PRIORITY.react, 'react');
   }
   function startCarry(cat) {
+    W.invitedUntil = W.time + 16;
+    cancelPlan(cat);
     const b = cat.body;
     // Lift from wherever it was: behind a card, peeking, climbing, at the glass.
     const head = applyXf(cat, b.x, b.gy);
@@ -1241,6 +1324,7 @@ export function bootCats() {
     b.look = 'viewer'; say(cat, 'carried', 1, true);
   }
   function drop(cat) {
+    cancelPlan(cat);
     const b = cat.body; W.drag = null;
     measure(true);
     // Land on the first ledge below the paws, or the floor.
@@ -1262,12 +1346,18 @@ export function bootCats() {
   }
 
   function onPointerMove(e) {
-    const now = performance.now(), x = e.clientX, y = e.clientY;
+    const now = clock(), x = e.clientX, y = e.clientY;
+    const inputAt = e.timeStamp ?? performance.now();
     W.idleSince = now;
     const prev = W.pointer;
-    const dist = prev ? Math.hypot(x - prev.x, y - prev.y) : 0, dtm = prev ? Math.max(8, now - prev.t) : 16;
-    W.pointer = { x, y, t: now, speed: dist / dtm };
-    W.overUI = !!e.target?.closest?.(UI);
+    const dist = prev ? Math.hypot(x - prev.x, y - prev.y) : 0, dtm = prev ? Math.max(8, inputAt - prev.inputAt) : 16;
+    const overUI = !!e.target?.closest?.(UI);
+    // Time over a player/button must not become an instant invitation when
+    // that control moves away or the pointer crosses onto empty space.
+    const steady = prev && !overUI && !W.overUI && Math.hypot(x - prev.anchorX, y - prev.anchorY) < 16;
+    W.pointer = { x, y, t: now, inputAt, speed: dist / dtm,
+      stillSince: steady ? prev.stillSince : now, anchorX: steady ? prev.anchorX : x, anchorY: steady ? prev.anchorY : y };
+    W.overUI = overUI;
     if (W.drag) { e.preventDefault?.(); return; }
     if (W.press && Math.hypot(x - W.press.x, y - W.press.y) > 8 && W.press.cat) { startCarry(W.press.cat); W.press = null; return; }
     const hovered = !W.overUI && !e.target?.closest?.('dialog') ? catAt(x, y) : null;
@@ -1286,7 +1376,7 @@ export function bootCats() {
           b.look = { x, y }; b.reset({ earsBack: 1, tailPuff: 1, tailUp: .6 }); b.face = 'wide'; b.bounce(1.2); say(c, 'cursorFast', 1);
           b.leap(b.x, b.gy, b.z, 22, .32); b.jump.k0 = b.jump.k1 = b.k; while (b.jump) yield;
           // Hide, if there's somewhere to hide.
-          if (W.solids.length && Math.random() < .5) { yield* A.hide(c); return; }
+          if (W.solids.length && random() < .5) { yield* A.hide(c); return; }
           yield* travel(c, findSpot(c, { where: 'any', near: clamp(b.x + (b.x > x ? 260 : -260), 40, W.w - 40), spread: 160 }), runSpeed(c));
           b.reset({ sit: 1 }); b.face = 'open'; b.look = { x, y }; yield* wait(1.5);
         })(), PRIORITY.react, 'react');
@@ -1298,7 +1388,7 @@ export function bootCats() {
     const cat = catAt(e.clientX, e.clientY);
     if (!cat) return;
     e.preventDefault();
-    W.press = { cat, x: e.clientX, y: e.clientY, t: performance.now() };
+    W.press = { cat, x: e.clientX, y: e.clientY, t: clock() };
   }
   function onPointerUp() {
     if (W.drag) { drop(W.drag.cat); return; }
@@ -1309,42 +1399,62 @@ export function bootCats() {
     if (String(getSelection?.() || '').trim()) return;
     dropTreat(e.clientX, e.clientY);
   }
-  function dropTreat(x = W.w * (.3 + Math.random() * .4), y = 80) {
+  function dropTreat(x = W.w * (.3 + random() * .4), y = 80) {
     if (W.treat && !W.treat.eaten) return;
+    W.invitedUntil = W.time + 25;
     measure(true);
     const ledge = W.ledges.filter(l => x > l.left && x < l.right && l.y(x) >= y).sort((p, q) => p.y(x) - q.y(x))[0];
-    const z = ledge ? 0 : -20 + Math.random() * 30;
+    const z = ledge ? 0 : -20 + random() * 30;
     W.treat = { x, y, vy: 0, falling: true, surface: ledge || FLOOR, z, ground: ledge ? ledge.y(x) : floorY(z), eaten: false, spin: 0 };
     log('You dropped a treat.');
     for (const c of cats) {
+      if (W.calm) continue;
       if (c.prio >= PRIORITY.treat || (['sleep', 'cuddle'].includes(c.mind.activity) && c.mind.drives.hungry < 50)) continue;
-      if (c.at.kind === 'away' && Math.random() < .5) continue;
+      if (c.at.kind === 'away' && random() < .5) continue;
       unstick(c); c.mind.begin('treat'); c.plan = A.treat(c); c.prio = PRIORITY.treat;
     }
   }
   function setLaser(on) {
     W.laser = on; $('cat-laser-btn')?.setAttribute('aria-pressed', String(on));
     document.documentElement.classList.toggle('cat-laser', on);
-    if (on) { log('You turned on the laser pointer.'); for (const c of cats) if (c.prio < PRIORITY.laser && c.at.kind !== 'away') { unstick(c); c.mind.begin('laser'); c.plan = A.laser(c); c.prio = PRIORITY.laser; } }
+    if (on) { W.invitedUntil = W.time + 25; log('You turned on the laser pointer.'); for (const c of cats) if (!W.calm && c.prio < PRIORITY.laser && c.at.kind !== 'away') { unstick(c); c.mind.begin('laser'); c.plan = A.laser(c); c.prio = PRIORITY.laser; } }
+    else for (const c of cats) if (c.mind.activity === 'laser' && c.prio < PRIORITY.carried) { unstick(c); c.body.stop(); c.body.reset({ sit: 1 }); c.prio = 0; }
+  }
+  function inviteBean() {
+    const c = companion;
+    if (c.prio >= PRIORITY.carried || (c.mind.activity === 'approach' && c.plan) || W.time < (c.helloReadyAt || 0)) return false;
+    c.helloReadyAt = W.time + 8; W.invitedUntil = W.time + 22; W.attentionReadyAt = W.time + 40;
+    if (W.calm) setCalm(false);
+    setPanel(false);
+    panelBtn.focus();
+    interrupt(c, A.approach(c), PRIORITY.react, 'approach');
+    return true;
   }
   function setCalm(on) {
     W.calm = on;
-    for (const id of ['cat-calm-btn', 'cat-calm-dock']) { const el = $(id); if (el) { el.setAttribute('aria-pressed', String(on)); el.textContent = on ? 'Wake cats' : 'Calm cats'; } }
-    for (const c of cats) if (c.prio < PRIORITY.react && c.at.kind !== 'away') { unstick(c); c.plan = null; c.prio = 0; }
-    if (!on) for (const c of cats) c.mind.drives.sleepy = Math.min(c.mind.drives.sleepy, 15);
+    for (const id of ['cat-calm-btn', 'cat-calm-dock']) { const el = $(id); if (el) { el.setAttribute('aria-pressed', String(on)); el.textContent = on ? 'Wake Bean' : 'Calm Bean'; } }
+    if (on && W.laser) setLaser(false);
+    for (const c of cats) if (c.prio < PRIORITY.carried && (on || c.at.kind !== 'away')) { unstick(c); c.body.stop(); c.plan = null; c.prio = 0; }
+    if (!on) for (const c of cats) {
+      c.mind.drives.sleepy = Math.min(c.mind.drives.sleepy, 15);
+      if (c.body.face === 'sleep') { c.body.face = 'open'; c.body.set({ eyes: .88 }); }
+    }
     save();
   }
   function setAquarium(on) {
     W.aquarium = on; document.body.classList.toggle('cat-wallpaper', on);
     const btn = $('cat-aquarium-btn'); if (btn) { btn.setAttribute('aria-pressed', String(on)); btn.textContent = on ? (room ? 'Back to room' : 'Back to site') : 'Aquarium'; }
     const url = new URL(location.href); if (on) url.searchParams.set('wallpaper', '1'); else url.searchParams.delete('wallpaper'); history.replaceState(history.state, '', url);
-    for (const el of document.querySelectorAll(room ? '.room-nav,.playlist-column' : '.home-main,.site-footer')) el.inert = on;
+    for (const el of document.querySelectorAll(room ? '.room-nav,.playlist-column' : '.home-main,.site-footer')) {
+      if (!inertBefore.has(el)) inertBefore.set(el, el.inert);
+      el.inert = on || inertBefore.get(el);
+    }
     resize(); measure(true);
     const f = floor();
     for (const c of cats) {
       unstick(c); c.xf = null; c.closeup = null;
       c.body.jump = null; c.body.stop(); c.at = { kind: 'floor' };
-      c.body.z = on ? lerp(f.zMin * .8, 0, Math.random()) : clamp(c.body.z, -40, 30);
+      c.body.z = on ? lerp(f.zMin * .8, 0, random()) : clamp(c.body.z, -40, 30);
       c.body.x = clamp(c.body.x, 40, W.w - 40);
       c.plan = null; c.prio = 0;
     }
@@ -1362,13 +1472,10 @@ export function bootCats() {
     for (const c of cats) {
       const card = panel.querySelector(`[data-cat-card="${c.kind}"]`); if (!card) continue;
       const set = (sel, text) => { const el = card.querySelector(sel); if (el && el.textContent !== text) el.textContent = text; };
-      set('[data-doing]', c.at.kind === 'away' && !['leave', 'treat'].includes(c.mind.activity) ? 'Out exploring' : c.peek ? 'Peeking at you' : c.mind.label);
+      set('[data-doing]', c.phase ? c.phase[0].toUpperCase() + c.phase.slice(1) : c.at.kind === 'away' && !['leave', 'treat'].includes(c.mind.activity) ? 'Out exploring' : c.peek ? 'Peeking at you' : c.mind.label);
       set('[data-feels]', c.mind.feelings().join(', '));
       set('[data-trust]', hearts(c.mind.trust));
       set('[data-thought]', c.thought ? `“${c.thought}”` : '');
-      const bonds = Object.entries(c.mind.bonds).sort((a, b) => b[1] - a[1]);
-      const best = bonds[0], worst = bonds[bonds.length - 1];
-      set('[data-bonds]', `Closest to ${CAST[best[0]].name}${worst[1] < 0 ? ` · avoids ${CAST[worst[0]].name}` : ''}`);
     }
   }
   function renderJournal() {
@@ -1388,7 +1495,7 @@ export function bootCats() {
   // ---------- persistence ----------
   function save() {
     try {
-      localStorage.setItem(STORE, JSON.stringify({ visits, lastSeen: Date.now(), calm: W.calm, cats: Object.fromEntries(cats.map(c => [c.kind, c.mind.memory()])), journal: journal.slice(-12) }));
+      localStorage.setItem(STORE, JSON.stringify({ visits, lastSeen: Date.now(), calm: W.calm, cats: { ...saved.cats, ...Object.fromEntries(cats.map(c => [c.kind, c.mind.memory()])) }, journal: journal.slice(-12) }));
     } catch {}
   }
 
@@ -1405,8 +1512,8 @@ export function bootCats() {
     c.body.x = spot.x; c.body.z = spot.z ?? 0;
     if (spot.surface === FLOOR) { c.at = { kind: 'floor' }; c.body.gy = floorY(c.body.z); c.body.k = floorK(c.body.z); }
     else { land(c, spot.surface); c.body.gy = spot.surface.y(spot.x); c.body.k = S() * LEDGE_K; }
-    c.body.yaw = Math.random() < .6 ? Math.PI / 2 + (Math.random() - .5) : Math.random() * TAU;
-    const pose = ['sit', 'loaf', 'sit', 'curl'][Math.floor(Math.random() * 4)];
+    c.body.yaw = random() < .6 ? Math.PI / 2 + (random() - .5) : random() * TAU;
+    const pose = ['sit', 'loaf', 'sit', 'curl'][Math.floor(random() * 4)];
     c.body.reset({ [pose]: 1 }); Object.assign(c.body.pose, c.body.goal);
   }
 
@@ -1439,12 +1546,12 @@ export function bootCats() {
       // The ledge scrolled away: hop off it, or leave if it's gone for good.
       if (!onScreen(l.rect, -20) || !document.contains(l.el)) {
         cat.offAt += dt;
-        if (cat.offAt > 3 && cat.prio < PRIORITY.react) { cat.offAt = 0; cat.at = { kind: 'away', side: 'top' }; cat.plan = null; cat.prio = 0; }
+        if (cat.offAt > 3 && cat.prio < PRIORITY.react) { cancelPlan(cat); cat.offAt = 0; cat.at = { kind: 'away', side: 'top' }; cat.prio = 0; }
       } else cat.offAt = 0;
     } else if (at.kind === 'behind') {
       const r = refresh(at.solid).rect;
       b.x = r.left + at.dx; b.gy = r.top + at.dy; b.k = S() * BEHIND_K;
-      if (!onScreen(r, -20) && cat.prio < PRIORITY.react) { cat.at = { kind: 'away', side: 'top' }; cat.peek = null; cat.plan = null; cat.prio = 0; }
+      if (!onScreen(r, -20) && cat.prio < PRIORITY.react) { cancelPlan(cat); cat.at = { kind: 'away', side: 'top' }; cat.peek = null; cat.prio = 0; }
     } else if (at.kind === 'wall') {
       const r = refresh(at.ledge).rect;
       b.x = at.side < 0 ? r.left : r.right; b.gy = r.top + at.dy;
@@ -1458,12 +1565,12 @@ export function bootCats() {
     if (!bug) {
       W.nextCritter -= dt;
       if (W.nextCritter <= 0 && !W.calm && !reduced()) {
-        W.nextCritter = (W.aquarium ? 40 : 70) + Math.random() * 90;
-        const fromLeft = Math.random() < .5;
-        W.critter = { x: fromLeft ? -20 : W.w + 20, y: W.h * (.25 + Math.random() * .5), dir: fromLeft ? 1 : -1, t: 0, flap: 0, hue: pick(['#f2c78d', '#c3acf0', '#8fd3b5', '#f29bb0']), flee: false, gone: false, life: 25 + Math.random() * 15 };
+        W.nextCritter = (W.aquarium ? 40 : 70) + random() * 90;
+        const fromLeft = random() < .5;
+        W.critter = { x: fromLeft ? -20 : W.w + 20, y: W.h * (.25 + random() * .5), dir: fromLeft ? 1 : -1, t: 0, flap: 0, hue: pick(['#f2c78d', '#c3acf0', '#8fd3b5', '#f29bb0']), flee: false, gone: false, life: 25 + random() * 15 };
         log('A butterfly drifted in.');
         // The curious notice first.
-        for (const c of cats) if (c.prio < PRIORITY.social && c.at.kind !== 'away' && Math.random() < c.mind.t.curiosity * .7 && !['sleep', 'cuddle'].includes(c.mind.activity)) { unstick(c); c.mind.begin('hunt'); c.plan = A.hunt(c); c.prio = PRIORITY.normal + 5; }
+        for (const c of cats) if (c.prio < PRIORITY.social && c.at.kind !== 'away' && c.mind.canStart('hunt', context(c)) && random() < c.mind.t.curiosity * .7 && !['sleep', 'cuddle'].includes(c.mind.activity)) { unstick(c); c.mind.begin('hunt'); c.plan = A.hunt(c); c.prio = PRIORITY.normal + 5; }
       }
       return;
     }
@@ -1483,16 +1590,22 @@ export function bootCats() {
     } else tr.y = tr.ground;
   }
 
-  let last = performance.now(), raf = 0, saveAt = 0, panelAt = 0, hiddenAt = 0;
-  function frame(now) {
-    raf = requestAnimationFrame(frame);
-    const dt = Math.min(.05, (now - last) / 1000); last = now;
-    W.time += dt;
+  let saveAt = 0, panelAt = 0, hiddenAt = null;
+  function frame(dt, time) {
+    W.time = time;
     measure();
     const day = dayRhythm(new Date().getHours());
     for (const c of cats) {
       const near = cats.some(o => o !== c && Math.abs(o.body.x - c.body.x) < 120 && Math.abs(o.body.gy - c.body.gy) < 60);
-      c.mind.tick(dt, { day, nearFriend: near });
+      c.mind.tick(dt, { day, nearFriend: near, playing: W.playing, invitedPlay: W.time < W.invitedUntil });
+      const attention = context(c);
+      if (!W.drag && !W.calm && !W.playing && W.time > W.attentionReadyAt && attention.cursor && attention.cursorDwell > 1.3
+        && c.prio < PRIORITY.social && c.at.kind === 'floor' && !c.body.move && !['sleep', 'approach'].includes(c.mind.activity)
+        && Math.hypot(W.pointer.x - c.body.x, W.pointer.y - (c.body.gy - 55 * c.body.k)) < 220 * S()
+        && c.mind.canStart('approach', attention)) {
+        W.attentionReadyAt = W.time + 35;
+        interrupt(c, A.approach(c), PRIORITY.normal + 5, 'approach');
+      }
       if (W.drag?.cat === c) {
         const p = W.pointer; if (p) { const b = c.body; b.x = p.x; b.gy = p.y + (b.L.legLen + b.L.bodyR * 3.2) * b.k; b.h = 0; b.shadowY = floorY(clamp(b.z, -40, 30)); }
       } else step(c, dt);
@@ -1505,8 +1618,8 @@ export function bootCats() {
     for (const g of W.glass) g.age += dt;
     W.glass = W.glass.filter(g => g.age < g.life);
     render();
-    if (now > panelAt) { panelAt = now + 500; renderPanel(); }
-    if (now > saveAt) { saveAt = now + 15000; save(); }
+    if (time >= panelAt) { panelAt = time + .5; renderPanel(); }
+    if (time >= saveAt) { saveAt = time + 15; save(); }
   }
 
   function drawOrder() {
@@ -1639,7 +1752,11 @@ export function bootCats() {
   function updateContext() {
     const before = W.playing; W.playing = document.body.dataset.playback === 'playing';
     W.vibe = videoVibe(W.title).kind;
-    if (W.playing && !before) for (const c of cats) if (c.prio < PRIORITY.social && c.at.kind !== 'away' && Math.random() < .55 && !['sleep', 'cuddle'].includes(c.mind.activity)) { unstick(c); c.plan = null; c.prio = 0; }
+    if (W.playing && !before && W.time >= W.invitedUntil) {
+      for (const c of cats) if (c.prio < PRIORITY.social && c.at.kind !== 'away' && !['sleep', 'cuddle', 'sit', 'loaf', 'watch'].includes(c.mind.activity)) {
+        unstick(c); c.prio = PRIORITY.normal; c.mind.begin('watch'); c.plan = A.watch(c);
+      }
+    }
     if (!W.playing && before) {
       const watchers = cats.filter(c => c.mind.activity === 'watch' || c.mind.activity === 'dance');
       watchers.forEach((c, i) => interrupt(c, (function* () { c.body.look = 'viewer'; think(c, '?', 1.8); if (i === 0) say(c, 'pause', 1, true); yield* wait(2.5); })(), PRIORITY.react));
@@ -1647,7 +1764,7 @@ export function bootCats() {
   }
   const playbackWatch = new MutationObserver(updateContext);
   playbackWatch.observe(document.body, { attributes: true, attributeFilter: ['data-playback'] });
-  disposers.push(() => playbackWatch.disconnect());
+  runtime.own(() => playbackWatch.disconnect());
 
   listen(window, 'resize', resize);
   listen(window, 'scroll', () => { W.rectsAt = -1; }, { passive: true });
@@ -1658,63 +1775,83 @@ export function bootCats() {
   listen(document, 'dblclick', onDoubleClick);
   listen(document.documentElement, 'pointerleave', () => { W.pointer = null; W.hovered = null; document.documentElement.classList.remove('cat-hover'); });
   listen(document, 'keydown', e => {
-    W.idleSince = performance.now();
+    W.idleSince = clock();
     if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
     if (W.laser) setLaser(false);
     else if (!panel.hidden) { setPanel(false); panelBtn.focus(); }
     else if (W.aquarium) setAquarium(false);
   });
-  listen(document, 'visibilitychange', () => {
-    if (document.hidden) { hiddenAt = performance.now(); save(); return; }
-    const away = (performance.now() - hiddenAt) / 1000; last = performance.now();
-    if (!hiddenAt || away < 45) return;
+  function suspend() {
+    if (hiddenAt === null) hiddenAt = Date.now();
+    // A pointer release outside this page will never reach our input listeners.
+    if (W.drag) drop(W.drag.cat);
+    W.press = null; W.pointer = null; W.hovered = null; W.petDist = 0;
+    document.documentElement.classList.remove('cat-hover');
+    runtime.pause();
+    for (const effect of effects.keys()) if (effect.playState === 'running') effect.pause();
+    save();
+  }
+  function resume() {
+    if (runtime.disposed || document.hidden) return;
+    const away = hiddenAt === null ? 0 : Math.max(0, (Date.now() - hiddenAt) / 1000);
+    hiddenAt = null;
+    runtime.resume();
+    for (const effect of effects.keys()) if (effect.playState === 'paused') effect.play();
+    if (away < 45) return;
     // Life went on without you.
     const day = dayRhythm(new Date().getHours());
-    for (let t = 0; t < Math.min(away, 3600); t += 5) for (const c of cats) c.mind.tick(5, { day, nearFriend: Math.random() < .4 });
+    for (let t = 0; t < Math.min(away, 3600); t += 5) for (const c of cats) c.mind.tick(5, { day, nearFriend: cats.length > 1 && random() < .4 });
     cats.forEach((c, i) => { unstick(c); c.closeup = null; c.xf = null; place(c, i); c.plan = null; c.prio = 0; if (c.body.goal.curl) c.mind.begin('sleep'); });
-    const summary = awaySummary(cats.map(c => c.mind), away); if (summary) log(summary);
+    const summary = awaySummary(cats.map(c => c.mind), away, random); if (summary) log(summary);
     const host = [...cats].sort((a, b) => b.mind.trust - a.mind.trust)[0];
-    host.mind.begin('glass'); host.plan = A.glass(host); host.prio = PRIORITY.react;
+    if (!W.calm && !W.playing) { host.mind.begin('greet'); host.plan = A.greet(host, 'returnLong'); host.prio = PRIORITY.react; }
     W.speechAt = 0;
-  });
-  listen(window, 'pagehide', save);
+  }
+  listen(document, 'visibilitychange', () => document.hidden ? suspend() : resume());
+  listen(window, 'pagehide', event => event.persisted ? suspend() : active?.destroy());
+  listen(window, 'pageshow', event => { if (event.persisted) resume(); });
   listen(panelBtn, 'click', () => setPanel(panel.hidden));
   listen($('cat-panel-close'), 'click', () => { setPanel(false); panelBtn.focus(); });
+  listen($('cat-hello-btn'), 'click', inviteBean);
   listen($('cat-treat-btn'), 'click', () => dropTreat());
   listen($('cat-snack-btn'), 'click', () => dropTreat());
   listen($('cat-laser-btn'), 'click', () => setLaser(!W.laser));
   listen($('cat-aquarium-btn'), 'click', () => setAquarium(!W.aquarium));
   listen($('cat-calm-btn'), 'click', () => setCalm(!W.calm));
   listen($('cat-calm-dock'), 'click', () => setCalm(!W.calm));
-  listen(document.querySelector('.create-room-button'), 'pointerenter', () => { const c = byKind.pink; if (c.prio < PRIORITY.react && drawn(c)) { c.body.look = { x: W.pointer?.x ?? W.w / 2, y: W.pointer?.y ?? 200 }; say(c, 'createHover', .6); } });
-  listen($('url-in'), 'focus', () => { const c = byKind.black; say(c, 'newVideo', .4); });
+  listen(document.querySelector('.create-room-button'), 'pointerenter', () => { const c = companion; if (c.prio < PRIORITY.react && drawn(c)) { c.body.look = { x: W.pointer?.x ?? W.w / 2, y: W.pointer?.y ?? 200 }; say(c, 'createHover', .6); } });
+  listen($('url-in'), 'focus', () => say(companion, 'newVideo', .4));
 
   // ---------- start ----------
   resize();
   cats.forEach(place);
+  updateContext();
   setCalm(W.calm);
   if (new URLSearchParams(location.search).get('wallpaper') === '1') setAquarium(true);
-  // Greet the visitor: the host peeks in, then comes up to the glass to say hello.
+  // A small welcome leaves the theatrical close-ups for later, invited play.
   {
-    const host = firstVisit ? byKind.mint : [...cats].sort((a, b) => b.mind.trust - a.mind.trust)[0];
+    const host = companion;
     const key = firstVisit ? 'greet' : sinceLast > 4 * 3600 ? 'returnLong' : null;
-    if (key && !W.calm) {
-      host.mind.begin('glass'); host.prio = PRIORITY.react; host.at = { kind: 'away', side: 'left' };
-      host.plan = (function* () {
-        yield* wait(.8);
-        const spec = screenPeekSpec(host); if (spec) yield* peek(host, spec, 1.6);
-        yield* enter(host, { surface: FLOOR, x: W.w * (.3 + Math.random() * .4), z: 20 });
-        say(host, key, 1, true); yield* wait(1);
-        yield* A.glass(host);
-      })();
-      if (firstVisit) log('You met the cats.'); else log(`You came back after ${Math.round(sinceLast / 3600)} hours. ${host.name} noticed.`);
-    } else if (!journal.length) log('The cats are settling in.');
+    if (key && !W.calm && !W.playing) {
+      host.mind.begin('greet'); host.prio = PRIORITY.react;
+      host.plan = A.greet(host, key);
+      if (firstVisit) log('You met Bean.'); else log(`You came back after ${Math.round(sinceLast / 3600)} hours. ${host.name} noticed.`);
+    } else if (!journal.length) log('Bean is settling in.');
   }
-  raf = requestAnimationFrame(t => { last = t; frame(t); });
+  runtime.start(frame);
+  if (document.hidden) suspend();
 
   active = {
     cats, world: W,
+    snapshot() {
+      return { seed: runtime.seed, time: runtime.time, paused: runtime.paused, disposed: runtime.disposed,
+        context: { playing: W.playing, vibe: W.vibe, calm: W.calm, aquarium: W.aquarium },
+        cats: cats.map(c => ({ name: c.name, activity: c.mind.activity, phase: c.phase || null, location: c.at.kind,
+          trust: c.mind.trust, drives: { ...c.mind.drives }, mood: { ...c.mind.mood },
+          position: { x: c.body.x, y: c.body.gy, z: c.body.z }, thought: c.thought, director: c.mind.inspect() })) };
+    },
     observe(data) {
+      if (runtime.disposed) return;
       if (data.title !== undefined && data.title !== W.title) {
         const had = !!W.title; W.title = data.title; updateContext();
         if (had || data.title) for (const c of cats) if (c.prio < PRIORITY.react && drawn(c) && !c.peek && !['sleep', 'cuddle'].includes(c.mind.activity)) {
@@ -1723,26 +1860,43 @@ export function bootCats() {
         if (data.title) { say(pick(cats.filter(drawn).length ? cats.filter(drawn) : cats), 'newVideo', .7); log(`New video: ${data.title.slice(0, 60)}`); }
       }
       if (W.users !== null && data.users > W.users) {
-        const c = byKind.mint; say(c, 'newcomer', 1, true); log('Someone joined the room. The cats noticed.');
-        for (const o of cats) if (o.prio < PRIORITY.react && drawn(o)) o.body.look = { x: Math.random() < .5 ? 0 : W.w, y: W.h * .6 };
+        say(companion, 'newcomer', 1, true); log('Someone joined the room. Bean noticed.');
+        for (const o of cats) if (o.prio < PRIORITY.react && drawn(o)) o.body.look = { x: random() < .5 ? 0 : W.w, y: W.h * .6 };
       }
       if (data.users !== undefined) W.users = data.users;
     },
-    linkError(message) { if (message) say(byKind.mint, 'linkError', 1, true); },
-    inviteCopied() { say(byKind.mint, 'invite', 1, true); },
-    treat: dropTreat, laser: setLaser, aquarium: setAquarium, calm: setCalm,
+    linkError(message) { if (!runtime.disposed && message) say(companion, 'linkError', 1, true); },
+    inviteCopied() { if (!runtime.disposed) say(companion, 'invite', 1, true); },
+    greet() { return !runtime.disposed && inviteBean(); },
+    treat(...args) { if (!runtime.disposed) dropTreat(...args); },
+    laser(on) { if (!runtime.disposed) setLaser(on); },
+    aquarium(on) { if (!runtime.disposed) setAquarium(on); },
+    calm(on) { if (!runtime.disposed) setCalm(on); },
     destroy() {
-      cancelAnimationFrame(raf); disposers.forEach(d => d()); save();
-      document.body.classList.remove('cat-simulation', 'cat-wallpaper'); universe.hidden = true;
-      legacy.forEach(el => { el.removeAttribute('tabindex'); el.removeAttribute('aria-hidden'); }); active = null;
+      if (runtime.disposed) return;
+      save();
+      try { runtime.destroy(); } finally {
+        for (const el of knocked) restoreToy(el);
+        for (const [el, inert] of inertBefore) el.inert = inert;
+        document.body.classList.remove('cat-simulation', 'cat-wallpaper');
+        document.documentElement.classList.remove('cat-hover', 'cat-laser');
+        universe.hidden = true; panel.hidden = true;
+        panelBtn.setAttribute('aria-expanded', 'false');
+        $('cat-laser-btn')?.setAttribute('aria-pressed', 'false');
+        $('cat-aquarium-btn')?.setAttribute('aria-pressed', 'false');
+        if ($('cat-aquarium-btn')) $('cat-aquarium-btn').textContent = 'Aquarium';
+        legacy.forEach(el => { el.removeAttribute('tabindex'); el.setAttribute('aria-hidden', 'true'); });
+        if (window.youpleCats === active) delete window.youpleCats;
+        active = null;
+      }
     },
   };
-  if (new URLSearchParams(location.search).has('catdebug')) {
-    // Testing hook: make a cat do something now, e.g. youpleCats.play('Mochi', 'hide').
-    active.play = (name, type, ...args) => { const c = cats.find(x => x.name === name || x.kind === name); if (!c || !A[type]) return false; unstick(c); c.mind.begin(type); c.plan = A[type](c, ...args); c.prio = PRIORITY.react; return true; };
-    active.peekIn = name => { const c = cats.find(x => x.name === name); unstick(c); c.at = { kind: 'away', side: 'left' }; c.plan = (function* () { const s = screenPeekSpec(c); if (s) yield* peek(c, s, 4); })(); c.prio = PRIORITY.react; };
-    active.pos = name => { const c = cats.find(x => x.name === name); const h = c.body.headPos; return h ? applyXf(c, h[0], h[1]) : null; };
-    active.measure = () => { measure(true); return { ledges: W.ledges.map(l => ({ kind: l.kind, cls: l.el.className || l.el.id, left: l.left, right: l.right, top: l.top })), solids: W.solids.map(s => s.el.className || s.el.id) }; };
+  if (debug) {
+    // Testing hook: make Bean do something now, e.g. youpleCats.play('Bean', 'hide').
+    active.play = (name, type, ...args) => { const c = cats.find(x => x.name === name || x.kind === name); if (runtime.disposed || !c || typeof A[type] !== 'function' || !Object.hasOwn(A, type)) return false; unstick(c); c.mind.begin(type); c.plan = A[type](c, ...args); c.prio = PRIORITY.react; return true; };
+    active.peekIn = name => { const c = cats.find(x => x.name === name); if (runtime.disposed || !c) return false; unstick(c); c.at = { kind: 'away', side: 'left' }; c.plan = (function* () { const s = screenPeekSpec(c); if (s) yield* peek(c, s, 4); })(); c.prio = PRIORITY.react; return true; };
+    active.pos = name => { const c = cats.find(x => x.name === name); const h = c?.body.headPos; return !runtime.disposed && h ? applyXf(c, h[0], h[1]) : null; };
+    active.measure = () => { if (runtime.disposed) return null; measure(true); return { ledges: W.ledges.map(l => ({ kind: l.kind, cls: l.el.className || l.el.id, left: l.left, right: l.right, top: l.top })), solids: W.solids.map(s => s.el.className || s.el.id) }; };
     window.youpleCats = active;
   }
   return active;

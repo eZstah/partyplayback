@@ -31,6 +31,7 @@ body.cat-wallpaper .cat-dock[data-awake=false] .cat-dock-bar{opacity:.15;transit
 .cat-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cat-actions button{padding:10px 8px;background:#b7a4da10;border:1px solid #b7a4da26;border-radius:10px;font-size:12px}.cat-actions button:hover{background:#b7a4da22}.cat-actions button[aria-pressed=true]{color:#211b30;background:#c3acf0}
 .cat-journal-title{font-size:13px;margin:18px 0 8px;font-weight:700}.cat-journal{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:12px;color:#d1c5da;line-height:1.4}.cat-journal time{color:#8f849e;font-variant-numeric:tabular-nums;margin-right:4px}
 .cat-hint{color:#9d92ab;font-size:11px;line-height:1.5;margin:14px 0 0}
+.cat-actions #cat-hello-btn{grid-column:1/-1;background:#c3acf021;border-color:#c3acf04d;color:#e8ddfa;padding:12px}.cat-actions #cat-hello-btn:hover{background:#c3acf033}
 body.cat-wallpaper .cat-panel-btn{opacity:.4}body.cat-wallpaper .cat-panel-btn:hover{opacity:1}
 @media(max-width:600px){.cat-dock{right:10px;bottom:10px}.cat-panel{padding:16px}.cat-panel-btn{padding:7px 11px 7px 9px;font-size:12px}}
 /* The living cats are desktop-only; phones keep the static mascots. */

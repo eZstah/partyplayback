@@ -43,6 +43,11 @@ const ACTIVITY_LABEL = {
 };
 export const activityLabel = (type, partner) => (ACTIVITY_LABEL[type] || 'Thinking') + (partner && ['visit', 'chase', 'flee', 'cuddle', 'follow', 'wrestle'].includes(type) ? ` ${CAST[partner].name}` : '');
 
+// Laser has a stationary, look-only performance in reduced-motion mode.
+const MOTION_PLAY = new Set(['glass', 'knock', 'dance', 'zoomies', 'stalk', 'chase', 'hunt']);
+const cursorDwell = ctx => Math.max(0, Number(ctx.cursorDwell ?? (ctx.cursor ? 1.4 : 0)) || 0);
+const quietVideo = ctx => !!ctx.playing && !ctx.invitedPlay && !ctx.laser && !ctx.treat;
+
 export class Mind {
   constructor(kind, memory = {}, random = Math.random) {
     this.kind = kind; this.cast = CAST[kind]; this.t = this.cast.traits; this.random = random;
@@ -54,6 +59,7 @@ export class Mind {
     this.bonds = { ...defaultBonds(kind), ...(memory.bonds || {}) };
     this.stats = { pets: 0, boops: 0, carried: 0, treats: 0, ...(memory.stats || {}) };
     this.activity = 'sit'; this.partner = null; this.since = 0; this.last = []; this.petStreak = 0; this.lastSaid = '';
+    this.elapsed = 0; this.cooldowns = {}; this.attention = 1; this.decision = null;
   }
   get label() { return activityLabel(this.activity, this.partner); }
   feelings() {
@@ -69,13 +75,19 @@ export class Mind {
     return out.length ? out.slice(0, 3) : ['calm'];
   }
   tick(dt, ctx = {}) {
+    if (!Number.isFinite(dt) || dt <= 0) return;
     const d = this.drives, t = this.t, day = ctx.day || dayRhythm(12), a = this.activity;
     const resting = a === 'sleep' || a === 'cuddle', lazing = a === 'loaf' || a === 'sit' || a === 'watch';
     const active = ['zoomies', 'chase', 'flee', 'laser', 'hunt', 'dance', 'wrestle', 'stalk'].includes(a);
+    const pacing = this.cast.pacing, company = pacing && ctx.playing && lazing;
+    this.elapsed += dt;
+    if (pacing && !active && !pacing.attentionCost[a]) {
+      this.attention = Math.min(1, this.attention + dt / (ctx.playing ? pacing.videoRecovery : pacing.idleRecovery));
+    }
     d.sleepy += dt * (resting ? -2.2 : (active ? .9 : lazing ? .12 : .3) * (.55 + t.lazy) * day.sleepy);
-    d.playful += dt * (active ? -2.4 : resting ? .05 : .45 * (.3 + t.energy) * day.playful);
-    d.lonely += dt * (ctx.nearFriend || ['cuddle', 'visit', 'glass', 'approach', 'stare'].includes(a) ? -1.5 : .35 * t.sociable);
-    d.curious += dt * (['explore', 'wander', 'hunt', 'leave', 'hide', 'knock'].includes(a) ? -1.8 : .4 * (.25 + t.curiosity));
+    d.playful += dt * (active ? -2.4 : resting ? .05 : .45 * (.3 + t.energy) * day.playful * (company ? .45 : 1));
+    d.lonely += dt * (ctx.nearFriend || ['cuddle', 'visit', 'glass', 'approach', 'stare'].includes(a) ? -1.5 : company ? -.22 : .35 * t.sociable);
+    d.curious += dt * (['explore', 'wander', 'hunt', 'leave', 'hide', 'knock'].includes(a) ? -1.8 : company && a === 'watch' ? -.18 : .4 * (.25 + t.curiosity));
     d.hungry += dt * .05;
     for (const k in d) d[k] = clamp(d[k], 0, 100);
     const m = this.mood, decay = Math.exp(-dt / 9);
@@ -83,7 +95,8 @@ export class Mind {
     this.since += dt;
     if (this.since > 10) this.petStreak = Math.max(0, this.petStreak - dt * .2);
   }
-  // Score what to do next. ctx: { playing, vibe, day, cursor, laser, treat, critter, shelves, hideouts, toys, aquarium, reduced, calm, others }
+  // cursorDwell is seconds held steadily off UI; invitedPlay is recent explicit
+  // engagement. Both are optional. Pacing time advances through tick, not choose.
   choose(ctx = {}) {
     const d = this.drives, t = this.t, others = ctx.others || [], random = this.random;
     const awake = others.filter(o => o.activity !== 'sleep' && o.activity !== 'cuddle' && o.activity !== 'carried');
@@ -119,21 +132,81 @@ export class Mind {
       treat: ctx.treat ? 110 + d.hungry * .6 : 0,
       follow: this.kind === 'black' && awake.length ? 26 + this.bonds.pink * 25 : 0,
     };
+    if (this.cast.pacing) {
+      const dwell = cursorDwell(ctx);
+      if (!ctx.invitedPlay && dwell < .8) scores.approach = 0;
+      if (!ctx.invitedPlay && dwell < 1.2) scores.stalk = 0;
+      if (scores.approach) scores.approach += Math.min(dwell, 3) * 10;
+      // A title hint can suggest a little dancing, not take over an entire film.
+      if (quietVideo(ctx)) {
+        scores.watch += 12 + (ctx.vibe === 'talk' ? 25 : ctx.vibe === 'chill' ? 9 : 0);
+        scores.loaf += 12; scores.sit += 6;
+        for (const key of ['wander', 'explore', 'hide', 'leave', 'glass', 'knock', 'zoomies', 'hunt']) scores[key] *= .32;
+        scores.dance *= .85;
+        scores.stalk *= .4;
+        if (dwell < 2) scores.approach *= .35;
+      }
+      if (!calm && ctx.treat) scores.treat = 1000;
+      else if (!calm && ctx.laser) scores.laser = 950;
+    }
     if (calm) for (const k in scores) if (k !== 'sleep' && k !== 'cuddle' && k !== 'treat') scores[k] *= .1;
     const recent = new Set(this.last.slice(0, 2));
     let top = null, topScore = -Infinity;
+    const candidates = [];
     for (const [type, score] of Object.entries(scores)) {
-      if (score <= 0) continue;
+      const blockedBy = this.pacingBlock(type, ctx);
+      if (score <= 0 || blockedBy) {
+        candidates.push({ type, score: 0, reason: blockedBy || 'No current cue or drive for this action.' });
+        continue;
+      }
       const repeat = recent.has(type) && !['sleep', 'watch', 'laser', 'treat', 'hunt'].includes(type) ? .45 : 1;
       const s = score * repeat + random() * 22;
+      candidates.push({ type, score: Math.round(s * 10) / 10, reason: this.reasonFor(type, ctx) });
       if (s > topScore) { topScore = s; top = type; }
     }
     const partner = top === 'visit' || top === 'follow' ? friend?.kind : top === 'chase' ? playmate?.kind : top === 'cuddle' ? nap?.kind : null;
+    this.decision = { time: this.elapsed, selected: top || 'sit', reason: this.reasonFor(top || 'sit', ctx),
+      context: { playing: !!ctx.playing, vibe: ctx.vibe || 'unknown', invitedPlay: !!ctx.invitedPlay, cursorDwell: cursorDwell(ctx) },
+      candidates };
     return { type: top || 'sit', partner: partner || null };
   }
   begin(type, partner = null) {
     if (this.activity !== type) { this.last.unshift(this.activity); this.last.length = Math.min(this.last.length, 4); }
     this.activity = type; this.partner = partner; this.since = 0;
+    const pacing = this.cast.pacing;
+    if (pacing?.cooldowns[type]) this.cooldowns[type] = this.elapsed + pacing.cooldowns[type];
+    if (pacing?.attentionCost[type]) this.attention = Math.max(0, this.attention - pacing.attentionCost[type]);
+  }
+  pacingBlock(type, ctx = {}) {
+    const pacing = this.cast.pacing;
+    if (!pacing) return null;
+    if (ctx.calm && !['sleep', 'cuddle', 'treat'].includes(type)) return 'Calm control leaves room for rest.';
+    if (ctx.reduced && MOTION_PLAY.has(type)) return 'Reduced motion avoids active play.';
+    if (type === 'treat' || type === 'laser') return null;
+    const remaining = (this.cooldowns[type] || 0) - this.elapsed;
+    if (remaining > 0) return `Recovering from ${type}: ${Math.ceil(remaining)} seconds left.`;
+    if (quietVideo(ctx) && (pacing.attentionCost[type] || 0) > this.attention + 1e-9) return 'Giving the video a quiet interval.';
+    return null;
+  }
+  canStart(type, ctx = {}) { return !this.pacingBlock(type, ctx); }
+  reasonFor(type, ctx = {}) {
+    const d = this.drives;
+    if (type === 'treat') return 'You offered a treat.';
+    if (type === 'laser') return ctx.reduced ? 'Watching your laser with quiet paws.' : 'You invited a game with the laser.';
+    if (type === 'sleep') return ctx.calm ? 'You asked for calm company.' : `Sleepiness is ${Math.round(d.sleepy)}; time to rest.`;
+    if (type === 'watch') return 'The video is playing; keeping you company.';
+    if (type === 'dance') return 'A music title hint and playful energy suggest a little dance.';
+    if (type === 'approach' || type === 'stalk') return ctx.invitedPlay ? 'Responding to your invitation to play.' : 'Your still cursor is worth a closer look.';
+    if (['glass', 'stare'].includes(type)) return `Affection and attention drive ${Math.round(d.lonely)} invite a check-in.`;
+    if (['explore', 'wander', 'hide', 'leave'].includes(type)) return `Curiosity is ${Math.round(d.curious)}; exploring a little.`;
+    if (type === 'hunt') return 'A butterfly caught Bean’s curiosity.';
+    if (['zoomies', 'knock'].includes(type)) return `Playful energy is ${Math.round(d.playful)}.`;
+    return quietVideo(ctx) ? 'Quiet company while the video plays.' : 'A comfortable pause between adventures.';
+  }
+  inspect() {
+    return { time: this.elapsed, attention: this.attention,
+      cooldowns: Object.fromEntries(Object.entries(this.cooldowns).filter(([, until]) => until > this.elapsed).map(([type, until]) => [type, until - this.elapsed])),
+      decision: this.decision && { ...this.decision, context: { ...this.decision.context }, candidates: this.decision.candidates.map(candidate => ({ ...candidate })) } };
   }
   // Interactions with the viewer. Return how the cat takes it.
   pet() {
@@ -176,14 +249,15 @@ export function defaultBonds(kind) {
 
 // What the cats did while the tab was hidden, as a short journal line.
 export function awaySummary(minds, seconds, random = Math.random) {
-  if (seconds < 45) return null;
+  if (seconds < 45 || !minds.length) return null;
   const mins = Math.round(seconds / 60), span = mins < 2 ? 'a minute' : mins < 90 ? `${mins} minutes` : `${Math.round(mins / 60)} hours`;
   const names = minds.map(m => m.cast.name);
-  const events = [
-    `${pick(names, random)} slept through most of it`, `${names[1]} knocked something off a shelf`,
-    `${names[3] || names[0]} followed ${names[1]} everywhere`, `${names[2]} held a staring contest with the wall and won`,
-    `${names[0]} groomed everyone, whether they liked it or not`, `${names[1]} and ${names[3] || names[2]} chased each other twice`,
-  ];
+  const events = names.flatMap(name => [
+    `${name} slept through most of it`, `${name} inspected the shelves`,
+    `${name} held a staring contest with the wall and won`, `${name} groomed every whisker`,
+    `${name} chased a butterfly`, `${name} found a new hiding spot`,
+  ]);
+  if (names.length > 1) events.push(`${names[0]} followed ${names[1]} everywhere`, `${names[0]} and ${names[1]} chased each other twice`);
   const a = pick(events, random); let b = pick(events, random);
   if (b === a) b = events[(events.indexOf(a) + 1) % events.length];
   return `You were away ${span}. ${a}, and ${b}.`;

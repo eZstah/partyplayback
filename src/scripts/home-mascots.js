@@ -1,3 +1,3 @@
-import { bootCats } from './cats/world.js';
+import { mountBean } from './cats/index.js';
 
-export function bootHomeMascots() { return bootCats(); }
+export function bootHomeMascots() { return mountBean(); }

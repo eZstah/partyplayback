@@ -8,6 +8,17 @@ export const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const ease = (cur, target, rate, dt) => target + (cur - target) * Math.exp(-rate * dt);
+const smooth = t => { const s = clamp(t, 0, 1); return s * s * (3 - 2 * s); };
+const strideLength = look => look.legLen * 2.6 + 8;
+
+// A planted paw moves back at a constant rate while the body moves over it.
+// The shorter swing returns it softly, with no sharp lift or touchdown.
+function footStep(phase, stride, duty, lift) {
+  const cycle = ((phase / TAU) % 1 + 1) % 1, reach = stride * duty;
+  if (cycle < duty) return { forward: reach * (.5 - cycle / duty), up: 0, planted: true };
+  const swing = (cycle - duty) / (1 - duty);
+  return { forward: lerp(-reach * .5, reach * .5, smooth(swing)), up: Math.sin(Math.PI * swing) ** 2 * lift, planted: false };
+}
 
 // Vector helpers on [x, up, z] where +z points at the viewer.
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -30,9 +41,9 @@ export const project2 = v => [v[0], -v[1] * CT + v[2] * ST];
 export const REST = {
   sit: 0, loaf: 0, curl: 0, crouch: 0, stretch: 0, rear: 0, dangle: 0, leap: 0,
   headYaw: 0, headPitch: 0, headRoll: 0, earsBack: 0, tailUp: .45, tailCurl: .35, tailWag: .12, tailPuff: 0, tailWrap: 0,
-  eyes: 1, pupil: .7, mouth: 0, groom: 0, pawsUp: 0, swat: 0, knead: 0, bob: 0, wiggle: 0, tailHang: 0, overEdge: 0,
+  eyes: 1, pupil: .7, mouth: 0, groom: 0, pawsUp: 0, swat: 0, offerPaw: 0, knead: 0, bob: 0, wiggle: 0, tailHang: 0, overEdge: 0,
 };
-const RATES = { headYaw: 7, headPitch: 7, headRoll: 6, eyes: 16, mouth: 12, swat: 18, earsBack: 10, pupil: 6, tailPuff: 5 };
+const RATES = { sit: 4, loaf: 3.2, curl: 2.8, stretch: 4, headYaw: 7, headPitch: 6, headRoll: 5, eyes: 12, mouth: 12, swat: 18, offerPaw: 4.5, earsBack: 9, pupil: 6, tailPuff: 5 };
 const LEGS = [
   { front: true, side: 1, walk: .25, trot: 0, gallop: 0 }, { front: true, side: -1, walk: .75, trot: .5, gallop: .1 },
   { front: false, side: 1, walk: 0, trot: .5, gallop: .55 }, { front: false, side: -1, walk: .5, trot: 0, gallop: .65 },
@@ -40,15 +51,18 @@ const LEGS = [
 const TAIL_SEGMENTS = 9;
 
 export class CatBody {
-  constructor(look) {
+  constructor(look, random = Math.random) {
+    this.random = random;
     this.L = { ...look, light: look.light || tint(look.fur, .38) }; this.x = 0; this.z = 0; this.gy = 0; this.h = 0; this.k = 1; this.yaw = Math.PI / 2; this.yawVel = 0;
-    this.pose = { ...REST }; this.goal = { ...REST }; this.face = 'open'; this.blink = 0; this.nextBlink = 1 + Math.random() * 3;
-    this.speed = 0; this.gait = Math.random() * TAU; this.move = null; this.turnTo = null; this.jump = null;
-    this.look = null; this.time = Math.random() * 100; this.squash = 0; this.squashVel = 0; this.alpha = 1; this.shadowY = null;
-    this.tail = Array.from({ length: TAIL_SEGMENTS }, () => ({ a: .4, b: 0 })); this.tailSide = Math.random() < .5 ? 1 : -1;
+    this.pose = { ...REST }; this.goal = { ...REST }; this.face = 'open'; this.blink = 0; this.nextBlink = 1 + this.random() * 3;
+    this.speed = 0; this.gait = this.random() * TAU; this.move = null; this.turnTo = null; this.jump = null;
+    this.look = null; this.time = this.random() * 100; this.squash = 0; this.squashVel = 0; this.alpha = 1; this.shadowY = null;
+    this.tail = Array.from({ length: TAIL_SEGMENTS }, () => ({ a: .4, b: 0 })); this.tailSide = this.random() < .5 ? 1 : -1;
     this.hit = []; this.top = { x: 0, y: 0 }; this.bounds = { left: 0, top: 0, right: 0, bottom: 0 };
     // Set by the world: an external gait speed (climbing), and whether to draw a floor shadow.
     this.drive = null; this.noShadow = false; this.headLift = look.headR * 2.6; this.paws = [];
+    this.blinkCycle = null;
+    this.motion = { breathPhase: this.time, breathRate: 1.8, breath: 0, headBreath: 0, walk: 0, bob: 0, headBob: 0, forward: 0, side: 0, headForward: 0 };
   }
   set(goal) { Object.assign(this.goal, goal); return this; }
   reset(extra = {}) { this.goal = { ...REST, ...extra }; return this; }
@@ -58,6 +72,12 @@ export class CatBody {
   get airborne() { return !!this.jump; }
   faceYaw(yaw) { this.turnTo = yaw; }
   bounce(amount = 1) { this.squashVel -= 7 * amount; }
+  // An affectionate close / hold / reopen layered over the current eye pose.
+  // It never changes face or eyes goals, so a sleeping cat stays asleep.
+  slowBlink(duration = 1.2) {
+    if (!this.blinkCycle?.slow) this.blinkCycle = { t: 0, duration: clamp(duration, .4, 3), from: this.blink, slow: true };
+    return this;
+  }
   leap(x1, gy1, z1, arc = 60, dur = null) {
     const dist = Math.hypot(x1 - this.x, gy1 - this.gy);
     this.jump = { x0: this.x, gy0: this.gy, z0: this.z, x1, gy1, z1, arc, t: 0, dur: dur ?? clamp(.32 + dist / 900, .35, .85) };
@@ -69,7 +89,7 @@ export class CatBody {
     const p = this.pose, g = this.goal;
     for (const key in g) p[key] = ease(p[key], g[key], RATES[key] || 6, dt);
     // Locomotion: turn toward the goal first, move along the facing direction.
-    const prevYaw = this.yaw;
+    const prevYaw = this.yaw, prevX = this.x, prevZ = this.z, prevSpeed = this.speed;
     if (this.jump) {
       const j = this.jump; j.t += dt; const s = clamp(j.t / j.dur, 0, 1);
       this.x = lerp(j.x0, j.x1, s); this.gy = lerp(j.gy0, j.gy1, s); this.z = lerp(j.z0, j.z1, s);
@@ -101,21 +121,44 @@ export class CatBody {
     }
     this.yaw = wrap(this.yaw);
     const yawVel = wrap(this.yaw - prevYaw) / Math.max(dt, 1e-3); this.yawVel = ease(this.yawVel, yawVel, 10, dt);
-    const stride = this.L.legLen * 2.6 + 8;
-    this.gait += (this.speed / stride + Math.abs(this.yawVel) * .35) * dt * TAU;
+    // Cadence follows distance covered, including scene scale, instead of a
+    // residual speed after stopping. The stance therefore stays under Bean.
+    const distance = this.jump ? 0 : Math.hypot(this.x - prevX, this.z - prevZ);
+    const travel = this.drive !== null ? Math.abs(this.drive) * dt : distance / Math.max(.05, this.k);
+    this.gait += (travel / strideLength(this.L) + Math.abs(wrap(this.yaw - prevYaw)) * .22) * TAU;
+    const m = this.motion, resting = clamp(Math.max(p.sit, p.loaf, p.curl), 0, 1);
+    m.walk = ease(m.walk, clamp((this.speed + Math.abs(this.yawVel) * 12) / 45, 0, 1), 10, dt);
+    const grounded = 1 - Math.max(p.leap, p.dangle, p.rear);
+    const accel = (this.speed - prevSpeed) / Math.max(dt, 1e-3);
+    m.forward = ease(m.forward, clamp(-accel / 650, -.3, .3) * grounded, 5, dt);
+    m.side = ease(m.side, clamp(-this.yawVel * this.speed / 950, -.3, .3) * grounded, 5, dt);
+    m.headForward = ease(m.headForward, m.forward, 3, dt);
+    m.bob = ease(m.bob, (.5 - .5 * Math.cos(this.gait * 2)) * m.walk * (1 - resting) * 1.25, 16, dt);
+    m.headBob = ease(m.headBob, m.bob * .45, 5, dt);
+    m.breathRate = ease(m.breathRate, lerp(1.8, 1.3, p.curl) + m.walk * .7, 2, dt);
+    m.breathPhase += m.breathRate * dt;
+    m.breath = (Math.sin(m.breathPhase) + Math.sin(m.breathPhase * 2 - .4) * .12) * (.65 + resting * .4);
+    m.headBreath = ease(m.headBreath, m.breath * .4, 3, dt);
     // Squash and stretch spring.
     this.squashVel += (-this.squash * 160 - this.squashVel * 13) * dt; this.squash += this.squashVel * dt;
     // Blinking.
-    this.nextBlink -= dt;
-    if (this.nextBlink <= 0) { this.blink = 1; this.nextBlink = 2 + Math.random() * 4.5 + (Math.random() < .2 ? -1.8 : 0); }
-    this.blink = Math.max(0, this.blink - dt * 7);
+    if (!this.blinkCycle) {
+      this.nextBlink -= dt;
+      if (this.nextBlink <= 0) this.blinkCycle = { t: 0, duration: .22 + this.random() * .08, from: 0, slow: false };
+    }
+    if (this.blinkCycle) {
+      const b = this.blinkCycle; b.t += dt;
+      const t = b.t / b.duration, close = b.slow ? .35 : .27, hold = b.slow ? .55 : .38;
+      this.blink = t < close ? lerp(b.from, 1, smooth(t / close)) : t < hold ? 1 : 1 - smooth((t - hold) / (1 - hold));
+      if (t >= 1) { this.blinkCycle = null; this.blink = 0; this.nextBlink = 2.8 + this.random() * 4.5; }
+    }
     this.updateHead(dt); this.updateTail(dt);
   }
 
   // Aim the head at a target: {x, y} on screen, {cat}, 'viewer' or 'behind' (the video).
   updateHead(dt) {
     const g = this.goal, look = this.look;
-    if (!look || this.pose.curl > .5) { g.headYaw = g.headYaw * (look ? 1 : .96); return; }
+    if (!look || this.pose.curl > .5) { if (!look) g.headYaw = ease(g.headYaw, 0, 2.4, dt); return; }
     let yaw, pitch = 0;
     const headY = this.gy - this.k * (this.L.legLen + this.L.bodyR * 1.8) * CT;
     if (look === 'viewer') { yaw = Math.PI / 2; pitch = .08; }
@@ -171,11 +214,15 @@ export class CatBody {
     const crouch = p.crouch * ll * .62;
     H[1] -= crouch * .85; B[1] -= crouch; C[1] -= crouch * 1.05; D[1] -= crouch * 1.25; D[0] += p.crouch * 5;
     const wig = Math.sin(this.time * 26) * p.wiggle * 3.2; H[2] += wig;
-    // Breathing, and the walking bob.
-    const breath = Math.sin(this.time * (p.curl > .5 ? 1.6 : 2.4)) * (p.curl > .5 ? 1.1 : .55);
-    const bob = Math.abs(Math.sin(this.gait)) * clamp(this.speed / 60, 0, 1.4) * 1.6 + Math.sin(this.time * 7.85) * p.bob * 4;
-    for (const v of [H, B, C]) { v[1] += bob; v[3] += breath * .35; }
-    D[1] += bob * 1.2 + breath * .3;
+    // Hips support the weight; breath expands the ribs and lifts the chest.
+    // The head follows a fraction later rather than riding the same bob.
+    const m = this.motion, dance = Math.sin(this.time * 7.85) * p.bob * 4;
+    H[1] += m.bob * .55 + dance; H[3] += m.breath * .1;
+    B[1] += m.bob + dance + m.breath * .14; B[3] += m.breath * .3;
+    C[1] += m.bob + dance + m.breath * .48; C[3] += m.breath * .42;
+    D[1] += m.headBob + dance * .7 + m.headBreath;
+    C[0] += m.forward * R * .5; B[0] += m.forward * R * .2; D[0] += m.headForward * R * .8;
+    H[2] -= m.side * R * .15; C[2] += m.side * R * .45; D[2] += m.side * R * .65;
     return { H, B, C, D };
   }
 
@@ -226,9 +273,11 @@ export class CatBody {
       const base = leg.front ? sk.C : sk.H, s = leg.side;
       const anchor = [base[0] + (leg.front ? R * .2 : -R * .15), base[1] - R * .42, s * R * .5];
       const phase = this.gait + TAU * (gallop ? leg.gallop : trot ? leg.trot : leg.walk);
-      const moving = clamp((this.speed + Math.abs(this.yawVel) * 30) / 50, 0, 1);
-      const reach = (L.legLen * .9 + 4) * moving * (gallop ? 1.3 : 1);
-      let paw = [anchor[0] + Math.cos(phase) * reach * .5 + (leg.front ? 2 : -1), Math.max(0, Math.sin(phase)) * (5 + ll * .25) * moving, s * R * .42];
+      const moving = this.motion.walk;
+      const step = footStep(phase, strideLength(L), gallop ? .43 : trot ? .54 : .64, (4 + ll * .3) * (gallop ? 1.35 : 1));
+      // Paw anchors exclude chest sway, which transfers weight above the feet.
+      const footBase = anchor[0] - (leg.front ? this.motion.forward * R * .5 : 0);
+      let paw = [footBase + step.forward * moving + (leg.front ? 2 : -1), step.up * moving, s * R * .42];
       if (leg.front) {
         paw = mixArr(paw, [sk.C[0] + R * .3, 0, s * R * .36], sitW);
         paw = mixArr(paw, [sk.C[0] + R * .9 + ll * .9, 0, s * R * .4], p.stretch);
@@ -253,12 +302,14 @@ export class CatBody {
         const mouth = add(D, add(mul(Fh, hr * .78), mul(Uh, -hr * .45)));
         if (p.groom > .01) wp = mix(wp, add(mouth, [0, Math.sin(this.time * 9) * 2, 0]), clamp(p.groom, 0, 1));
         if (p.swat > .01) wp = mix(wp, add(wa, add(this.dirWorld(R * 1.4 + ll * .6, ll * .5, 0, this.yaw), [0, Math.sin(this.time * 30) * 2, 0])), clamp(p.swat, 0, 1));
+        // A held, soft invitation has its own channel: no swat vibration.
+        if (p.offerPaw > .01) wp = mix(wp, add(wa, this.dirWorld(R * .7, ll * .4, R * .32, this.yaw)), clamp(p.offerPaw, 0, 1));
       }
       if (leg.front && p.pawsUp > .01 && rear < .01) wp = mix(wp, add(wa, this.dirWorld(R * .6, ll * .9, s * 2, this.yaw)), clamp(p.pawsUp, 0, 1) * .8);
       // Jazz paws: when standing up, front paws wave out to the sides.
       if (leg.front && p.pawsUp > .01 && rear > .3) wp = mix(wp, add(wa, add(this.dirWorld(R * .5, -ll * .75 + Math.sin(this.time * 7.8 + s * 1.6) * 5, s * (R * 1.15 + 3), this.yaw), [0, 0, 0])), clamp(p.pawsUp * rear, 0, 1));
-      if (leg.front) this.paws[s > 0 ? 0 : 1] = { w: wp, depth: this.depth(wp) };
-      const hidden = legVis < .05 && !(leg.front && (p.groom > .1 || p.swat > .1));
+      if (leg.front) this.paws[s > 0 ? 0 : 1] = { w: wp, depth: this.depth(wp), planted: step.planted && p.leap < .01 && rear < .01 && dangle < .01 && p.overEdge < .01 && p.knead < .01 && p.groom < .01 && p.swat < .01 && p.offerPaw < .01 && p.pawsUp < .01 };
+      const hidden = legVis < .05 && !(leg.front && (p.groom > .1 || p.swat > .1 || p.offerPaw > .1));
       const isHindSit = !leg.front && sitW > .5;
       parts.push({ depth: this.depth(wp) + (leg.front ? .5 : 0), draw: () => {
         if (hidden) { if (leg.front) drawPaw(this, ctx, wp, L, outline, ow, .85); return; }
@@ -565,8 +616,9 @@ function drawFace(body, ctx, D, [F, U, S], L, muzzle) {
       const pupil = wide ? .28 : clamp(p.pupil, .25, 1.3);
       ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(gx, gy, es * .62 * pupil + .5, es * 1.02, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(gx - es * .3, gy - es * .45, es * .38, 0, TAU); ctx.arc(gx + es * .38, gy + es * .42, es * .17, 0, TAU); ctx.fill();
-      // Heavy lids for the critic, or when grumpy / sleepy.
-      const lid = Math.max(L.lidded || 0, mood === 'grumpy' ? .45 : 0, (1 - p.eyes) * .8, mood === 'focus' ? .2 : 0);
+      // Eye openness already shapes the oval. A second heavy, straight lid
+      // made a relaxed Bean look cross; reserve it for deliberate expressions.
+      const lid = Math.max(L.lidded || 0, mood === 'grumpy' ? .45 : 0, mood === 'focus' ? .2 : 0);
       if (lid > .02) { ctx.fillStyle = L.fur; ctx.fillRect(-rx - 2, -ry - 2, rx * 2 + 4, ry * 2 * lid + 2); ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-rx, -ry + ry * 2 * lid); ctx.lineTo(rx, -ry + ry * 2 * lid - (mood === 'grumpy' ? side * 1.2 : 0)); ctx.stroke(); }
       ctx.restore();
       // Lash line along the top of the eye, flicked out at the outer corner.

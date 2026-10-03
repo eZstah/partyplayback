@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CAST, KINDS, traitWords } from '../src/scripts/cats/cast.js';
+import { CAST, KINDS, ACTIVE_KINDS, traitWords } from '../src/scripts/cats/cast.js';
 import { Mind, awaySummary, dayRhythm, defaultBonds, rng, videoVibe } from '../src/scripts/cats/mind.js';
 import { CatBody, headBasis, tint, visibility, wrap } from '../src/scripts/cats/body.js';
 
@@ -104,6 +104,30 @@ test('a long absence gets a diary entry, a short one does not', () => {
   assert.match(awaySummary(minds, 600, rng(2)), /^You were away 10 minutes\. .+, and .+\.$/);
 });
 
+test('Bean is the only resident and never chooses a missing partner', () => {
+  assert.deepEqual(ACTIVE_KINDS, ['black']);
+  assert.equal(CAST[ACTIVE_KINDS[0]].name, 'Bean');
+  const mind = new Mind('black', { bonds: { pink: 1, purple: .8, mint: .9 } }, rng(19));
+  const ctx = { others: [], cursor: true, shelves: true, hideouts: true, toys: true };
+  for (let i = 0; i < 600; i++) {
+    const { type, partner } = mind.choose(ctx);
+    assert.ok(!partner, `${type} chose an absent cat: ${partner}`);
+    assert.ok(!['visit', 'chase', 'cuddle', 'follow', 'wrestle'].includes(type), type);
+    mind.begin(type, partner);
+    mind.tick(12, ctx);
+  }
+});
+
+test('the solo diary describes Bean without inventing other residents', () => {
+  assert.equal(awaySummary([], 600), null);
+  const bean = new Mind('black', {}, rng(4));
+  for (let seed = 0; seed < 40; seed++) {
+    const summary = awaySummary([bean], 600, rng(seed));
+    assert.match(summary, /^You were away 10 minutes\. Bean .+, and Bean .+\.$/);
+    assert.doesNotMatch(summary, /undefined|Miso|Mochi|Pixel/);
+  }
+});
+
 test('the rig shows a face from the front and the back of the head from behind', () => {
   const [front] = headBasis(Math.PI / 2, 0, 0), [back] = headBasis(-Math.PI / 2, 0, 0), [side] = headBasis(0, 0, 0);
   assert.ok(visibility(front) > .9);
@@ -122,6 +146,16 @@ test('a walking cat turns toward where it is going and arrives', () => {
   body.goTo(200, -100, 80);
   for (let i = 0; i < 120; i++) body.update(1 / 60);
   assert.ok(Math.sin(body.yaw) < -.5, 'walking away shows its back');
+});
+
+test('seeded rig variation and blinking repeat under the same time steps', () => {
+  const a = new CatBody(CAST.black.look, rng(21));
+  const b = new CatBody(CAST.black.look, rng(21));
+  for (let i = 0; i < 900; i++) { a.update(1 / 60); b.update(1 / 60); }
+  assert.deepEqual(a.pose, b.pose);
+  assert.equal(a.blink, b.blink);
+  assert.equal(a.nextBlink, b.nextBlink);
+  assert.equal(a.tailSide, b.tailSide);
 });
 
 test('the v2 world gives every cat ways to hide, leave and press up to the glass, and only mischief knocks things over', () => {

@@ -2,7 +2,7 @@
 import '../styles/mascot.css';
 import CatExpression from './CatExpression.astro';
 import { CAT_NAMES, faceFor } from '../scripts/cat-reactions.js';
-interface Props { kind?: 'mint' | 'pink' | 'purple'; class?: string; interactive?: boolean }
+interface Props { kind?: 'mint' | 'pink' | 'purple' | 'black'; class?: string; interactive?: boolean }
 const { kind = 'mint', class: className = '', interactive = false } = Astro.props;
 const Tag = interactive ? 'button' : 'div';
 ---
