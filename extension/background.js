@@ -78,13 +78,23 @@ async function deliver(value, room) {
   }
   // An open room tab adds the video without reloading; otherwise open the room with it.
   for (const tab of await chrome.tabs.query({ url: target.url + "*" })) {
-    try {
-      const answer = await chrome.tabs.sendMessage(tab.id, { type: "add", url });
-      if (answer?.ok) return "sent";
-    } catch {}
+    if (await addInTab(tab.id, url)) return "sent";
   }
   await chrome.tabs.create({ url: target.url + "?add=" + encodeURIComponent(url), active: false });
   return "opened";
+}
+
+// Room tabs opened before the extension was installed or reloaded have no listener yet,
+// so load one into the tab and try again rather than opening a second copy of the room.
+async function addInTab(tabId, url) {
+  for (const retry of [false, true]) {
+    try {
+      if (retry) await chrome.scripting.executeScript({ target: { tabId }, files: ["room.js"] });
+      const answer = await chrome.tabs.sendMessage(tabId, { type: "add", url });
+      if (answer?.ok) return true;
+    } catch {}
+  }
+  return false;
 }
 
 function flash(text, color, title) {
