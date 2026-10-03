@@ -935,10 +935,8 @@ p.home-sync {
 
 /* Coming back to the home page shouldn't replay its entrance. */
 .home-seen .reveal { animation: none; }
-.guest-account { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 22px; padding-top: 18px; border-top: 1px solid #322b4114; }
-.guest-account p { display: grid; gap: 2px; margin: 0; }
-.guest-account strong { font-size: 17px; color: #322b41; }
-.guest-account span { font-size: 15px; color: #756779; }
-.guest-sign-in { flex: none; min-height: 46px; padding: 0 24px; border-radius: 100px; background: #322b41; color: #f4efe5; font-size: 17px; font-weight: 700; transition: background .2s ease, transform .2s ease; }
-.guest-sign-in:hover, .guest-sign-in:focus-visible { background: #4a3f5e; transform: translateY(-1px); }
-@media(max-width:600px) { .guest-account { gap: 12px; } .guest-sign-in { padding: 0 18px; } }
+.guest-actions { display: flex; gap: 12px; }
+.guest-actions #create-form { flex: 1; min-width: 0; }
+.guest-sign-in { flex: 0 0 24%; height: 66px; border-radius: 20px; background: #322b41; color: #f4efe5; font-size: 19px; font-weight: 700; transition: background .2s ease, transform .2s ease; }
+.guest-sign-in:hover, .guest-sign-in:focus-visible { background: #4a3f5e; transform: translateY(-2px); }
+@media(max-width:600px) { .guest-actions { gap: 10px; } .guest-sign-in { flex-basis: 27%; height: 62px; font-size: 16px; } .guest-actions .create-room-button { font-size: 19px; white-space: nowrap; } }
