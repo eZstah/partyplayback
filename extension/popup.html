@@ -8,22 +8,25 @@
 <body>
   <header><img src="icons/32.png" alt=""><span>youple.tv</span></header>
 
-  <section id="video" hidden>
-    <div class="video"><img id="video-thumb" alt=""><p id="video-title"></p></div>
-  </section>
-  <p id="no-video" class="hint" hidden>Open a YouTube video to send it here. On YouTube you can also hover a thumbnail and click the cat.</p>
+  <div id="video" class="video" hidden><img id="video-thumb" alt=""><p id="video-title"></p></div>
+  <div id="no-video" class="card" hidden>
+    <strong>Open a YouTube video</strong>
+    <p>Then click this icon again to send it. Or hover any thumbnail on YouTube and click the cat in its corner.</p>
+  </div>
 
   <section id="rooms-section" hidden>
-    <h2>Send to</h2>
-    <ul id="rooms" role="radiogroup" aria-label="Room"></ul>
+    <h2 id="rooms-heading">Send to</h2>
+    <ul id="rooms" role="radiogroup" aria-labelledby="rooms-heading"></ul>
   </section>
-  <section id="empty" hidden>
-    <p class="hint">No rooms yet. Open one of your youple rooms once and it will show up here.</p>
-  </section>
+  <div id="empty" class="card" hidden>
+    <strong>Open your room first</strong>
+    <p>Open or create a room on youple.tv. It will show up here so you can send videos to it.</p>
+    <a class="primary" href="https://youple.tv/" target="_blank">Open youple.tv</a>
+  </div>
 
   <button id="send" type="button" class="primary" hidden></button>
-  <p id="status" role="status"></p>
-  <a id="site" href="https://youple.tv/" target="_blank">Open youple.tv</a>
+  <p id="status" role="status" hidden></p>
+  <a id="site" href="https://youple.tv/" target="_blank" hidden>Open youple.tv</a>
   <script src="popup.js" type="module"></script>
 </body>
 </html>
