@@ -42,7 +42,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 
       <section class="profile-section">
         <h2>Your rooms</h2>
-        {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={20}/><span>{room.title}</span><em>{room.joined ? 'Joined' : 'Open'}</em></a><button class="room-forget" type="button" data-room={room.slug} data-title={room.title} data-joined={String(room.joined)}>{room.joined ? 'Leave' : 'Delete'}</button></li>)}</ul> : <p class="muted">No rooms yet. Save one from the home page, or join a friend's.</p>}
+        {rooms.length ? <ul class="room-list">{rooms.map(room => <li><a href={'/room/' + room.slug}><Icon name="people" size={20}/><span>{room.title}</span><em>{room.joined ? 'Joined' : 'Open'}</em></a><button class="room-forget" type="button" data-room={room.slug} data-title={room.title} data-joined={String(room.joined)}>{room.joined ? 'Leave' : 'Delete'}</button></li>)}</ul> : <p class="muted">No rooms yet. Create a permanent one from the home page, or join a friend's.</p>}
       </section>
     </div>
     <p class="signed-in-with">Signed in with {provider}</p>
