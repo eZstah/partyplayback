@@ -183,15 +183,20 @@ and returns, and presses his face against the glass. He can groom, nap, get
 the zoomies, stalk the cursor, hunt butterflies and knock decorations around.
 In rooms he watches the video and responds to playback and title hints.
 
-Stroke Bean with the cursor to pet him, click to boop, drag to pick him up,
-double-click empty space to drop a treat, or use the laser in the **Bean** panel.
-The panel shows his activity, mood, trust and diary. His memory is saved in
-`localStorage`. **Aquarium** (`?wallpaper=1`) gives him his own room to play in:
-a cat tree, a sofa, a box, a big TV, a bookshelf and a window sill to climb,
-jump between and hide behind.
+Stroke Bean with the cursor to pet him, click to boop, drag to pick him up or
+double-click empty space to drop a treat. The small **Bean** menu has four
+actions: come say hi, give a treat, the laser pointer, and let Bean sleep (or
+wake him). His trust and counters are saved in `localStorage`, per browser.
+
+**Aquarium** (`?wallpaper=1`) is Bean's own cozy room: fairy lights, a lamp, a
+cat tree, a sofa, a box, a bookshelf, a window whose sky follows your time of
+day and drifting weather, and a TV. In a watch room the player sits on that
+TV, with fullscreen still available. Bean climbs, naps and watches from the
+furniture, and stays quiet while a video plays. **Back to site** or **Back to
+room** leaves it, and so does narrowing the window to phone width.
 
 The roaming cat is desktop only. Phones and touch-first screens show one
-static black cat instead. The wordmark stays plain on every screen.
+static black cat instead.
 
 Video context comes from the current title and playback state only. It does not
 listen to audio or inspect frames. Cat interactions are local to each viewer.
