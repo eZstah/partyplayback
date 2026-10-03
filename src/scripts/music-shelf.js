@@ -41,8 +41,10 @@ export function createMusicSelector({ send, enablePlayback, onChange = () => {},
   function state() {
     const current = room?.queue[room.currentIndex];
     const selected = current && mixOf(current.videoId);
+    // Records already in this room's playlist, most recently added first.
+    const played = [...new Set((room?.queue || []).map(item => mixOf(item.videoId)?.key).filter(Boolean).reverse())];
     return { connected, pending: pending?.mix.key || null, selected: selected?.key || null,
-      playing: !!room?.isPlaying, error };
+      playing: !!room?.isPlaying, error, played };
   }
   const publish = () => onChange(state());
   function clearPending() { cancel(timer); timer = null; pending = null; }
@@ -108,22 +110,49 @@ export function createMusicSelector({ send, enablePlayback, onChange = () => {},
   return { select, update, state, fail, unavailable, destroy: clearPending };
 }
 
+// Bean's pick: a record already played in this room comes first; otherwise one
+// that suits the window, rain before the time of day.
+const FOR_SCENE = { rain: 'jazz', night: 'sleep', dawn: 'ambient', day: 'lofi', dusk: 'piano' };
+export function suggestRecord({ daypart, weather, played = [] } = {}) {
+  const known = key => MUSIC_MIXES.some(mix => mix.key === key) ? key : null;
+  return known(played[0]) || known(FOR_SCENE[weather]) || known(FOR_SCENE[daypart]) || 'lofi';
+}
+
 export function paintMusicShelf(root, state) {
   if (!root) return;
+  root.musicState = state; // repainted when the window's scene changes
   const selected = MUSIC_MIXES.find(mix => mix.key === state.selected);
   const pending = MUSIC_MIXES.find(mix => mix.key === state.pending);
+  const scene = document.querySelector('.cat-habitat')?.dataset || {};
+  const idle = state.connected && !selected && !pending && !state.error;
+  const suggested = idle ? suggestRecord({ daypart: scene.daypart, weather: scene.weather, played: state.played }) : null;
+  const pick = MUSIC_MIXES.find(mix => mix.key === suggested);
   for (const button of root.querySelectorAll('[data-music-mix]')) {
     const key = button.dataset.musicMix;
     button.disabled = !state.connected || !!pending;
     button.setAttribute('aria-pressed', String(key === state.selected));
     button.setAttribute('aria-busy', String(key === state.pending));
     button.dataset.playing = String(key === state.selected && state.playing && !state.error);
+    button.dataset.suggested = String(key === suggested);
   }
   const message = state.error || (pending ? 'Loading ' + pending.label + '…'
-    : !state.connected ? 'Connecting…' : selected ? (state.playing ? 'On the TV · ' : 'Paused · ') + selected.label : 'Pick a record');
+    : !state.connected ? 'Connecting…' : selected ? (state.playing ? 'On the TV · ' : 'Paused · ') + selected.label
+    : "Bean's pick · " + pick.label);
   const status = root.querySelector('[data-music-status]');
   if (status.textContent !== message) status.textContent = message;
   root.dataset.error = String(!!state.error);
+  root.dataset.record = selected?.key || '';
+  root.dataset.spinning = String(!!selected && state.playing && !state.error);
+}
+
+// Keep Bean's pick in step with the window: the scene changes with the hour and
+// the weather, so repaint the shelf when the habitat's data attributes change.
+export function followScene(root) {
+  const habitat = document.querySelector('.cat-habitat');
+  if (!root || !habitat || typeof MutationObserver === 'undefined') return () => {};
+  const observer = new MutationObserver(() => { if (root.musicState) paintMusicShelf(root, root.musicState); });
+  observer.observe(habitat, { attributes: true, attributeFilter: ['data-daypart', 'data-weather'] });
+  return () => observer.disconnect();
 }
 
 // Aquarium also exists on the landing page. Picking a record there opens a
@@ -132,7 +161,7 @@ export function mountHomeMusicShelf(root) {
   if (!root) return;
   let creating = false;
   paintMusicShelf(root, { connected: true });
-  root.querySelector('[data-music-hint]').textContent = 'Start a music room';
+  followScene(root);
   for (const button of root.querySelectorAll('[data-music-mix]')) {
     const mix = MUSIC_MIXES.find(item => item.key === button.dataset.musicMix);
     button.setAttribute('aria-label', 'Start a shared ' + mix.label + ' music room');

@@ -189,3 +189,16 @@ test('acrobatics wait for the video, reduced motion and Calm', () => {
     for (let i = 0; i < 30; i++) assert.ok(!['leap', 'highjump'].includes(mind.choose({ ...ctx, ...extra }).type), JSON.stringify(extra));
   }
 });
+
+test('Bean only paws a record when the shelf suggests one, and never during playback, Calm or reduced motion', () => {
+  const mind = new Mind('black', {}, rng(9));
+  Object.assign(mind.drives, { sleepy: 0, curious: 100 });
+  const score = ctx => { mind.choose(ctx); return mind.inspect().decision.candidates.find(c => c.type === 'pick').score; };
+  assert.equal(score({ aquarium: true }), 0, 'no suggested record, no reason to go');
+  assert.ok(score({ aquarium: true, record: true }) > 0);
+  for (const extra of [{ playing: true }, { calm: true }, { reduced: true }]) {
+    assert.equal(mind.canStart('pick', { aquarium: true, record: true, ...extra }), false, JSON.stringify(extra));
+  }
+  mind.begin('pick');
+  assert.equal(mind.canStart('pick', { aquarium: true, record: true }), false, 'a nudge is not repeated right away');
+});

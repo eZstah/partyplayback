@@ -189,8 +189,10 @@ actions: come say hi, give a treat, the laser pointer, and let Bean sleep (or
 wake him). His trust and counters are saved in `localStorage`, per browser.
 
 **Aquarium** (`?wallpaper=1`) is Bean's own cozy room: fairy lights, a lamp, a
-cat tree, a sofa, a box, a bookshelf, a window whose sky follows your time of
-day and drifting weather, and a TV. In a watch room the player sits on that
+cat tree, a sofa, a window whose sky follows your time of day and drifting
+weather, a TV, and a turntable with five records (Ambient, Lo-fi, Piano, Jazz,
+Sleep) that play on the TV. One record glows as Bean's pick for the hour and
+weather, and Bean sometimes paws it. In a watch room the player sits on that
 TV, with fullscreen still available. Bean climbs, naps and watches from the
 furniture, and stays quiet while a video plays. **Back to site** or **Back to
 room** leaves it, and so does narrowing the window to phone width.

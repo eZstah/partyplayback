@@ -31,6 +31,19 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## Turntable and Bean's pick (Claude)
+
+Konstantin asked for smarter record suggestions. The tall cabinet is now a low
+record stand with a turntable on top and the five sleeves leaning in its front.
+The platter spins in the record's colour while it plays. With nothing selected,
+the shelf glows one sleeve as "Bean's pick": the room's last record, else Jazz
+in rain, else by time of day (dawn Ambient, day Lo-fi, dusk Piano, night Sleep).
+In Aquarium Bean sometimes walks to the stand and paws that sleeve (`pick`).
+Checked in Chromium at 1024×768, 1280×720, 1440×900 and 1920×1080: the stand
+and turntable stay below the TV, every sleeve is clickable, the disc spins on
+play and stops on pause, Bean walks over and nudges the suggested record, and
+the stand is a perch. Not checked: Safari, real YouTube.
+
 ## Records with backups (Claude)
 
 Konstantin agreed to 15 record slots: five moods with up to three videos each.
@@ -39,9 +52,7 @@ confirmed to embed (`checked` in `music-shelf.js`); the other seven were found
 by search and could not be checked from the cloud environment, which blocks
 YouTube. Run `npm run check:records` on a normal network and replace any video
 it reports. If a video fails at runtime, the shelf moves on to the next backup
-on its own (tested with a stand-in player that fails two Lo-fi videos). Next:
-a turntable and record crate instead of the tall cabinet, and Bean nudging a
-suggested record that fits the window's time of day and weather.
+on its own (tested with a stand-in player that fails two Lo-fi videos).
 
 ## Neon Aquarium and the music shelf (Codex)
 
