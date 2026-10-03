@@ -23,7 +23,7 @@ function fakePeer() {
 function setup(capture) {
   const stream = media(), sent = [], streams = [], errors = [], peers = [];
   const share = new TabShare({ send: data => { sent.push(data); return true; }, capture: capture || (async () => stream),
-    createPeer: () => { const peer = fakePeer(); peers.push(peer); return peer; },
+    createPeer: config => { const peer = { ...fakePeer(), config }; peers.push(peer); return peer; },
     onStream: (stream, local) => streams.push({ stream, local }), onError: error => errors.push(error) });
   share.update({ peerId: "self", share: null });
   const active = () => ({ id: "capture-1", hostId: "self", name: "Alice", requestId: share.pending.id, audio: false });
@@ -104,6 +104,21 @@ test("losing the room while picking a tab stops the late capture", async () => {
   await starting;
   assert.equal(stream.track.readyState, "ended");
   assert.equal(sent.length, 0);
+});
+
+test("an older server cannot enable a paid relay on a peer connection", async () => {
+  const { share, peers } = setup();
+  share.update({ peerId: "self", share: { id: "capture-1", hostId: "host", name: "Alice" } });
+  await share.handle({ type: "share-ice", shareId: "capture-1", relay: true,
+    iceServers: [{ urls: "turn:turn.cloudflare.com:3478", username: "legacy", credential: "temporary" }] });
+  await flush();
+  await share.handle({ type: "share-signal", shareId: "capture-1", connectionId: share.connectionId,
+    from: "host", description: { type: "offer", sdp: "v=0" } });
+  assert.deepEqual(peers[0].config, { iceServers: [{ urls: "stun:stun.cloudflare.com:3478" }] });
+  peers[0].connectionState = "failed";
+  peers[0].onconnectionstatechange();
+  assert.match(share.status, /couldn’t connect directly/);
+  share.disconnect();
 });
 
 test("a new sharer supersedes a pending local picker without leaking capture", async () => {

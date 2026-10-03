@@ -70,19 +70,20 @@ bounded SDP/ICE messages between the sharer and subscribed viewers only. Per-soc
 server-generated identities and share generations reject spoofed or stale signals.
 Ownership/subscriptions survive hibernation as socket attachments; SDP is not saved.
 
-Without relay credentials, the prototype uses Cloudflare STUN and direct peers.
-Some networks cannot connect directly. For production reliability create a
-[Cloudflare TURN key](https://developers.cloudflare.com/realtime/turn/generate-credentials/)
-and set `TURN_KEY_ID` and `TURN_KEY_API_TOKEN` as Worker secrets (or in `.dev.vars`
-locally). The server issues four-hour credentials over a joined room connection;
-the permanent key never reaches the client. Configure relay billing/usage limits
-in Cloudflare before a public rollout. Large rooms need an SFU instead of adding
-more peer connections and host upload bandwidth.
+Sharing is peer-to-peer only, using [Cloudflare STUN](https://developers.cloudflare.com/realtime/turn/faq/)
+to discover network addresses. No TURN relay is configured or provisioned, even
+if old relay secrets exist. Picture and sound travel from the sharer to each
+viewer, so Youple carries no media bandwidth. Normal website and room-signaling
+usage still applies. The sharer's upload bandwidth grows with each viewer;
+the four-viewer limit keeps this a small-room feature.
+
+Some networks cannot connect directly. Those viewers see a connection error and
+can try Reconnect or another network; sharing never falls back to a paid relay.
 
 Manual checks: two browsers, tab picture + sound, autoplay recovery, picker cancel,
 browser Stop sharing, simultaneous sharers, a late viewer, host departure, viewer
-reconnect, and YouTube pause/resume. Also test two separate networks with TURN
-configured; a localhost pass alone does not verify NAT traversal.
+reconnect, and YouTube pause/resume. Also test two separate networks; a localhost
+pass alone does not verify direct NAT traversal.
 
 ## Validation
 

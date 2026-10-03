@@ -479,8 +479,7 @@ export class RoomDO {
       return;
     }
     if (data.type === "share-ice") {
-      // Reserve a viewer slot before minting relay credentials. This also bounds
-      // credential issuance to the same small group that can receive the media.
+      // Reserve a viewer slot before negotiating a direct peer connection.
       if (person.peerId !== share.hostId && person.watching !== share.id) {
         if (this._members().filter(socket => socket.deserializeAttachment().watching === share.id).length >= 4) {
           return fail("This shared tab has four viewers already. Try again when someone leaves.");
@@ -488,36 +487,10 @@ export class RoomDO {
         person = { ...person, watching: share.id };
         ws.serializeAttachment(person);
       }
-      this.shareIce ??= new Map();
-      for (const [id, config] of this.shareIce) if (config.expiresAt <= now || !this._members().some(socket => socket.deserializeAttachment().peerId === id)) this.shareIce.delete(id);
-      const cached = this.shareIce.get(person.peerId);
-      if (cached) return this._send(ws, { type: "share-ice", shareId: share.id, iceServers: cached.iceServers, relay: cached.relay });
-      if (person.iceShare === share.id && person.iceAt > now - 30000) return fail("Please wait a moment before reconnecting the shared tab.");
-      ws.serializeAttachment({ ...person, iceAt: now, iceShare: share.id });
-      const iceServers = [{ urls: "stun:stun.cloudflare.com:3478" }];
-      let relay = false;
-      if (this.env.TURN_KEY_ID && this.env.TURN_KEY_API_TOKEN) {
-        try {
-          const response = await fetch("https://rtc.live.cloudflare.com/v1/turn/keys/" + encodeURIComponent(this.env.TURN_KEY_ID) + "/credentials/generate-ice-servers", {
-            method: "POST", headers: { Authorization: "Bearer " + this.env.TURN_KEY_API_TOKEN, "Content-Type": "application/json" },
-            body: JSON.stringify({ ttl: 14400 }), signal: AbortSignal.timeout(5000),
-          });
-          if (!response.ok) throw new Error("TURN unavailable");
-          const result = await response.json();
-          if (!Array.isArray(result.iceServers)) throw new Error("Invalid TURN response");
-          for (const server of result.iceServers.slice(0, 8)) {
-            const urls = (Array.isArray(server.urls) ? server.urls : [server.urls]).filter(url => typeof url === "string" && /^turns?:/.test(url) && !/:53(?:\?|$)/.test(url));
-            if (urls.length && typeof server.username === "string" && typeof server.credential === "string") {
-              iceServers.push({ urls, username: server.username, credential: server.credential });
-              relay = true;
-            }
-          }
-        } catch { /* Direct connections can still work when the relay is unavailable. */ }
-      }
-      if (this._share()?.id === share.id && ws.deserializeAttachment()?.joined) {
-        this.shareIce.set(person.peerId, { iceServers, relay, expiresAt: now + (relay ? 3600000 : 30000) });
-        this._send(ws, { type: "share-ice", shareId: share.id, iceServers, relay });
-      }
+      // STUN only discovers network addresses; it never relays picture or sound.
+      // Do not mint TURN credentials, even if old relay secrets still exist.
+      this._send(ws, { type: "share-ice", shareId: share.id,
+        iceServers: [{ urls: "stun:stun.cloudflare.com:3478" }], relay: false });
       return;
     }
     if (data.type !== "share-signal") return;

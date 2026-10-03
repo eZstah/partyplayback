@@ -142,31 +142,28 @@ test("empty-room queue additions stay paused during sharing and new viewers disc
   assert.equal(sockets[1].messages.at(-1).relay, false);
 });
 
-test("TURN returns temporary credentials only to the requester and handles an outage", async () => {
+test("sharing never provisions a relay even when old TURN secrets are configured", async () => {
   const { room, send, sockets } = await setup();
   room.env = { TURN_KEY_ID: "test-key", TURN_KEY_API_TOKEN: "server-secret" };
   await send({ type: "share-start", requestId: "capture" });
   const shareId = room._share().id;
   const realFetch = globalThis.fetch;
+  let requests = 0;
   try {
-    globalThis.fetch = async (url, options) => {
-      assert.match(url, /test-key\/credentials\/generate-ice-servers$/);
-      assert.equal(options.headers.Authorization, "Bearer server-secret");
-      return Response.json({ iceServers: [{ urls: ["turn:turn.cloudflare.com:3478", "turn:turn.cloudflare.com:53"], username: "temporary", credential: "short-lived" }] });
-    };
+    globalThis.fetch = async () => { requests++; throw new Error("No relay requests allowed"); };
     await send({ type: "share-ice", shareId });
     const config = sockets[0].messages.at(-1);
-    assert.equal(config.relay, true);
-    assert.deepEqual(config.iceServers[1].urls, ["turn:turn.cloudflare.com:3478"]);
+    assert.equal(config.relay, false);
+    assert.deepEqual(config.iceServers, [{ urls: "stun:stun.cloudflare.com:3478" }]);
     assert.equal(JSON.stringify(config).includes("server-secret"), false);
     assert.notEqual(sockets[1].messages.at(-1).type, "share-ice");
-    globalThis.fetch = async () => { throw new Error("offline"); };
     await send({ type: "share-ice", shareId }, sockets[1]);
     assert.equal(sockets[1].messages.at(-1).relay, false);
+    assert.equal(requests, 0, "neither host nor viewer triggers relay provisioning");
   } finally { globalThis.fetch = realFetch; }
 });
 
-test("quickly restarting a share reuses ICE configuration instead of throttling the host", async () => {
+test("quickly restarting a share does not throttle direct connection setup", async () => {
   const { room, send, sockets } = await setup();
   await send({ type: "share-start", requestId: "first" });
   await send({ type: "share-ice", shareId: room._share().id });
@@ -174,8 +171,7 @@ test("quickly restarting a share reuses ICE configuration instead of throttling 
   await send({ type: "share-start", requestId: "second" });
   await send({ type: "share-ice", shareId: room._share().id });
   assert.equal(sockets[0].messages.at(-1).type, "share-ice");
-  const count = room.shareIce.size;
-  assert.equal(count, 1);
+  assert.equal(sockets[0].messages.at(-1).relay, false);
 });
 
 test("play, pause, and paused seek broadcast authoritative state to both viewers", async () => {

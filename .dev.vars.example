@@ -6,7 +6,3 @@ SUPABASE_PUBLISHABLE_KEY="sb_publishable_YOUR_KEY"
 AUTH_REDIRECT_ORIGIN="http://localhost:8787"
 # Contact and bug report forms: a Resend API key with sending access to youple.tv.
 RESEND_API_KEY="re_YOUR_KEY"
-# Optional Cloudflare Realtime TURN relay for tab sharing across restrictive networks.
-# Set both as Worker secrets in production. Only temporary credentials reach viewers.
-# TURN_KEY_ID="YOUR_TURN_KEY_ID"
-# TURN_KEY_API_TOKEN="YOUR_TURN_KEY_API_TOKEN"

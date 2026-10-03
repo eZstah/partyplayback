@@ -1,5 +1,5 @@
 // One broadcaster, a few viewers. The room socket carries signaling only;
-// picture and sound travel over WebRTC. No recording or platform credentials.
+// picture and sound travel directly between browsers over WebRTC. No relay.
 export class TabShare {
   constructor({ send, capture, createPeer, onChange = () => {}, onStream = () => {}, onError = () => {}, canWatch = () => true }) {
     Object.assign(this, { send, capture, createPeer, onChange, onStream, onError, canWatch });
@@ -117,8 +117,8 @@ export class TabShare {
     }
     if (!this.share || data.shareId !== this.share.id) return;
     if (data.type === "share-ice") {
-      this.relay = data.relay;
-      this.iceWait?.resolve({ iceServers: data.iceServers });
+      // Keep direct-only sharing even if an older server returns TURN credentials.
+      this.iceWait?.resolve({ iceServers: [{ urls: "stun:stun.cloudflare.com:3478" }] });
     } else if (data.type === "share-viewer" && this.hosting) {
       if (!this.config) this.waiting.set(data.peerId, data.connectionId);
       else await this.offer(data.peerId, data.connectionId);
@@ -217,7 +217,7 @@ export class TabShare {
 
   connectionFailed() {
     clearTimeout(this.watchTimer);
-    this.changed(this.relay ? "The shared tab disconnected. Try Reconnect." : "These networks couldn’t connect directly. Try Reconnect or another network.");
+    this.changed("These networks couldn’t connect directly. Try Reconnect or another network.");
   }
 
   closePeer(id) {
