@@ -167,8 +167,10 @@ being suppressed for a fixed number of milliseconds.
 
 ## The cats
 
-Four cats live on youple.tv: Miso (cream, the caretaker), Mochi (ginger tabby, the
-instigator), Pixel (lavender, the critic) and Bean (tuxedo kitten, the apprentice).
+One cat lives on youple.tv for now: Miso (cream, the caretaker). The rest of the
+cast is written and kept in `cats/cast.js`: Mochi (ginger tabby, the instigator),
+Pixel (lavender, the critic) and Bean (tuxedo kitten, the apprentice). Add a kind to
+`RESIDENTS` to bring one back, or try them locally with `?catdebug&cats=mint,pink`.
 Each has its own body shape, gait, voice and personality traits, and its own mind:
 drives (sleepy, playful, lonely, curious, hungry) rise and fall with what it does
 and the time of day, and a weighted choice picks what it wants next. Nothing runs

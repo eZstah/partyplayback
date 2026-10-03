@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CAST, KINDS, traitWords } from '../src/scripts/cats/cast.js';
+import { CAST, KINDS, RESIDENTS, traitWords } from '../src/scripts/cats/cast.js';
 import { Mind, awaySummary, dayRhythm, defaultBonds, rng, videoVibe } from '../src/scripts/cats/mind.js';
 import { CatBody, headBasis, tint, visibility, wrap } from '../src/scripts/cats/body.js';
 
@@ -98,6 +98,12 @@ test('relationships give the cast its dynamics', () => {
   assert.ok(defaultBonds('black').pink > .5, 'Bean idolises Mochi');
   assert.ok(defaultBonds('purple').pink < 0, 'Pixel is wary of Mochi');
   assert.deepEqual(Object.keys(defaultBonds('mint')).sort(), ['black', 'pink', 'purple']);
+});
+
+test('one resident cat for now, the rest of the cast kept for later', () => {
+  assert.deepEqual(RESIDENTS, ['mint']);
+  for (const kind of RESIDENTS) assert.ok(KINDS.includes(kind));
+  assert.match(awaySummary([new Mind('mint', {}, rng(1))], 600, rng(2)), /^You were away 10 minutes\. Miso .+, and Miso .+\.$/);
 });
 
 test('a long absence gets a diary entry, a short one does not', () => {

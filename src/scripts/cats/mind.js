@@ -187,7 +187,10 @@ export function awaySummary(minds, seconds, random = Math.random) {
   if (seconds < 45) return null;
   const mins = Math.round(seconds / 60), span = mins < 2 ? 'a minute' : mins < 90 ? `${mins} minutes` : `${Math.round(mins / 60)} hours`;
   const names = minds.map(m => m.cast.name);
-  const events = [
+  const events = names.length === 1 ? [
+    `${names[0]} slept through most of it`, `${names[0]} went out exploring and came back`, `${names[0]} found a new favourite spot`,
+    `${names[0]} watched the door for a while`, `${names[0]} groomed for a very long time`,
+  ] : [
     `${pick(names, random)} slept through most of it`, `${names[1]} knocked something off a shelf`,
     `${names[3] || names[0]} followed ${names[1]} everywhere`, `${names[2]} held a staring contest with the wall and won`,
     `${names[0]} groomed everyone, whether they liked it or not`, `${names[1]} and ${names[3] || names[2]} chased each other twice`,

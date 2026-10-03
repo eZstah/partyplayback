@@ -4,7 +4,7 @@
 // somewhere else; and the glass between them and you is something to tap on.
 // The canvas never takes pointer events, so everything under a cat still works.
 import { CatBody } from './body.js';
-import { CAST, KINDS, traitWords } from './cast.js';
+import { CAST, KINDS, RESIDENTS, traitWords } from './cast.js';
 import { Mind, awaySummary, clamp, dayRhythm, pick, videoVibe } from './mind.js';
 
 const STORE = 'youple-cats-v1';
@@ -62,13 +62,18 @@ export function bootCats() {
     treat: null, critter: null, nextCritter: 90 + Math.random() * 90, particles: [], glass: [], speechAt: 0,
     playing: false, title: '', vibe: 'unknown', users: null, hovered: null, press: null, drag: null, petDist: 0 };
 
-  const cats = KINDS.map((kind, i) => {
+  // ?catdebug&cats=mint,pink brings more of the cast back for local testing.
+  const params = new URLSearchParams(location.search);
+  const extra = params.has('catdebug') ? (params.get('cats') || '').split(',').filter(k => KINDS.includes(k)) : [];
+  const cats = (extra.length ? extra : RESIDENTS).map((kind, i) => {
     const mind = new Mind(kind, saved.cats?.[kind]);
     const body = new CatBody(CAST[kind].look);
     return { kind, i, name: CAST[kind].name, cast: CAST[kind], mind, body, plan: null, prio: 0, at: { kind: 'floor' }, target: null,
       bubble: null, nextGlance: 0, thought: '', xf: null, peek: null, closeup: null, forceMask: false, edgePaws: null, offAt: 0, home: .14 + i * .24 };
   });
   const byKind = Object.fromEntries(cats.map(c => [c.kind, c]));
+  // A line meant for one cat goes to whoever is home if that cat isn't.
+  const who = kind => byKind[kind] || cats[0];
 
   // ---------- geometry ----------
   const S = () => clamp(Math.min(W.w / 1440, W.h / 900), .75, 1.3) * 1.05;
@@ -195,7 +200,7 @@ export function bootCats() {
     measure();
     const f = floor(), ledges = W.ledges.filter(l => onScreen(l.rect));
     const social = near !== null;
-    if (!social && Math.random() < .7) { near = cat.home * W.w; spread = W.w * .4; }
+    if (!social && cats.length > 1 && Math.random() < .7) { near = cat.home * W.w; spread = W.w * .4; }
     for (let i = 0; i < 50; i++) {
       let spot;
       const wantLedge = ledges.length && (where === 'ledge' || where === 'high' || (where === 'any' && Math.random() < .6));
@@ -1400,9 +1405,13 @@ export function bootCats() {
       set('[data-feels]', c.mind.feelings().join(', '));
       set('[data-trust]', hearts(c.mind.trust));
       set('[data-thought]', c.thought ? `“${c.thought}”` : '');
-      const bonds = Object.entries(c.mind.bonds).sort((a, b) => b[1] - a[1]);
-      const best = bonds[0], worst = bonds[bonds.length - 1];
-      set('[data-bonds]', `Closest to ${CAST[best[0]].name}${worst[1] < 0 ? ` · avoids ${CAST[worst[0]].name}` : ''}`);
+      // Friends only means something with company on the page.
+      const bonds = Object.entries(c.mind.bonds).filter(([k]) => byKind[k] && k !== c.kind).sort((a, b) => b[1] - a[1]);
+      const row = card.querySelector('[data-bonds]')?.parentElement; if (row) row.hidden = !bonds.length;
+      if (bonds.length) {
+        const best = bonds[0], worst = bonds[bonds.length - 1];
+        set('[data-bonds]', `Closest to ${CAST[best[0]].name}${worst[1] < 0 ? ` · avoids ${CAST[worst[0]].name}` : ''}`);
+      }
     }
   }
   function renderJournal() {
@@ -1746,8 +1755,8 @@ export function bootCats() {
   listen($('cat-aquarium-btn'), 'click', () => setAquarium(!W.aquarium));
   listen($('cat-calm-btn'), 'click', () => setCalm(!W.calm));
   listen($('cat-calm-dock'), 'click', () => setCalm(!W.calm));
-  listen(document.querySelector('.create-room-button'), 'pointerenter', () => { const c = byKind.pink; if (c.prio < PRIORITY.react && drawn(c)) { c.body.look = { x: W.pointer?.x ?? W.w / 2, y: W.pointer?.y ?? 200 }; say(c, 'createHover', .6); } });
-  listen($('url-in'), 'focus', () => { const c = byKind.black; say(c, 'newVideo', .4); });
+  listen(document.querySelector('.create-room-button'), 'pointerenter', () => { const c = who('pink'); if (c.prio < PRIORITY.react && drawn(c)) { c.body.look = { x: W.pointer?.x ?? W.w / 2, y: W.pointer?.y ?? 200 }; say(c, 'createHover', .6); } });
+  listen($('url-in'), 'focus', () => { const c = who('black'); say(c, 'newVideo', .4); });
 
   // ---------- start ----------
   resize();
@@ -1756,7 +1765,7 @@ export function bootCats() {
   if (new URLSearchParams(location.search).get('wallpaper') === '1') setAquarium(true);
   // Greet the visitor: the host peeks in, then comes up to the glass to say hello.
   {
-    const host = firstVisit ? byKind.mint : [...cats].sort((a, b) => b.mind.trust - a.mind.trust)[0];
+    const host = firstVisit ? who('mint') : [...cats].sort((a, b) => b.mind.trust - a.mind.trust)[0];
     const key = firstVisit ? 'greet' : sinceLast > 4 * 3600 ? 'returnLong' : null;
     if (key && !W.calm) {
       // One cat looks in to say hello; everyone else stays asleep.
@@ -1768,8 +1777,8 @@ export function bootCats() {
         say(host, key, 1, true); host.body.look = 'viewer'; yield* wait(1.5);
         host.mind.begin('loaf'); yield* A.loaf(host);
       })();
-      if (firstVisit) log('You met the cats.'); else log(`You came back after ${Math.round(sinceLast / 3600)} hours. ${host.name} noticed.`);
-    } else if (!journal.length) log('The cats are settling in.');
+      if (firstVisit) log(cats.length > 1 ? 'You met the cats.' : `You met ${cats[0].name}.`); else log(`You came back after ${Math.round(sinceLast / 3600)} hours. ${host.name} noticed.`);
+    } else if (!journal.length) log(cats.length > 1 ? 'The cats are settling in.' : `${cats[0].name} is settling in.`);
   }
   raf = requestAnimationFrame(t => { last = t; frame(t); });
 
@@ -1784,13 +1793,13 @@ export function bootCats() {
         if (data.title) { say(pick(cats.filter(drawn).length ? cats.filter(drawn) : cats), 'newVideo', .7); log(`New video: ${data.title.slice(0, 60)}`); }
       }
       if (W.users !== null && data.users > W.users) {
-        const c = byKind.mint; say(c, 'newcomer', 1, true); log('Someone joined the room. The cats noticed.');
+        const c = who('mint'); say(c, 'newcomer', 1, true); log(`Someone joined the room. ${cats.length > 1 ? 'The cats' : c.name} noticed.`);
         for (const o of cats) if (o.prio < PRIORITY.react && drawn(o)) o.body.look = { x: Math.random() < .5 ? 0 : W.w, y: W.h * .6 };
       }
       if (data.users !== undefined) W.users = data.users;
     },
-    linkError(message) { if (message) say(byKind.mint, 'linkError', 1, true); },
-    inviteCopied() { say(byKind.mint, 'invite', 1, true); },
+    linkError(message) { if (message) say(who('mint'), 'linkError', 1, true); },
+    inviteCopied() { say(who('mint'), 'invite', 1, true); },
     treat: dropTreat, laser: setLaser, aquarium: setAquarium, calm: setCalm,
     destroy() {
       cancelAnimationFrame(raf); disposers.forEach(d => d()); save();

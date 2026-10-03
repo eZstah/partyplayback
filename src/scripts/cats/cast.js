@@ -99,6 +99,8 @@ export const CAST = {
 };
 
 export const KINDS = Object.keys(CAST);
+// Who lives on the page right now. One cat done well reads as a cat; the rest of the cast waits here for later.
+export const RESIDENTS = ['mint'];
 
 // Words for the "meet the cats" panel. Picks the strongest traits.
 const TRAIT_WORDS = {
