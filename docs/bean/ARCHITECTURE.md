@@ -225,10 +225,34 @@ which turns marked furniture into the same surfaces:
 - `data-toy`: something to knock about.
 - The TV (`.tv`) is a solid. In a room, the real player sits exactly on its
   screen: `cat-habitat.css` shares the TV's size variables (`--tv-left`,
-  `--tv-lift`, `--tv-w`, `--tv-h` and the bezel) with the room page's
+  `--tv-lift`, `--tv-width`, `--tv-height` and the bezel) with the room page's
   `.watch-column`, so moving or resizing the TV moves the player with it. The
   controls shrink to an icon strip that shows on hover, and the fullscreen
   button takes the player full screen with the normal fullscreen layout.
+
+The corrected layout follows Konstantin's October 3 mockup: a large window and
+sofa on the left, a slim three-deck cat tree at the edge, a larger 16:9 TV above
+a low console with two plants, and a narrow bookshelf on the right. The wall
+shelf, box and yarn were removed to leave the floor open. The toy mouse stays.
+The TV width is capped by both viewport width and height through `--u`, and the
+player uses the same length variables to stay aligned when the window resizes.
+The follow-up palette keeps the room dim in the website's charcoal and plum,
+with lavender edge lighting and pink/mint accents. Day and weather still change
+the window without turning the room into a bright daytime scene.
+
+The right cabinet is now a music shelf. Its decorative solid/shelf surfaces
+stay in the habitat, while the accessible buttons are a sibling `.music-shelf`
+above the room layout (otherwise `.room-shell` intercepts the top record).
+`music-shelf.js` owns the recorded Ambient, Lo-fi and Piano catalog and a small
+client controller. It uses the existing room `add` and `select` messages, waits
+for the server's item ID, reuses an existing mix, and reads selection/pause state
+from the shared room. Pending requests time out or cancel on disconnect; stale
+responses cannot select a mix after cancellation. No new audio player or server
+protocol is involved. The homepage shelf creates a guest room with a validated
+`mix` query parameter that is consumed and removed on the first room state.
+YouTube may require the existing Join playback button. Keep these recordings
+seekable; live radios do not share the same bounded timeline. Replace a catalog
+video if its creator removes it or disables embedding.
 
 The room has depth. Furniture stands against the back at 87vh (`--floor: 13vh`),
 which is the aquarium floor's `zBehind` line in `floor()`. Bean walks in front
@@ -246,7 +270,7 @@ The room's mood is set by `src/scripts/habitat-scene.js`. It writes
 `data-daypart` (night, dawn, day, dusk, from the visitor's clock) and
 `data-weather` (clear, clouds, rain, changing every 6 to 14 minutes) on
 `.cat-habitat`. The CSS reads them: the window's sky, sun, moon, stars, city
-lights, clouds and rain, the lamp glow, and a light beam from the window by
+lights, clouds and rain, and a soft light beam from the window by
 day. Add a new state by adding it to the lists there and styling it; nothing
 else needs to know. `?scene=night,rain` pins a state for screenshots.
 Animations only run in Aquarium and stop under reduced motion.

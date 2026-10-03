@@ -31,6 +31,47 @@ Verify publication against GitHub and the Cloudflare deployment record rather
 than assuming a prepared release has already been published.
 No external chats, scheduled jobs or messages were created.
 
+## Neon Aquarium and the music shelf (Codex)
+
+Konstantin requested a cozy neon room in the site's tones and confirmed that
+clicking the right shelf should load a mix into the shared TV. The scene now
+uses charcoal/plum furniture, lavender edge light and muted pink/mint accents.
+The record shelf offers Ambient, Lo-fi and Piano recordings by Lofi Girl through
+the existing room player. Choices add/select by item identity and reuse queued
+mixes. The selected sleeve follows remote selection and pause state. Loading,
+disconnection, queue capacity, timeouts and embed errors have visible feedback.
+From the homepage the record creates a guest room and carries the choice over.
+
+The first live-radio trial buffered at the room's zero-based timeline, so the
+final catalog uses seekable recordings: `fQ35eh6k0RI`, `8gJ716dhStg`, `cYPJaHT5f3E`.
+All three were verified in the browser with media ready state 4, paused false
+and advancing currentTime. A second local viewer received selection and pause
+state; homepage-to-room selection also worked. Browser checks cover keyboard
+selection, 1907×942, 1440×900, 1280×720 and 1024×768 shelf hit areas/TV alignment,
+fullscreen, and the 390×844 fallback (shelf hidden, no horizontal overflow).
+All 238 tests and `npm run check` pass. The library depends on YouTube
+availability and its normal autoplay policy.
+No changes to the cat engine or room server. Continued in PR #41; not deployed.
+
+## Aquarium proportions from Konstantin's corrected mockup (Codex)
+
+The October 3 reference enlarges the sunset window and TV, places the sofa
+under the window, slims the cat tree and bookshelf, and adds two little plants
+on the low console. Implemented in `CatHabitat.astro` and `cat-habitat.css` from
+`09d8916`, on `codex/aquarium-mockup-layout`. The wall shelf, box and yarn are
+removed; the tree has three decks. Existing perch, nap and viewing markers
+remain on the furniture, and the mouse remains a toy. No cat engine changes.
+TV and player share responsive length variables and keep a 16:9 screen.
+
+Validated with all 229 tests and `npm run check` (build, TypeScript, Wrangler
+dry run). Browser checks cover home and the local empty room, fullscreen in
+and out, and room/player alignment at 1280×720, 1440×900, 1920×1080, 1280×1024,
+1024×768 and the reference's 1907×942. All marked furniture stays on screen;
+player edges match the TV screen within a fraction of a pixel. At 390×844,
+Aquarium exits to the normal room without horizontal overflow. This layout
+check does not verify external video playback or multi-user synchronization.
+This increment is prepared for PR review, without publishing to main.
+
 ## A cozy lofi room with the player on the TV (Claude)
 
 Konstantin asked for Aquarium to be an ultra-cozy cat playground room, with our

@@ -5,6 +5,7 @@ import { copyText, takeCreatedRoomNotice } from "./invite-copy.js";
 import { pastedVideo, youtubeUrl, playlistLink } from "./room-paste.js";
 import { bindVolumeControl } from "./volume-control.js";
 import { bindFullscreenControls } from "./fullscreen-controls.js";
+import { createMusicSelector, paintMusicShelf, MUSIC_MIXES } from "./music-shelf.js";
 
 export function bootRoom(roomName, arrival = Promise.resolve()) {
   bootAuth();
@@ -63,6 +64,12 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     },
   });
 
+  const musicShelf = document.querySelector('.music-shelf');
+  const music = createMusicSelector({ send, enablePlayback: () => playback.enablePlayback(true),
+    onChange: state => paintMusicShelf(musicShelf, state) });
+  musicShelf?.querySelectorAll('[data-music-mix]').forEach(button => {
+    button.addEventListener('click', () => music.select(button.dataset.musicMix));
+  });
   const fullscreenControls = bindFullscreenControls({ shell: $("room-shell"), document });
   function updateFullscreenControls() {
     const canHide = !!(!youtubeControls && joined && room?.isPlaying && room.queue[room.currentIndex] &&
@@ -71,6 +78,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
     fullscreenControls.update(canHide, room?.playbackId);
   }
   function controls() {
+    music.update(room, joined);
     const hasVideo = !!room?.queue[room.currentIndex];
     youtubeButton.disabled = !hasVideo || !playback.player;
     playButton.disabled = !joined || !hasVideo;
@@ -249,6 +257,13 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
         if (firstState) {
           performance.mark("youple:room-connected");
           document.dispatchEvent(new Event("youple:room-ready"));
+          const arrivalUrl = new URL(location.href);
+          const arrivalMix = arrivalUrl.searchParams.get('mix');
+          if (arrivalMix) {
+            arrivalUrl.searchParams.delete('mix');
+            history.replaceState(history.state, '', arrivalUrl);
+            if (MUSIC_MIXES.some(mix => mix.key === arrivalMix)) music.select(arrivalMix);
+          }
         }
         ensurePlayer();
       } else if (data.type === "skipped" && Array.isArray(data.skips) && data.skips.length) {
@@ -259,6 +274,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
         renderPeople(data.members);
         pals.observe({ users: data.userCount });
       } else if (data.type === "error") {
+        if (music.state().pending) music.fail(data.message);
         if (pastedAddition) { clearTimeout(pastedAddition.timer); pastedAddition = null; }
         toast(data.message);
         requestState();
@@ -630,6 +646,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
         onError() {
           if (player !== youtubePlayer) return;
           playback.failed();
+          if (music.state().selected) music.fail("This mix couldn't load. Try another record.");
           toast("Video unavailable or embedding blocked. Try another video or use Next.");
         },
       },
@@ -669,6 +686,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
   window.addEventListener("pagehide", () => {
     stopping = true;
     fullscreenControls.destroy();
+    music.destroy();
     clearInterval(sampleTimer);
     clearInterval(syncTimer);
     clearTimeout(reconnectTimer);
@@ -692,6 +710,7 @@ export function bootRoom(roomName, arrival = Promise.resolve()) {
       script.src = "https://www.youtube.com/iframe_api";
       script.addEventListener("error", () => {
         playerRequested = false;
+        if (music.state().selected) music.fail("Could not load YouTube. Check your connection and reload.");
         toast("Could not load YouTube. Check your connection and reload.");
       });
       document.head.append(script);

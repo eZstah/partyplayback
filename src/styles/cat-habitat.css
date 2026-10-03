@@ -2,29 +2,30 @@
    87vh (the engine's aquarium zBehind line), so bottom: 13vh. --u keeps proportions at any window size.
    The TV's numbers are shared with the room page, which places the real player on its screen. */
 body.cat-wallpaper,.cat-habitat{--u:min(1vw,1.6vh);--floor:13vh;
-  --tv-left:53.5vw;--tv-lift:14;--tv-w:32;--tv-h:18;--tv-side:.9;--tv-top:.9;--tv-chin:2.2}
-.cat-habitat{--wood:#6f5260;--wood-top:#8d6a78;--wood-dark:#523b48;
-  --sky-top:#2a2340;--sky-low:#5b3f62;--glow:#ffc98a;--lamp:.55;--wall-light:0;--beam:0;--city:.9;--stars:.3}
-.cat-habitat[data-daypart=night]{--sky-top:#0f0d1f;--sky-low:#2a2244;--lamp:.8;--city:1;--stars:1}
-.cat-habitat[data-daypart=dawn]{--sky-top:#3b3a66;--sky-low:#e9a9a0;--lamp:.35;--city:.45;--stars:.15;--beam:.12;--wall-light:.05}
-.cat-habitat[data-daypart=day]{--sky-top:#6fa6d8;--sky-low:#bfe0ef;--lamp:.08;--city:0;--stars:0;--beam:.35;--wall-light:.16}
-.cat-habitat[data-daypart=dusk]{--sky-top:#3b2d5c;--sky-low:#f0a07a;--lamp:.55;--city:.75;--stars:.35;--beam:.08;--wall-light:.04}
+  --tv-left:45vw;--tv-lift:12;--tv-width:min(42.4vw,54*var(--u));--tv-height:calc(var(--tv-width)*9/16);--tv-side:1.2;--tv-top:1.2;--tv-chin:3.2}
+.cat-habitat{--wood:#302b3e;--wood-top:#51465f;--wood-dark:#1c1928;
+  --sky-top:#161327;--sky-low:#3b294e;--glow:#c3afff;--lamp:.55;--wall-light:0;--beam:0;--city:.9;--stars:.3}
+.cat-habitat[data-daypart=night]{--sky-top:#0d1022;--sky-low:#29203e;--lamp:.8;--city:1;--stars:1}
+.cat-habitat[data-daypart=dawn]{--sky-top:#25213e;--sky-low:#947282;--lamp:.35;--city:.45;--stars:.15;--beam:.06;--wall-light:.02}
+.cat-habitat[data-daypart=day]{--sky-top:#4e607f;--sky-low:#8da3b9;--lamp:.08;--city:0;--stars:0;--beam:.14;--wall-light:.05}
+.cat-habitat[data-daypart=dusk]{--sky-top:#211b39;--sky-low:#a36d8c;--lamp:.55;--city:.75;--stars:.35;--beam:.08;--wall-light:.04}
 .cat-habitat[data-weather=clouds]{--beam-mood:.5}
 .cat-habitat[data-weather=rain]{--beam-mood:0}
 .cat-habitat .prop{position:absolute;box-sizing:border-box}
+.habitat-wall::before{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#c3afff11,#c3afff88 28%,#ee9fb155 66%,#a8e6cf44);box-shadow:0 0 16px #c3afff66,0 6px 26px #c3afff22}
 
-/* Walls, floor, a warm lamp glow and, by day, a beam of light from the window. */
-.habitat-wall{position:absolute;inset:0 0 18vh;background:repeating-linear-gradient(90deg,#ffffff06 0 calc(.25*var(--u)),transparent calc(.25*var(--u)) calc(5*var(--u))),linear-gradient(#251d31,#33283f 70%,#3b2e47)}
-.habitat-wall::after{content:'';position:absolute;inset:0;background:#fff3e2;opacity:var(--wall-light);transition:opacity 4s}
+/* Low light in the site’s charcoal, plum, lavender, pink and mint palette. */
+.habitat-wall{position:absolute;inset:0 0 18vh;background:repeating-linear-gradient(90deg,#c3afff03 0 calc(.25*var(--u)),transparent calc(.25*var(--u)) calc(5*var(--u))),linear-gradient(#12111b,#201b30 70%,#272039)}
+.habitat-wall::after{content:'';position:absolute;inset:0;background:#c3afff;opacity:var(--wall-light);transition:opacity 4s}
 /* The floor of the room starts where the back wall ends (the engine's deepest floor, 82vh). */
-.habitat-boards{position:absolute;left:0;right:0;top:82vh;bottom:0;background:repeating-linear-gradient(90deg,#ffffff05 0 1px,transparent 1px calc(9*var(--u))),linear-gradient(#3a2e3f,#463848 60%,#3c3040);border-top:calc(.4*var(--u)) solid #54445c}
-.habitat-rug{position:absolute;left:24vw;width:46vw;bottom:2vh;height:9vh;border-radius:50%;background:repeating-radial-gradient(ellipse at center,#d79bb21a 0 calc(.8*var(--u)),#c385a012 calc(.8*var(--u)) calc(1.6*var(--u)));box-shadow:0 0 calc(3*var(--u)) #e3a7c010}
-.habitat-sunbeam{position:absolute;left:calc(27vw + 4*var(--u));top:calc(100vh - var(--floor) - 34*var(--u));width:calc(36*var(--u));bottom:4vh;background:linear-gradient(#ffe6b833,#ffe6b80a);clip-path:polygon(0 0,45% 0,100% 100%,38% 100%);mix-blend-mode:screen;opacity:calc(var(--beam) * var(--beam-mood,1) * 2);transition:opacity 6s}
-.habitat-light{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 18vw 28vh,color-mix(in srgb,var(--glow) 32%,transparent),transparent 34vw);opacity:var(--lamp);mix-blend-mode:soft-light;transition:opacity 6s}
+.habitat-boards{position:absolute;left:0;right:0;top:82vh;bottom:0;background:repeating-linear-gradient(90deg,#ffffff05 0 1px,transparent 1px calc(9*var(--u))),linear-gradient(#1b1726,#27202f 60%,#17151e);border-top:calc(.4*var(--u)) solid #665178}
+.habitat-rug{position:absolute;left:24vw;width:46vw;bottom:2vh;height:9vh;border-radius:50%;background:repeating-radial-gradient(ellipse at center,#c3afff12 0 calc(.8*var(--u)),#9273b309 calc(.8*var(--u)) calc(1.6*var(--u)));box-shadow:0 0 calc(3*var(--u)) #c3afff09}
+.habitat-sunbeam{position:absolute;left:15vw;top:calc(100vh - var(--floor) - 20.4*var(--u));width:36vw;bottom:4vh;background:linear-gradient(#c3afff22,#c3afff06);clip-path:polygon(0 0,45% 0,100% 100%,38% 100%);mix-blend-mode:screen;opacity:calc(var(--beam) * var(--beam-mood,1) * 2);transition:opacity 6s}
+.habitat-light{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 30% 35%,#c3afff0a,transparent 42%),radial-gradient(ellipse at 78% 38%,#c3afff0e,transparent 38%),linear-gradient(transparent 60%,#08070e22);opacity:1;transition:opacity 6s}
 /* A quiet maker's mark on the floorboards, easy to miss. */
 .habitat-sign{position:absolute;left:2vw;bottom:1.6vh;display:flex;align-items:baseline;gap:8px;opacity:.32}
 .habitat-sign .youple-wordmark{font-size:13px}.habitat-sign .sign-note{font-size:11px;color:#c9b8d6}
-.habitat-plant{position:absolute;left:15.5vw;bottom:calc(var(--floor) + .5vh);height:20vh;opacity:.85}
+.habitat-plant{position:absolute;left:12.7vw;bottom:calc(var(--floor) + .5vh);height:20vh;opacity:.85}
 
 /* Fairy lights along the top of the wall. */
 .habitat-garland{position:absolute;left:2vw;top:0;width:96vw;height:7vh;overflow:visible}
@@ -35,21 +36,22 @@ body.cat-wallpaper .habitat-garland .b1{animation-delay:-1.3s}body.cat-wallpaper
 @keyframes bulb{0%,100%{opacity:1}50%{opacity:.55}}
 
 /* Window: the sky follows the time of day and the weather, with a little city below. */
-.prop-window{left:27vw;bottom:calc(var(--floor) + 33*var(--u));width:calc(25*var(--u));height:calc(18*var(--u))}
+.prop-window{left:11.5vw;bottom:calc(var(--floor) + 20.4*var(--u));width:30.3vw;height:48vh}
+.prop-window::before{content:'';position:absolute;left:-3%;right:-3%;top:calc(-.6*var(--u));height:calc(.4*var(--u));border-radius:999px;background:#c3afff;box-shadow:0 0 8px #c3afff88,0 0 30px #c3afff33}
 .window-sky{position:absolute;left:calc(1*var(--u));right:calc(1*var(--u));top:0;bottom:calc(1.6*var(--u));overflow:hidden;border-radius:calc(1*var(--u)) calc(1*var(--u)) 0 0;background:linear-gradient(var(--sky-top),var(--sky-low));transition:background 6s}
-.window-glass{position:absolute;left:calc(1*var(--u));right:calc(1*var(--u));top:0;bottom:calc(1.6*var(--u));border:calc(.7*var(--u)) solid #5d4f70;border-radius:calc(1*var(--u)) calc(1*var(--u)) 0 0;background:linear-gradient(90deg,transparent calc(50% - .3*var(--u)),#5d4f70 calc(50% - .3*var(--u)) calc(50% + .3*var(--u)),transparent calc(50% + .3*var(--u))),linear-gradient(transparent calc(50% - .3*var(--u)),#5d4f70 calc(50% - .3*var(--u)) calc(50% + .3*var(--u)),transparent calc(50% + .3*var(--u))),linear-gradient(125deg,#ffffff10 20%,transparent 22% 48%,#ffffff0a 50%,transparent 53%)}
+.window-glass{position:absolute;left:calc(1*var(--u));right:calc(1*var(--u));top:0;bottom:calc(1.6*var(--u));border:calc(.7*var(--u)) solid #403650;border-radius:calc(1*var(--u)) calc(1*var(--u)) 0 0;background:linear-gradient(90deg,transparent calc(50% - .3*var(--u)),#403650 calc(50% - .3*var(--u)) calc(50% + .3*var(--u)),transparent calc(50% + .3*var(--u))),linear-gradient(transparent calc(50% - .3*var(--u)),#403650 calc(50% - .3*var(--u)) calc(50% + .3*var(--u)),transparent calc(50% + .3*var(--u))),linear-gradient(125deg,#ffffff10 20%,transparent 22% 48%,#ffffff0a 50%,transparent 53%)}
 .sky-stars{position:absolute;inset:0;opacity:var(--stars);transition:opacity 6s;background:radial-gradient(1px 1px at 12% 20%,#fff,transparent),radial-gradient(1px 1px at 30% 45%,#fff,transparent),radial-gradient(1.5px 1.5px at 52% 14%,#fff,transparent),radial-gradient(1px 1px at 70% 34%,#fff,transparent),radial-gradient(1px 1px at 86% 12%,#fff,transparent),radial-gradient(1px 1px at 42% 28%,#fff,transparent),radial-gradient(1.5px 1.5px at 92% 40%,#fff,transparent)}
 .habitat-moon{position:absolute;left:62%;top:14%;width:calc(4.2*var(--u));aspect-ratio:1;border-radius:50%;background:#efe4f7;box-shadow:0 0 calc(3*var(--u)) calc(.8*var(--u)) #e7d6ff40;opacity:0;transition:opacity 6s}
 .habitat-moon::after{content:'';position:absolute;inset:-6% -25% 15% 24%;border-radius:50%;background:var(--sky-top);transition:background 6s}
-.sky-sun{position:absolute;left:24%;top:58%;width:calc(4*var(--u));aspect-ratio:1;border-radius:50%;background:radial-gradient(#fff6d8,#ffd27a 60%,#ffb35c);box-shadow:0 0 calc(4*var(--u)) calc(1.4*var(--u)) #ffd08a70;opacity:0;transition:opacity 6s,top 6s}
+.sky-sun{position:absolute;left:24%;top:58%;width:calc(6.4*var(--u));aspect-ratio:1;border-radius:50%;background:radial-gradient(#fff6d8,#ffd27a 60%,#ffb35c);box-shadow:0 0 calc(4*var(--u)) calc(1.4*var(--u)) #ffd08a70;opacity:0;transition:opacity 6s,top 6s}
 .cat-habitat[data-daypart=night] .habitat-moon{opacity:1}
 .cat-habitat[data-daypart=dusk] .habitat-moon{opacity:0}
 .cat-habitat[data-daypart=day] .sky-sun{opacity:1;top:14%}
 .cat-habitat[data-daypart=dawn] .sky-sun{opacity:.9;top:52%}
 .cat-habitat[data-daypart=dusk] .sky-sun{opacity:.85;top:62%;left:66%}
 .sky-city{position:absolute;left:0;right:0;bottom:0;width:100%;height:36%;fill:#1d1729}
-.cat-habitat[data-daypart=day] .sky-city{fill:#8aa3c4}.cat-habitat[data-daypart=dawn] .sky-city{fill:#4b3b5e}
-.city-lights{fill:#ffd38a;opacity:var(--city);transition:opacity 6s}
+.cat-habitat[data-daypart=day] .sky-city{fill:#394257}.cat-habitat[data-daypart=dawn] .sky-city{fill:#342b49}
+.city-lights{fill:#c3afff;opacity:var(--city);transition:opacity 6s}
 .sky-clouds span{position:absolute;height:calc(2.2*var(--u));border-radius:999px;background:#ffffff;opacity:0;transition:opacity 8s}
 .sky-clouds span:nth-child(1){top:18%;left:-30%;width:45%}.sky-clouds span:nth-child(2){top:34%;left:-60%;width:60%;height:calc(3*var(--u))}.sky-clouds span:nth-child(3){top:8%;left:-45%;width:38%}
 .cat-habitat[data-weather=clouds] .sky-clouds span{opacity:.35}
@@ -63,74 +65,94 @@ body.cat-wallpaper .sky-clouds span:nth-child(2){animation-duration:130s;animati
 .cat-habitat[data-weather=rain] .window-sky{filter:saturate(.6) brightness(.8)}
 body.cat-wallpaper .cat-habitat[data-weather=rain] .sky-rain{animation:rain .5s linear infinite}
 @keyframes rain{to{transform:translate(calc(-.8*var(--u)),calc(3*var(--u)))}}
-.window-curtain{position:absolute;top:calc(-.6*var(--u));bottom:calc(1*var(--u));width:calc(3.6*var(--u));background:repeating-linear-gradient(90deg,#b98aa8 0 calc(.8*var(--u)),#a77796 calc(.8*var(--u)) calc(1.6*var(--u)));border-radius:0 0 calc(1.6*var(--u)) calc(1.6*var(--u));z-index:2}
+.window-curtain{position:absolute;top:calc(-.6*var(--u));bottom:calc(1.6*var(--u));width:14%;background:repeating-linear-gradient(90deg,#473651 0 calc(1.15*var(--u)),#342b40 calc(1.15*var(--u)) calc(2.3*var(--u)));border-radius:0 0 calc(2.5*var(--u)) calc(2.5*var(--u));z-index:2}
 .window-curtain.left{left:0}.window-curtain.right{right:0}
-.window-sill{position:absolute;left:0;right:0;bottom:0;height:calc(1.6*var(--u));border-radius:calc(.4*var(--u));background:linear-gradient(var(--wood-top),var(--wood));box-shadow:0 calc(.6*var(--u)) calc(1*var(--u)) #0005}
-.sill-pot{position:absolute;right:calc(4.6*var(--u));bottom:100%;width:calc(2.4*var(--u));height:calc(2*var(--u));border-radius:0 0 calc(.6*var(--u)) calc(.6*var(--u));background:#c69f9e}
+.window-sill{position:absolute;left:0;right:0;bottom:0;height:calc(2.4*var(--u));border-radius:calc(.4*var(--u));background:linear-gradient(var(--wood-top),var(--wood));box-shadow:0 calc(.6*var(--u)) calc(1*var(--u)) #0005}
+.sill-pot{position:absolute;right:18%;bottom:100%;width:calc(3.6*var(--u));height:calc(3.2*var(--u));border-radius:0 0 calc(1.1*var(--u)) calc(1.1*var(--u));background:#86627d}
 .sill-pot::before{content:'';position:absolute;left:10%;right:10%;bottom:90%;height:calc(2.2*var(--u));border-radius:50% 50% 20% 20%;background:radial-gradient(circle at 30% 60%,#8fae92 0 35%,transparent 36%),radial-gradient(circle at 70% 45%,#9cba9d 0 38%,transparent 39%)}
 
-/* A wall shelf with a little lamp, the room's warm light at night. */
-.wall-shelf{left:16vw;bottom:calc(var(--floor) + 36*var(--u));width:calc(9*var(--u));height:calc(1.3*var(--u));border-radius:calc(.3*var(--u));background:linear-gradient(var(--wood-top),var(--wood));box-shadow:0 calc(.6*var(--u)) calc(1*var(--u)) #0005}
-.wall-shelf-cup{position:absolute;right:calc(.8*var(--u));bottom:100%;width:calc(1.6*var(--u));height:calc(1.8*var(--u));border-radius:0 0 calc(.5*var(--u)) calc(.5*var(--u));background:#8fd3b5}
-.shelf-lamp{position:absolute;left:calc(1.2*var(--u));bottom:100%;width:calc(3.4*var(--u));height:calc(4.6*var(--u));background:linear-gradient(#e8b98a,#e8b98a) 50% 100%/calc(.5*var(--u)) 60% no-repeat}
-.shelf-lamp::before{content:'';position:absolute;left:0;right:0;top:0;height:calc(2.4*var(--u));clip-path:polygon(20% 0,80% 0,100% 100%,0 100%);background:#f6d7a6}
-.shelf-lamp::after{content:'';position:absolute;left:50%;top:calc(2.4*var(--u));width:calc(16*var(--u));height:calc(16*var(--u));transform:translate(-50%,-30%);border-radius:50%;background:radial-gradient(#ffd8a055,transparent 65%);opacity:var(--lamp);transition:opacity 6s;pointer-events:none}
-
-/* Cat tree: a sisal post, a cubby to hide in, two decks and a bed on top. */
-.prop-tree{left:2vw;bottom:var(--floor);width:calc(16*var(--u));height:calc(50*var(--u))}
-.tree-post{position:absolute;left:calc(7*var(--u));bottom:0;width:calc(2.2*var(--u));height:calc(47*var(--u));border-radius:calc(.4*var(--u));background:repeating-linear-gradient(0deg,#c8ab8a 0 3px,#a98a6a 3px 6px);box-shadow:inset calc(-.5*var(--u)) 0 0 #0002}
-.tree-cubby{position:absolute;left:0;bottom:0;width:calc(15*var(--u));height:calc(12.5*var(--u));border-radius:calc(1.4*var(--u));background:linear-gradient(#a892d8,#8c76bd);box-shadow:inset 0 calc(.7*var(--u)) 0 #c3b1ee,0 calc(1*var(--u)) calc(2*var(--u)) #0006}
-.cubby-hole{position:absolute;left:calc(3.4*var(--u));top:calc(3.2*var(--u));width:calc(6.4*var(--u));height:calc(6*var(--u));border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 30%,#2f2640,#17121f)}
-.tree-deck,.tree-bed{position:absolute;height:calc(1.6*var(--u));border-radius:calc(.8*var(--u));background:linear-gradient(#cbb8f0,#a08ad4);box-shadow:0 calc(.5*var(--u)) calc(1*var(--u)) #0005}
-.deck-low{left:calc(-.5*var(--u));bottom:calc(24*var(--u));width:calc(9*var(--u))}
-.deck-mid{left:calc(6.5*var(--u));bottom:calc(36*var(--u));width:calc(9*var(--u))}
+/* Cat tree: a sisal post, a cubby to hide in, three decks and a bed on top. */
+.prop-tree{left:1.5vw;bottom:var(--floor);width:9vw;height:77vh}
+.tree-post{position:absolute;left:58%;bottom:0;width:calc(1.8*var(--u));height:100%;border-radius:calc(.4*var(--u));background:repeating-linear-gradient(0deg,#6a566f 0 3px,#46394d 3px 6px);box-shadow:inset calc(-.5*var(--u)) 0 0 #0002}
+.tree-cubby{position:absolute;left:0;bottom:0;width:7.4vw;height:20vh;border-radius:calc(1.4*var(--u));background:linear-gradient(#514168,#2e283e);box-shadow:inset 0 calc(.7*var(--u)) 0 #8d76b5,0 calc(1*var(--u)) calc(2*var(--u)) #0006}
+.cubby-hole{position:absolute;left:20%;top:25%;width:60%;height:50%;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 30%,#2f2640,#17121f)}
+.tree-deck,.tree-bed{position:absolute;height:calc(1.6*var(--u));border-radius:calc(.8*var(--u));background:linear-gradient(#8a73b2,#4d3d68);box-shadow:0 calc(.5*var(--u)) calc(1*var(--u)) #0005}
+.deck-low{left:-.3vw;bottom:39vh;width:6.2vw}
+.deck-mid{left:-1.2vw;bottom:59vh;width:5.8vw}
+.deck-high{left:3.6vw;bottom:63vh;width:6.1vw}
 .deck-pompom{position:absolute;right:calc(1.2*var(--u));top:100%;width:2px;height:calc(4*var(--u));background:#d8cbe9}
 .deck-pompom::after{content:'';position:absolute;left:calc(-.7*var(--u));bottom:calc(-1*var(--u));width:calc(1.5*var(--u));aspect-ratio:1;border-radius:50%;background:#ec8fa3}
-.tree-bed{left:0;bottom:calc(46*var(--u));width:calc(11*var(--u));height:calc(3*var(--u));border-radius:calc(1.5*var(--u)) calc(1.5*var(--u)) calc(2*var(--u)) calc(2*var(--u));background:linear-gradient(#f0b3c4,#d98ba1);box-shadow:inset 0 calc(.6*var(--u)) 0 #f8d0db,0 calc(.5*var(--u)) calc(1*var(--u)) #0005}
+.tree-bed{left:0;bottom:74vh;width:7.4vw;height:calc(3*var(--u));border-radius:calc(1.5*var(--u)) calc(1.5*var(--u)) calc(2*var(--u)) calc(2*var(--u));background:linear-gradient(#98708e,#62425d);box-shadow:inset 0 calc(.6*var(--u)) 0 #d39abc,0 calc(.5*var(--u)) calc(1*var(--u)) #0005}
 
 /* Sofa with a knitted blanket: climb the back, nap on the seat, hide behind it. */
-.prop-sofa{left:19vw;bottom:var(--floor);width:calc(28*var(--u));height:calc(21*var(--u));--back:21}
-.sofa-back{position:absolute;left:calc(1*var(--u));bottom:0;width:calc(26*var(--u));height:calc(var(--back)*var(--u));border-radius:calc(3*var(--u)) calc(3*var(--u)) calc(1*var(--u)) calc(1*var(--u));background:linear-gradient(#c38aa0,#a8748b);box-shadow:inset 0 calc(.8*var(--u)) 0 #d6a3b7}
-.sofa-seat{position:absolute;left:0;bottom:0;width:calc(28*var(--u));height:calc(10*var(--u));border-radius:calc(2*var(--u));background:linear-gradient(#d09bb0,#b07a91);box-shadow:0 calc(1*var(--u)) calc(2.4*var(--u)) #0007;display:flex;gap:calc(.6*var(--u));padding:calc(1*var(--u)) calc(4*var(--u)) 0}
-.sofa-cushion{flex:1;height:calc(3*var(--u));border-radius:calc(1.2*var(--u));background:#dcaec0}
-.sofa-arm{position:absolute;bottom:0;width:calc(3.6*var(--u));height:calc(13*var(--u));border-radius:calc(1.8*var(--u)) calc(1.8*var(--u)) calc(1*var(--u)) calc(1*var(--u));background:linear-gradient(#bb8299,#9c6a81)}
-.sofa-arm.left{left:calc(-1*var(--u))}.sofa-arm.right{right:calc(-1*var(--u))}
-.sofa-blanket{position:absolute;right:calc(2.6*var(--u));bottom:calc(9*var(--u));width:calc(5.4*var(--u));height:calc(10.5*var(--u));border-radius:calc(.8*var(--u)) calc(.8*var(--u)) calc(1.6*var(--u)) calc(.6*var(--u));background:repeating-linear-gradient(0deg,#f3d9a4 0 calc(.9*var(--u)),#e9c78a calc(.9*var(--u)) calc(1.8*var(--u)));transform:rotate(4deg);box-shadow:0 calc(.4*var(--u)) calc(1*var(--u)) #0004;pointer-events:none}
+.prop-sofa{left:14vw;bottom:var(--floor);width:23.5vw;height:23vh}
+.sofa-back{position:absolute;left:5%;bottom:0;width:90%;height:100%;border-radius:calc(1.5*var(--u)) calc(1.5*var(--u)) calc(1*var(--u)) calc(1*var(--u));background:linear-gradient(#60445f,#372b41);box-shadow:inset 0 calc(.8*var(--u)) 0 #8c6d94}
+.sofa-seat{position:absolute;left:0;bottom:0;width:100%;height:55%;border-radius:calc(2*var(--u));background:linear-gradient(#77536e,#493248);box-shadow:0 calc(1*var(--u)) calc(2.4*var(--u)) #0007;display:flex;gap:calc(.6*var(--u));padding:calc(1*var(--u)) 15% 0}
+.sofa-cushion{flex:1;height:30%;border-radius:calc(1.2*var(--u));background:#9d779b}
+.sofa-arm{position:absolute;bottom:0;width:12%;height:72%;border-radius:calc(1.8*var(--u)) calc(1.8*var(--u)) calc(1*var(--u)) calc(1*var(--u));background:linear-gradient(#6c4b65,#3e2d43)}
+.sofa-arm.left{left:-1%}.sofa-arm.right{right:-1%}
+.sofa-blanket{position:absolute;right:13%;bottom:50%;width:18%;height:50%;border-radius:calc(.8*var(--u)) calc(.8*var(--u)) calc(1.6*var(--u)) calc(.6*var(--u));background:repeating-linear-gradient(0deg,#b1a4cb 0 calc(.9*var(--u)),#8b79a6 calc(.9*var(--u)) calc(1.8*var(--u)));transform:rotate(4deg);box-shadow:0 calc(.4*var(--u)) calc(1*var(--u)) #0004;pointer-events:none}
 
-/* A big cardboard box with open flaps. */
-.prop-box{left:48vw;bottom:var(--floor);width:calc(10*var(--u));height:calc(11*var(--u));border-radius:calc(.4*var(--u));background:linear-gradient(90deg,#c99a6b,#b98a5c);box-shadow:0 calc(1*var(--u)) calc(2*var(--u)) #0006}
-.box-flap{position:absolute;top:calc(-2.2*var(--u));width:calc(4.6*var(--u));height:calc(2.4*var(--u));background:#b4865a;border-radius:calc(.3*var(--u))}
-.box-flap.left{left:calc(-1.2*var(--u));transform:rotate(-18deg);transform-origin:right bottom}
-.box-flap.right{right:calc(-1.2*var(--u));transform:rotate(18deg);transform-origin:left bottom}
-.box-label{position:absolute;left:0;right:0;top:45%;text-align:center;font:700 calc(.85*var(--u))/1 system-ui,sans-serif;letter-spacing:.08em;color:#7a5636;text-transform:uppercase}
-.yarn{left:45.5vw;bottom:var(--floor);width:calc(2.6*var(--u));height:calc(2.6*var(--u));border-radius:50%;background:repeating-linear-gradient(35deg,#ec8fa3 0 3px,#d9768d 3px 5px)}
+/* A little mouse stays beside the console for Bean to bat around. */
 .toy-mouse{left:80vw;bottom:var(--floor);width:calc(2.4*var(--u));height:calc(1.4*var(--u));border-radius:60% 40% 40% 60%/70% 70% 30% 30%;background:#a59cb3}
 .toy-mouse::after{content:'';position:absolute;right:100%;bottom:20%;width:calc(1.6*var(--u));height:2px;background:#a59cb3;border-radius:2px}
 
 /* The TV hangs on the wall over a low console. Its screen is 16:9; in a room the
    real player covers it exactly (see the room rules at the end). */
-.console{left:58vw;bottom:var(--floor);width:calc(29*var(--u));height:calc(7*var(--u));border-radius:calc(.8*var(--u));background:linear-gradient(var(--wood-top),var(--wood) 14%,var(--wood-dark));box-shadow:0 calc(1*var(--u)) calc(2*var(--u)) #0007;display:flex;gap:calc(1*var(--u));padding:calc(1.6*var(--u)) calc(1.4*var(--u)) calc(1.2*var(--u))}
-.drawer{flex:1;border-radius:calc(.5*var(--u));background:#5e4552;position:relative}
-.drawer::after{content:'';position:absolute;left:50%;top:50%;width:calc(1.4*var(--u));height:calc(.5*var(--u));transform:translate(-50%,-50%);border-radius:9px;background:#c9a77f}
-.console-speaker{flex:.6;border-radius:calc(.5*var(--u));background:radial-gradient(circle,#3f2f3a 30%,transparent 32%) 0 0/calc(.9*var(--u)) calc(.9*var(--u)),#4d3a46}
-.tv{left:var(--tv-left);bottom:calc(var(--floor) + var(--tv-lift)*var(--u));width:calc((var(--tv-w) + 2*var(--tv-side))*var(--u));height:calc((var(--tv-h) + var(--tv-top) + var(--tv-chin))*var(--u));border-radius:calc(1.2*var(--u));background:linear-gradient(#2c2733,#1c1922);box-shadow:0 calc(1.2*var(--u)) calc(3*var(--u)) #000a,inset 0 0 0 1px #ffffff12;padding:calc(var(--tv-top)*var(--u)) calc(var(--tv-side)*var(--u)) calc(var(--tv-chin)*var(--u))}
-.tv-screen{width:100%;height:100%;border-radius:calc(.5*var(--u));background:radial-gradient(ellipse at 40% 35%,#3a2f55,#17131f 75%);display:grid;place-items:center;box-shadow:inset 0 0 calc(2*var(--u)) #b8a1e855}
+.console{left:57vw;bottom:var(--floor);width:23vw;height:10.5vh;border-radius:calc(.8*var(--u));background:linear-gradient(var(--wood-top),var(--wood) 14%,var(--wood-dark));box-shadow:0 calc(1*var(--u)) calc(2*var(--u)) #0007;display:flex;gap:calc(1*var(--u));padding:calc(1.6*var(--u)) calc(1.4*var(--u)) calc(1.2*var(--u))}
+.console-plant{position:absolute;left:47%;bottom:100%;width:calc(1.1*var(--u));height:calc(1.6*var(--u));background:#85677e;border-radius:2px 2px 35% 35%}
+.console-plant::before,.console-plant::after,.console-plant span{content:'';position:absolute;bottom:80%;left:50%;width:calc(.15*var(--u));height:calc(2*var(--u));border-radius:70%;background:#799d79;transform:rotate(-28deg);transform-origin:bottom}
+.console-plant::after{transform:rotate(32deg);height:calc(1.6*var(--u))}
+.console-plant span{transform:rotate(3deg);height:calc(2.3*var(--u))}
+.console-plant.small{left:74%;transform:scale(.65);transform-origin:bottom}
+.drawer{flex:1;border-radius:calc(.5*var(--u));background:#282131;position:relative}
+.drawer::after{content:'';position:absolute;left:50%;top:50%;width:calc(1.4*var(--u));height:calc(.5*var(--u));transform:translate(-50%,-50%);border-radius:9px;background:#ab98bd}
+.console-speaker{flex:.6;border-radius:calc(.5*var(--u));background:radial-gradient(circle,#17141f 30%,transparent 32%) 0 0/calc(.9*var(--u)) calc(.9*var(--u)),#292233}
+.tv{left:var(--tv-left);bottom:calc(var(--floor) + var(--tv-lift)*var(--u));width:calc(var(--tv-width) + 2*var(--tv-side)*var(--u));height:calc(var(--tv-height) + (var(--tv-top) + var(--tv-chin))*var(--u));border-radius:calc(1.7*var(--u));background:linear-gradient(#23202d,#121118);box-shadow:0 0 calc(3*var(--u)) #c3afff20,0 0 calc(8*var(--u)) #ee9fb10c,0 calc(1.2*var(--u)) calc(3*var(--u)) #000a,inset 0 0 0 1px #c3afff28;padding:calc(var(--tv-top)*var(--u)) calc(var(--tv-side)*var(--u)) calc(var(--tv-chin)*var(--u))}
+.tv-screen{width:100%;height:100%;border-radius:calc(.5*var(--u));background:radial-gradient(ellipse at 40% 35%,#211d31,#0e0d17 75%);display:grid;place-items:center;box-shadow:inset 0 0 calc(2*var(--u)) #c3afff16}
 .tv-led{position:absolute;right:calc(1.6*var(--u));bottom:calc(.85*var(--u));width:calc(.5*var(--u));aspect-ratio:1;border-radius:50%;background:#ff9fb7;box-shadow:0 0 6px #ff9fb7}
 
-/* Bookshelf: climb to the very top, or sit among the books. */
-.prop-books{left:calc(100vw - 12.5*var(--u));bottom:var(--floor);width:calc(11*var(--u));height:calc(46*var(--u));border-radius:calc(.6*var(--u));background:var(--wood-dark);border:calc(.8*var(--u)) solid var(--wood);box-shadow:0 calc(1*var(--u)) calc(2.4*var(--u)) #0007}
-.books{position:absolute;left:calc(.4*var(--u));right:calc(.4*var(--u));height:calc(7.5*var(--u));border-bottom:calc(1*var(--u)) solid var(--wood);background:repeating-linear-gradient(90deg,#8fd3b5 0 calc(1.3*var(--u)),#ec8fa3 calc(1.3*var(--u)) calc(2.2*var(--u)),#f2c46d calc(2.2*var(--u)) calc(3.4*var(--u)),#b8a1e8 calc(3.4*var(--u)) calc(4.3*var(--u)),#7fb8f0 calc(4.3*var(--u)) calc(5.6*var(--u)),transparent calc(5.6*var(--u)) calc(6.4*var(--u)));background-clip:content-box;padding-top:calc(1.6*var(--u))}
-.books.row-1{bottom:calc(1*var(--u))}.books.row-2{bottom:calc(12*var(--u))}.books.row-3{bottom:calc(33*var(--u))}
+/* The record cabinet remains a climbable surface behind the music controls. */
+.prop-books{left:92vw;bottom:var(--floor);width:7vw;height:74vh;border-radius:calc(.6*var(--u));background:var(--wood-dark);border:calc(.65*var(--u)) solid var(--wood);box-shadow:0 calc(1*var(--u)) calc(2.4*var(--u)) #0007}
 .book-shelf{position:absolute;left:calc(.6*var(--u));right:calc(.6*var(--u));bottom:calc(22*var(--u));height:calc(1.2*var(--u));background:var(--wood-top);border-radius:calc(.3*var(--u))}
 
-@media(prefers-reduced-motion:reduce){body.cat-wallpaper .cat-habitat *{animation:none!important}}
+/* Real record sleeves on the cabinet: reachable by pointer and keyboard only
+   while Aquarium is visible. The surrounding scenery stays decorative. */
+.music-shelf{position:fixed;z-index:2;visibility:hidden;left:92vw;bottom:var(--floor);width:7vw;height:74vh;padding:calc(1.1*var(--u));pointer-events:auto;display:flex;flex-direction:column;align-items:center;isolation:isolate;color:#eee6fa}
+body.cat-wallpaper .music-shelf{visibility:visible}
+.music-shelf-heading{width:100%;text-align:center;line-height:1.35}
+.music-shelf-heading>span:first-child{display:block;font-size:clamp(10px,.8vw,14px);font-weight:700;letter-spacing:.06em;color:var(--accent,#c3afff);text-shadow:0 0 14px #c3afff55}
+.music-shelf-heading>span:last-child{display:block;font-size:clamp(9px,.65vw,11px);color:#b7abc8;margin-top:5px}
+.music-records{display:flex;flex-direction:column;justify-content:space-between;width:100%;flex:1;min-height:0;padding:3vh 0 1.4vh}
+.music-record{--record-ink:#c3afff;--record-dark:#51416c;display:flex;flex-direction:column;align-items:center;position:relative;width:100%;min-height:44px;padding:0;background:none;border:0;border-radius:3px;color:inherit;transition:transform .18s,opacity .18s}
+.record-lofi{--record-ink:#ee9fb1;--record-dark:#683b52}.record-piano{--record-ink:#a8e6cf;--record-dark:#284f4d}
+.record-sleeve{display:block;position:relative;width:100%;aspect-ratio:1;max-height:12vh;overflow:hidden;border:1px solid color-mix(in srgb,var(--record-ink) 40%,transparent);border-radius:2px;background:linear-gradient(145deg,var(--record-dark),#1a1727);box-shadow:2px 3px 0 #09070f,0 7px 14px #08060c99;transition:box-shadow .18s,border-color .18s}
+.record-sleeve::after{content:'';position:absolute;left:9%;right:9%;bottom:12%;height:1px;background:var(--record-ink);opacity:.5}
+.record-number{position:absolute;left:8%;top:7%;font-size:clamp(8px,.6vw,11px);color:var(--record-ink)}
+.record-disc{position:absolute;width:69%;aspect-ratio:1;left:26%;top:17%;border-radius:50%;background:radial-gradient(circle,#181321 0 4%,var(--record-ink) 5% 17%,#1b1725 18% 24%,transparent 25%),repeating-radial-gradient(circle,#282132 0 1px,#121017 2px 4px);box-shadow:0 0 12px #0008}
+.record-play{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:clamp(15px,1.3vw,23px);text-shadow:0 2px 6px #000;opacity:0;transition:opacity .18s}
+.record-label{font-size:clamp(11px,.85vw,15px);font-weight:700;margin-top:7px;line-height:1.2}
+.record-caption{font-size:clamp(9px,.65vw,11px);color:#b7abc8;margin-top:3px;line-height:1.2}
+.music-record:hover:not(:disabled),.music-record:focus-visible{transform:translateX(-3px);outline:0}
+.music-record:is(:hover,:focus-visible,[aria-pressed=true]) .record-sleeve{border-color:var(--record-ink);box-shadow:0 0 0 2px #171320,0 0 0 3px var(--record-ink),0 0 24px color-mix(in srgb,var(--record-ink) 24%,transparent)}
+.music-record:is(:hover,:focus-visible) .record-play{opacity:1}
+.music-record[aria-pressed=true] .record-label{color:var(--record-ink)}
+.music-record[data-playing=true] .record-disc{animation:record-turn 14s linear infinite}
+.music-record[aria-busy=true] .record-sleeve{animation:record-loading 1.3s ease-in-out infinite}
+.music-record:disabled{cursor:wait;opacity:.55}
+.music-shelf-status{position:absolute;right:0;top:100%;width:max-content;max-width:230px;text-align:right;font-size:11px;line-height:1.4;color:#c6b9d8;margin:10px 0 0;pointer-events:none}
+.music-shelf[data-error=true] .music-shelf-status{color:#f4adc0;background:#211923;padding:8px 10px;border-radius:6px;pointer-events:auto}
+@keyframes record-turn{to{transform:rotate(360deg)}}
+@keyframes record-loading{50%{opacity:.4}}
+@media(max-width:1150px){.music-shelf{padding:calc(.9*var(--u))}.record-caption{display:none}.music-shelf-heading>span:last-child{font-size:9px}.record-label{font-size:10px}}
+@media(prefers-reduced-motion:reduce){body.cat-wallpaper .cat-habitat *,body.cat-wallpaper .music-shelf *{animation:none!important;transition:none!important}}
 
-/* In a room, the real player sits on the TV's screen at a cozy size. The fullscreen
+/* In a room, the real player fills the TV's screen. The fullscreen
    button still takes it full screen, where the normal fullscreen layout applies. */
 body.cat-wallpaper.room-page .room-shell:not(:fullscreen) .watch-column{position:fixed;margin:0!important;z-index:1;
   left:calc(var(--tv-left) + var(--tv-side)*var(--u));
-  top:calc(100vh - var(--floor) - (var(--tv-lift) + var(--tv-chin) + var(--tv-h))*var(--u));
-  width:calc(var(--tv-w)*var(--u));height:calc(var(--tv-h)*var(--u));max-width:none}
+  top:calc(100vh - var(--floor) - (var(--tv-lift) + var(--tv-chin))*var(--u) - var(--tv-height));
+  width:var(--tv-width);height:var(--tv-height);max-width:none}
 body.cat-wallpaper.room-page .room-shell:not(:fullscreen) .watch-column > :not(#stage){display:none}
 body.cat-wallpaper.room-page .room-shell:not(:fullscreen) #stage{position:relative;width:100%;height:100%;border-radius:calc(.5*var(--u));overflow:hidden;box-shadow:none;border:0}
 body.cat-wallpaper.room-page .room-shell:not(:fullscreen) #player-wrap{width:100%;height:100%;aspect-ratio:auto;max-height:none}

@@ -1,6 +1,7 @@
 ---
 import '../styles/cat-habitat.css';
 import Wordmark from './Wordmark.astro';
+import { MUSIC_MIXES } from '../scripts/music-shelf.js';
 // Bean's room for Aquarium mode. Furniture marked data-perch becomes a surface in
 // the cat engine (see docs/bean/ARCHITECTURE.md, "Aquarium furniture"):
 // "solid" pieces can be climbed, sat on, hidden behind and peeked over;
@@ -30,13 +31,13 @@ const bulbs = Array.from({ length: 24 }, (_, i) => { const x = (i + .5) * 1000 /
     <div class="window-curtain left"></div><div class="window-curtain right"></div>
     <div class="window-sill" data-perch="shelf" data-nap><span class="sill-pot"></span></div>
   </div>
-  <div class="prop wall-shelf" data-perch="shelf"><span class="shelf-lamp"></span><span class="wall-shelf-cup"></span></div>
 
   <div class="prop prop-tree">
     <div class="tree-post"></div>
     <div class="tree-cubby" data-perch="solid" data-nap><span class="cubby-hole"></span></div>
     <div class="tree-deck deck-low" data-perch="shelf"></div>
     <div class="tree-deck deck-mid" data-perch="shelf"><span class="deck-pompom"></span></div>
+    <div class="tree-deck deck-high" data-perch="shelf"></div>
     <div class="tree-bed" data-perch="shelf" data-nap></div>
   </div>
 
@@ -49,22 +50,33 @@ const bulbs = Array.from({ length: 24 }, (_, i) => { const x = (i + .5) * 1000 /
     <span class="sofa-blanket"></span>
   </div>
 
-  <div class="prop prop-box" data-perch="solid" data-nap data-view><span class="box-flap left"></span><span class="box-flap right"></span><span class="box-label">BEAN · this side up</span></div>
-  <span class="prop yarn" data-toy></span>
-
   <!-- The TV hangs over a low console. In a room, the player is placed over .tv-screen. -->
-  <div class="prop console" data-perch="shelf" data-view><span class="drawer"></span><span class="drawer"></span><span class="console-speaker"></span></div>
+  <div class="prop console" data-perch="shelf" data-view>
+    <span class="drawer"></span><span class="drawer"></span><span class="console-speaker"></span>
+    <span class="console-plant"><span></span></span><span class="console-plant small"><span></span></span>
+  </div>
   <div class="prop tv" data-perch="solid"><div class="tv-screen"></div><span class="tv-led"></span></div>
 
   <div class="prop prop-books" data-perch="solid">
-    <div class="books row-1"></div><div class="books row-2"></div><div class="books row-3"></div>
     <div class="book-shelf" data-perch="shelf"></div>
   </div>
   <span class="prop toy-mouse" data-toy></span>
   <div class="habitat-light"></div>
 </div>
+  <section class="music-shelf" aria-label="Music shelf">
+    <div class="music-shelf-heading"><span>Records</span><span data-music-hint>Play on the TV</span></div>
+    <div class="music-records">
+      {MUSIC_MIXES.map((mix, index) => <button type="button" class={`music-record record-${mix.key}`} data-music-mix={mix.key} aria-label={`Play ${mix.label} on the shared TV`} aria-pressed="false" disabled title={`${mix.detail} · ${mix.label} by Lofi Girl`}>
+        <span class="record-sleeve" aria-hidden="true"><span class="record-number">0{index + 1}</span><span class="record-disc"></span><span class="record-play">▶</span></span>
+        <span class="record-label">{mix.label}</span><span class="record-caption">{mix.detail}</span>
+      </button>)}
+    </div>
+    <p class="music-shelf-status" data-music-status role="status" aria-live="polite">Connecting…</p>
+  </section>
 <script>
   import { mountScene } from '../scripts/habitat-scene.js';
+  import { mountHomeMusicShelf } from '../scripts/music-shelf.js';
   const habitat = document.querySelector('.cat-habitat');
   if (habitat instanceof HTMLElement) mountScene(habitat);
+  if (!document.body.classList.contains('room-page')) mountHomeMusicShelf(document.querySelector('.music-shelf'));
 </script>
